@@ -1,4 +1,4 @@
-# Robin8 BlockChain History module
+# History module
 
 This API provides functionality to save logs about actions and history of transactions.
 
