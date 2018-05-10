@@ -10,6 +10,8 @@ API-methods:
 
 - [Read logs](#read-logs)
 
+- [Drop table](#drop-table)
+
 The following is a description of the API-methods:
 
 ## Save logs about actions and history of transactions
@@ -28,7 +30,13 @@ The following is a description of the API-methods:
 
 * **Sample response**
 
-    {"jsonrpc": "2.0", "result": "3", "id": 1} (200 OK)
+```bash
+    {
+        "jsonrpc": "2.0", 
+        "result": "3", 
+        "id": 1
+    } (200 OK)
+```
 
 
 ## Read logs
@@ -43,8 +51,13 @@ The following is a description of the API-methods:
 
 * **Sample response**
 
-    {"jsonrpc": "2.0", "result": "[(1, '123', 'transaction initiation', datetime.date(2018, 5, 8), datetime.datetime(2018, 5, 8, 14, 51, 24), ('awdaw',))]", "id": 1} (200 OK)
-
+```bash
+    {
+        "jsonrpc": "2.0", 
+        "result": "[(1, '123', 'transaction initiation', datetime.date(2018, 5, 8), datetime.datetime(2018, 5, 8, 14, 51, 24), ('awdaw',))]", 
+        "id": 1
+    } (200 OK)
+```
 
 ## Drop table
 
