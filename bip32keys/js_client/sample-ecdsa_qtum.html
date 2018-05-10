@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8' />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="jsrsasign : The 'jsrsasign' (RSA-Sign JavaScript Library) is a open source free pure JavaScript implementation of PKCS#1 v2.1 RSASSA-PKCS1-v1_5 RSA signing and validation algorithm." />
+
+    <link rel="stylesheet" type="text/css" media="screen" href="../stylesheets/stylesheet.css">
+    <title>ECDSA sample</title>
+<script language="JavaScript" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.11/jsrsasign-all-min.js"></script>
+<script src="http://peterolson.github.com/BigInteger.js/BigInteger.min.js"></script>
+<script language="JavaScript" type="text/javascript">
+var curve = "secp256k1"
+var sigalg = "SHA256withECDSA"
+var qtum_magic_bytes = {"mainnet": "3a", "testnet": "78"}
+var wif_magic_bytes = {"mainnet": "80", "testnet": "ef"}
+
+
+var base58 = (function(alpha) {
+    var alphabet = alpha || '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz',
+        base = alphabet.length;
+    return {
+        encode: function(enc) {
+            var encoded = '';
+			var enc = bigInt(enc, 16);
+            while(!enc.isZero()) {
+                var remainder = enc.mod(base);
+				//console.log(remainder)
+                enc = enc.divide(base);
+                encoded = alphabet[remainder].toString() + encoded;        
+            }
+            return encoded;
+        },
+        decode: function(dec) { // not tested
+            if(typeof dec!=='string')
+                throw '"decode" only accepts strings.';            
+            var decoded = 0;
+            while(dec) {
+                var alphabetPosition = alphabet.indexOf(dec[0]);
+                if (alphabetPosition < 0)
+                    throw '"decode" can\'t find "' + dec[0] + '" in the alphabet: "' + alphabet + '"';
+                var powerOf = dec.length - 1;
+                decoded += alphabetPosition * (Math.pow(base, powerOf));
+                dec = dec.substring(1);
+            }
+            return decoded;
+        }
+    };
+})();
+
+function privateKeyToWif(privateKey, isMainnet) {
+	prefix = isMainnet ? wif_magic_bytes["mainnet"] : wif_magic_bytes["testnet"]
+	output = prefix + privateKey + '01'; // \x01 - compressed wif
+	extendedPrivateKey = output;
+	console.log(output)
+	
+	var sha256 = new KJUR.crypto.MessageDigest({alg: "sha256", prov: "cryptojs"});
+	sha256.updateHex(output);
+	output = sha256.digest();
+	console.log(output);
+	
+	var sha256 = new KJUR.crypto.MessageDigest({alg: "sha256", prov: "cryptojs"});
+	sha256.updateHex(output);
+	output = sha256.digest();
+	console.log(output);
+	
+	var checksum = output.substr(0, 8);
+	output = extendedPrivateKey + checksum;
+	console.log(output)
+	
+	output = base58.encode(output);
+	console.log(output);
+	
+	return output;
+	
+}
+
+function deriveQtumAddress(publicKey, isMainnet) {
+	console.log('pub_key: ' + publicKey);
+	var output;
+	
+	var sha256 = new KJUR.crypto.MessageDigest({alg: "sha256", prov: "cryptojs"});
+	sha256.updateHex(publicKey)
+	output = sha256.digest()
+	console.log(output)
+	
+	var md5 = new KJUR.crypto.MessageDigest({alg: "ripemd160", prov: "cryptojs"});
+	md5.updateHex(output)
+	output = md5.digest()
+	console.log(output)
+
+	mb = isMainnet ? qtum_magic_bytes["mainnet"] : qtum_magic_bytes["testnet"]
+	output = mb + output
+	extended_ripmd160 = output
+	console.log(output)
+	
+	var sha256 = new KJUR.crypto.MessageDigest({alg: "sha256", prov: "cryptojs"});
+	sha256.updateHex(output)
+	output = sha256.digest()
+	console.log(output)
+	
+	var sha256 = new KJUR.crypto.MessageDigest({alg: "sha256", prov: "cryptojs"});
+	sha256.updateHex(output)
+	output = sha256.digest()
+	console.log(output)
+	
+	var checksum = output.substr(0,8);
+	console.log(checksum);
+	
+	output = extended_ripmd160 + checksum;
+	console.log(output);
+
+	output = base58.encode(output);
+	console.log(output);
+	return output;
+	
+}
+
+function doGenerate() {
+  var f1 = document.form1;
+  var ec = new KJUR.crypto.ECDSA({"curve": curve});
+  var keypair = ec.generateKeyPairHex();
+  var pubkey = keypair.ecpubhex;
+  var prefix = parseInt(pubkey[pubkey.length - 1], 16) % 2 ? "03" : "02";
+  var compressed_pubkey = prefix + pubkey.substr(2,64);
+
+  var checkBox = document.getElementById("myCheck");
+  
+
+  f1.prvkey1.value = keypair.ecprvhex;
+  f1.uncompressed_pubkey.value = pubkey
+  f1.compressed_pubkey.value = compressed_pubkey
+  f1.wif.value = privateKeyToWif(keypair.ecprvhex, checkBox.checked);
+  f1.qaddr.value = deriveQtumAddress(compressed_pubkey, checkBox.checked) // passing compressed form of public key
+}
+
+function doSign() {
+  var f1 = document.form1;
+  var prvkey = f1.prvkey1.value;
+  var msg1 = f1.msg1.value;
+
+  var sigValueHex;
+  do {
+	var sig = new KJUR.crypto.Signature({"alg": sigalg}); // needs to be initialized again
+	sig.init({d: prvkey, curve: curve});
+    sig.updateString(msg1);
+	sigValueHex = sig.sign();
+	console.log(sigValueHex[7])
+	console.log(sigValueHex[75])
+  } while (sigValueHex[7] != 0 || sigValueHex[75] != 0); // those bytes indicate length of r,s components of signature
+														// python ecdsa works only with 64-bit r,s
+														// takes 2-3 times to generate needed signature
+  
+  f1.sigval1.value = sigValueHex
+}
+
+function doVerify() {
+  var f1 = document.form1;
+  var pubkey = f1.uncompressed_pubkey.value
+  var msg1 = f1.msg1.value;
+  var sigval = f1.sigval1.value
+
+  var sig = new KJUR.crypto.Signature({"alg": sigalg, "prov": "cryptojs/jsrsa"});
+  sig.init({xy: pubkey, curve: curve});
+  sig.updateString(msg1);
+  var result = sig.verify(sigval);
+  if (result) {
+    alert("valid ECDSA signature");
+  } else {
+    alert("invalid ECDSA signature");
+  }
+}
+</script>
+  </head>
+
+  <body>
+
+<form name="form1">
+<h4>Generate EC pair</h4>
+
+<input type="button" value="generate EC key pair" onClick="doGenerate();"/><br/>
+<p>
+Is mainnet: <input type="checkbox" id="myCheck"><br/>
+EC private key (hex): <input type="text" name="prvkey1" value="" size="100"/><br/>
+WIF: <input type="text" name="wif" value="" size="100"/><br/>
+EC public key (hex): <input type="text" name="uncompressed_pubkey" value="" size="100"/><br/>
+Compressed public key(hex): <input type="text" name="compressed_pubkey" value="" size="100"/><br/>
+Qtum address: <input type="text" name="qaddr" value="" size="100"/></label><br/>
+</p>
+
+<!-- ============================================================== -->
+
+<h4>Sign message</h4>
+
+Message string to be signed: 
+<input type="text" name="msg1" value="aaa" size="100"/><br/>
+<input type="button" value="sign message" onClick="doSign();"/><br/>
+<p>
+Signature value (hex): <input type="text" name="sigval1" value="" size="100"/><br/>
+</p>
+
+<h4>Verify signature</h4>
+<input type="button" value="verify it!" onClick="doVerify();"/>
+<input type="reset" value="reset"/>
+
+</form>
+
+  </body>
+</html>
