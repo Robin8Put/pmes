@@ -99,3 +99,9 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+.idea/
+
+qtum_bridge/mock_client.py
+qtum_bridge/How_to_use_Robin8_BlockChain_Bridge.md
+qtum_bridge/smart_contracts
