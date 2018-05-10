@@ -1,0 +1,6 @@
+{
+"robin8_fee": "0.2",
+"gasLimit": "250000",
+"gasPrice": "0.00000049",
+"price_per_kilobyte": "0.01"
+}
