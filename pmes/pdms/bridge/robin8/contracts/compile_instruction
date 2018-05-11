@@ -1,1 +1,0 @@
-solc ./test.sol --bin --abi --hashes -o ./test_sol --overwrite

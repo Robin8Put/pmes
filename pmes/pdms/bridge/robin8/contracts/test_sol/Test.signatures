@@ -1,6 +1,0 @@
-cf0d6774: add_num(uint256)
-880a3c86: get_all()
-3e27a8e8: get_num()
-70f9b8da: get_str()
-0da665a4: set_num(uint256)
-438ecee6: set_str(string)
