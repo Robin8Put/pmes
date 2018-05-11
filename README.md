@@ -11,6 +11,15 @@ Profile Management EcoSystem (PMEC) provides next functionality:
 
 View API details in the file [Robin8_BlockChain_PDMS_API.md](pdms/Robin8_BlockChain_PDMS_API.md).
 
+This repository contains the following modules:
+
+1. **ams** - manage user's accounts (registration, authorization, profile management)
+2. **balance** - provide work with wallets (add wallets, view/increment/decrement balance in the wallet)
+4. **bip32keys** - utilities used for simplifying communication with crypto-libraries
+3. **history** - save logs about actions and history of transactions
+5. **mail** - save and send mails
+6. **pdms** - Profile Data Management System (PDMS). COntains **qtum_bridge** that provides access to information of Robin8 Smart Contract based on Qtum BlockChain
+
 ## Installation
 
 Clone sources from git:
@@ -19,28 +28,27 @@ Clone sources from git:
 git clone https://github.com/Robin8Put/pmes.git
 ```
 
-## Running
-
-For running module you should run server by using next:
+Create virtualenv and install needed libraries from the `requirements.txt`:
 
 ```bash
-python3 main.py
+cd balance
+virtualenv --python=python3.6 venv
+source venv/bin/activate
+pip3 install -r requirements.txt
 ```
+
+Modules installations were described into appropriate readmes.
 
 ## How to use PMES
 
 For using Profile Management EcoSystem:
 
-1. Run [PDMS module](https://github.com/Robin8Put/robin8_blockchain/tree/master/pdms)
-2. Run [mock client](https://github.com/Robin8Put/robin8_blockchain/tree/master/mock_clients)
+1. Run [PDMS module](https://github.com/Robin8Put/pmes/tree/master/pdms)
+2. Run [Python mock client](https://github.com/Robin8Put/pdms_py_client)
 3. Create client object
-	- registration will be done inside the system if user doesn't have profile
-	- authorization will be done inside the system if user have profile
-4. Then you can:
-	- save data in blockchain
-	- get data from blockchain
-	- get data owner wallet address
-	- set/get data description
+	- registration
+	- authorization
+4. Then you can use mectioned functionalities
 
 # Additional resources:  
 The API uses the [JSON RPC 2.0](http://www.jsonrpc.org/specification) 
