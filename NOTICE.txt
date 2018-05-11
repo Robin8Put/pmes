@@ -1,0 +1,9 @@
+=========================================================================
+==  NOTICE file for use with the Apache License, Version 2.0,          ==
+==  in this case for the Profile Data Management System.               ==
+=========================================================================
+
+Profile Data Management System
+Copyright 2018 The Robin8.
+
+This product includes software developed at Robin8 (https://www.robin8put.org/).

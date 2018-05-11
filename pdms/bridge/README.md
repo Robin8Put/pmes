@@ -10,6 +10,8 @@ This module allows:
 - reads data from the smart contract by specified CID (Content-ID)
 - get owner address or description of the specified CID
 - create new CID from specified CUS-data (Content-Unical-String data)
+- change data owner
+- sell content
 
 View API details in the file [Robin8_BlockChain_BRIDGE_API.md](Robin8_BlockChain_BRIDGE_API.md).
 
@@ -35,5 +37,5 @@ pip3 install -r requirements.txt
 For running application run bash command:
 
 ```bash
-python3 'index.py'
+python3 index.py
 ```
