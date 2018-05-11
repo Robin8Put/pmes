@@ -1,6 +1,6 @@
 =========================================================================
 ==  NOTICE file for use with the Apache License, Version 2.0,          ==
-==  in this case for the Profile Profile Management EcoSystem          ==
+==  in this case for the Profile Management EcoSystem          ==
 =========================================================================
 
 Profile Management EcoSystem
