@@ -377,3 +377,78 @@ The following is a description of the API-methods:
     `api_pass` is a secure api-key which the client must have to sign the api-request.
 
     Example of a successful query: `http://176.31.125.26/bridge/?method=makecid&cus=Test%20string&addr=QQNJ1yL2h1YucDdfXkcoWf41WrbiXZGJma&secret=feec34cbfc0124bb534c368fa5ed3274fc1e66e49d84f09a06a24ba575b374f6&blockid=e5a4f701f886`
+
+
+## Get last access string for content (for debug purposes)
+
+* **Method:** `last_access_string`
+
+    No auth
+  
+* **Params**
+
+    `cid=[string]`
+
+* **Sample response**
+
+    [string]
+
+
+## Change data owner
+
+* **Method:** `changeowner`
+
+    Authorization required
+  
+* **Params**
+
+    `cid=[string]`
+
+    `new_owner=[string]`
+
+    `access_string=[string]`
+
+* **Sample response**
+
+    [json]
+
+```bash
+    {
+        'result': [string], 
+        'cid': [string], 
+        'new_owner': [string], 
+        'access_string': [string], 
+        'prev_owner': [string], 
+        'contract_owner_hex': [string]
+    }
+```
+
+
+## Sell content
+
+* **Method:** `sellcontent`
+
+    Authorization required
+  
+* **Params**
+
+    `cid=[string]`
+
+    `buyer_addr=[string]`
+
+    `access_string=[string]`
+
+* **Sample response**
+
+    [json]
+
+```bash
+    {
+        'result': [string], 
+        'cid': [string], 
+        'buyer_addr': [string], 
+        'access_string': [string], 
+        'content_owner': [string], 
+        'contract_owner_hex': [string]
+    }
+```
