@@ -1,6 +1,6 @@
 =========================================================================
-==  NOTICE file for use with the Apache License, Version 2.0,  ==
-==  in this case for the Profile Data Management System.       ==
+==  NOTICE file for use with the Apache License, Version 2.0,          ==
+==  in this case for the Profile Data Management System.               ==
 =========================================================================
 
 Profile Data Management System

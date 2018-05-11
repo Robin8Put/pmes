@@ -24,6 +24,12 @@ API-methods:
 
 - [Create new CID from specified CUS-data](#create-new-cid-from-specified-cus-data)
 
+- [Get last access string for content in debug purposes](#get-last-access-string-for-content-in-debug-purposes)
+
+- [Change data owner](#change-data-owner)
+
+- [Sell content](#sell-content)
+
 The following is a description of the API-methods:
 
 ## Get last block id
@@ -379,7 +385,7 @@ The following is a description of the API-methods:
     Example of a successful query: `http://176.31.125.26/bridge/?method=makecid&cus=Test%20string&addr=QQNJ1yL2h1YucDdfXkcoWf41WrbiXZGJma&secret=feec34cbfc0124bb534c368fa5ed3274fc1e66e49d84f09a06a24ba575b374f6&blockid=e5a4f701f886`
 
 
-## Get last access string for content (for debug purposes)
+## Get last access string for content in debug purposes
 
 * **Method:** `last_access_string`
 
