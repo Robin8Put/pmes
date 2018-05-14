@@ -6,13 +6,11 @@ The API uses the REST API standard.
 
 API-methods:
 
-- [Add wallet](#add-wallet)
+- [Create account](#create-account)
 
-- [Increment balance](#increment-balance)
+- [Get account data](#get-account-data)
 
-- [Decrement balance](#decrement-balance)
-
-- [Get balance](#get-balance)
+- [Get balance by public key](#get-balance-by-public-key)
 
 The following is a description of the API-methods:
 

@@ -31,13 +31,47 @@ git clone https://github.com/Robin8Put/pmes.git
 Create virtualenv and install needed libraries from the `requirements.txt`:
 
 ```bash
-cd balance
+cd pmes
 virtualenv --python=python3.6 venv
 source venv/bin/activate
 pip3 install -r requirements.txt
 ```
 
 Modules installations were described into appropriate readmes.
+
+
+PMES works with four modules: AMS, balance, pdms and qtum_bridge.
+
+Therefore, for running application you should run 4 servers:
+
+1. **ams** server:
+
+```bash
+source venv/bin/activate
+python3 ams/main.py
+```
+
+2. **balance** server:
+
+```bash
+source venv/bin/activate
+python3 balance/balance_api.py
+```
+
+3. **bridge** server:
+
+```bash
+source venv/bin/activate
+python3 pdms/bridge/index.py
+```
+
+4. **pdms** server:
+
+```bash
+source venv/bin/activate
+python3 pdms/main.py
+```
+
 
 ## How to use PMES
 
