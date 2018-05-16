@@ -18,73 +18,20 @@ This repository contains the following modules:
 4. **bip32keys** - utilities used for simplifying communication with crypto-libraries
 3. **history** - save logs about actions and history of transactions
 5. **mail** - save and send mails
-6. **pdms** - Profile Data Management System (PDMS). COntains **qtum_bridge** that provides access to information of Robin8 Smart Contract based on Qtum BlockChain
+6. **pdms** - Profile Data Management System (PDMS). Contains **qtum_bridge** that provides access to information of Robin8 Smart Contract based on Qtum BlockChain
 
-## Installation
-
-Clone sources from git:
-
-```bash
-git clone https://github.com/Robin8Put/pmes.git
-```
-
-Create virtualenv and install needed libraries from the `requirements.txt`:
-
-```bash
-cd pmes
-virtualenv --python=python3.6 venv
-source venv/bin/activate
-pip3 install -r requirements.txt
-```
-
-Modules installations were described into appropriate readmes.
-
-
-PMES works with four modules: AMS, balance, pdms and qtum_bridge.
-
-Therefore, for running application you should run 4 servers:
-
-1. **ams** server:
-
-```bash
-source venv/bin/activate
-python3 ams/main.py
-```
-
-2. **balance** server:
-
-```bash
-source venv/bin/activate
-python3 balance/balance_api.py
-```
-
-3. **bridge** server:
-
-```bash
-source venv/bin/activate
-python3 pdms/bridge/index.py
-```
-
-4. **pdms** server:
-
-```bash
-source venv/bin/activate
-python3 pdms/main.py
-```
-
+Installation and running of PMES is described [here](Installation.md).
 
 ## How to use PMES
 
 For using Profile Management EcoSystem:
 
-1. Run [PDMS module](https://github.com/Robin8Put/pmes/tree/master/pdms)
+1. Run [PDMS modules](Installation.md)
 2. Run [Python mock client](https://github.com/Robin8Put/pdms_py_client)
-3. Create client object
-	- registration
-	- authorization
-4. Then you can use mectioned functionalities
+3. Create client object and use mentioned functionalities as described in python mock client
 
-# Additional resources:  
+# Additional resources:
+
 The API uses the [JSON RPC 2.0](http://www.jsonrpc.org/specification) 
 
 # License

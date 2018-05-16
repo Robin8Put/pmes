@@ -43,9 +43,11 @@ The following is a description of the API-methods:
 
 * **Sample response**
 
-    [string]
+    [json]
 
-    `"46688951f843"`
+```bash
+    {"lastblockid": "ff02d34ac0000002228c"}
+```
 
 * **Description**
 
@@ -56,7 +58,7 @@ The following is a description of the API-methods:
     `blockid` is a last 7 chars of last block hash concatenated with last block number in hex-format.
 
 
-## Get data from blockchain
+## Get content from blockchain
 
 * **URL:** `/api/blockchain/data/?cid=&hash=`
 
@@ -247,11 +249,13 @@ The following is a description of the API-methods:
     {
         “public_key”: [string],
         “message”: {
-            “cid”: [string],
-            “description”: [string]
+            “cid”: [string], 
+            “descr”: [string],
             “timestamp”: [string],
         }
-        “signature”: [string] 
+        “signature”: [string],
+        “cid”: [string], 
+        “descr”: [string]
     }
 ```
 
@@ -261,16 +265,14 @@ The following is a description of the API-methods:
 
 ```bash
     {
-        "result" : {
-            "txid" : "07dc68204eebcad993dc332aefb0899fa340b6320b18227d9c212b1b062656a3",
-            "sender" : "QQNJ1yL2h1YucDdfXkcoWf41WrbiXZGJma",
-            "hash160" : "2949a0eefcc7b6aa648c0a4845fa68ed1d985dc5"
-        },
-        "cid" :"2",
-        "descr" : "Test description for cid 2",
-        "addr" : "QQNJ1yL2h1YucDdfXkcoWf41WrbiXZGJma",
-        "secret" : "66774530e770b99241f9880f137202bba88476cfc83fde521379f0fa33f052e8",
-        "blockid" : "2f577f41f864"
+        "result": {
+            "txid": "15d21c852b2159e32d2c1657207e85b52dacd153763db2b653c87ff8b22bead9", 
+            "sender": "qgh88fssi4JrkH8LLvkqvC7SzGxvyApYis", 
+            "hash160": "fdc1ae05c161833cdf135863e332126e15d7568c"
+            }, 
+        "cid": "68", 
+        "descr": "descr", 
+        "addr": "qgh88fssi4JrkH8LLvkqvC7SzGxvyApYis"
     }
 ```  
 

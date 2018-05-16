@@ -105,3 +105,7 @@ ENV/
 pmes/pdms/bridge/mock_client.py
 pmes/pdms/bridge/How_to_use_Robin8_BlockChain_Bridge.md
 pmes/pdms/bridge/smart_contracts
+pmes/pdms/bridge/robin8/contracts
+
+# logs
+.log
