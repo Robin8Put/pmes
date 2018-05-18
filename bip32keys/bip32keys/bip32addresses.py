@@ -47,6 +47,11 @@ class Bip32Addresses(Bip32NetworkKeys):
         return output.decode()
 
     @staticmethod
+    def public_key_to_blockchain_address(public_key, mb):
+        return Bip32Addresses.hex_address_to_blockchain_address(
+            Bip32Addresses.public_key_to_hex_address(public_key), mb)
+
+    @staticmethod
     def address_to_hex(address):
         output = encode_hex(base58check.b58decode(address))[0]
 

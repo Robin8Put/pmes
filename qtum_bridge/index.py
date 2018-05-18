@@ -3,9 +3,6 @@ import tornado.web
 from jsonrpcserver.aio import methods
 import api_methods
 import json
-import os
-import sys
-import logging
 
 
 def validate_params(params):
@@ -34,21 +31,27 @@ class MainHandler(tornado.web.RequestHandler):
         try:
             validate_params(params)
 
+            print(params)
             response = await methods.dispatch({"jsonrpc": "2.0", "method": method, 'params': params, "id": "null"})
+            print(response)
             self.write(response)
         except Exception as e:
             data = json.dumps({"jsonrpc": "2.0", "result": {"error": str(e)}, "id": "null"})
+            print(data)
             self.set_header('Content-type', 'application/json; charset=UTF-8')
             self.write(data)
 
     async def post(self):
         data = json.loads(self.request.body.decode())
         params = data.get('params', None)
+        print(data, 'test', params)
         try:
             validate_params(params)
+            print('11111111111111')
             response = await methods.dispatch(data)
             self.write(response)
         except Exception as e:
+            print('zhopa')
             data = json.dumps({"jsonrpc": "2.0", "result": {"error": str(e)}, "id": "null"})
             self.set_header('Content-type', 'application/json; charset=UTF-8')
             self.write(data)
@@ -61,16 +64,6 @@ def make_app():
 
 
 if __name__ == "__main__":
-    PROJ_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-    if PROJ_DIR not in sys.path:
-        sys.path.append(PROJ_DIR)
-
-    import settings
-
-
-    logging.basicConfig(filename='bridge.log',level=logging.DEBUG,
-                        format='%(asctime)s %(message)s')
     app = make_app()
-    app.listen(settings.bridgeport)
+    app.listen(8888)
     tornado.ioloop.IOLoop.current().start()

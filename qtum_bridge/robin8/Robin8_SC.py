@@ -18,12 +18,16 @@ class Robin8_SC(Qtum_SC):
             'getCID': "1c461ee1",  # "getCID(string)",
             'getCUS': "d5b4bb60",  # "getCUS(uint32)",
             'getOwner': "621b23e2",  # "getOwner(uint32)",
+            'getPrice': "da26663a",
             'lastAccessString': "3d2ecd6f",  #  lastAccessString(uint32)
             'makeCID': "cc16dffe",  # "makeCID(string,address)",
             'publishersMap': "3a8c50b9",  # "publishersMap(address)",
             'sellContent': "cdf359ba",  #  sellContent(uint32,address,string)
             'setAccessLevel': "da4d934a",  #: "setAccessLevel(address,uint8)",
             'setCIDdescription': "ab63c0ed",  # "setCIDdescription(uint32,string)"
+            'makeOffer': "4a33bb68",          # makeOffer(uint32,address,string)
+            'rejectOffer': "619cc363",         # rejectOffer(uint32,address)
+            'setPrice': "8e1857e8"
         }
         super().__init__(contract_address, func_hashes, qtum_rpc)
 
@@ -42,6 +46,9 @@ class Robin8_SC(Qtum_SC):
     def getOwner(self, cid):
         return self.callcontract(func_name='getOwner', input_types=['uint32'], input_values=[cid], output_types=['address'])
 
+    def getPrice(self, cid):
+        return self.callcontract(func_name='getPrice', input_types=['uint32'], input_values=[cid], output_types=['uint'])
+
     def lastAccessString(self, cid):
         return self.callcontract(func_name='lastAccessString', input_types=['uint32'], input_values=[cid], output_types=['string'])
 
@@ -59,6 +66,15 @@ class Robin8_SC(Qtum_SC):
 
     def setCIDdescription(self, cid, desc):
         return self.sendtocontract(func_name='setCIDdescription', input_types=['uint32', 'string'], input_values=[cid, desc], output_types=None)
+
+    def makeOffer(self, cid, buyer_addr, buyer_access_string):
+        return self.sendtocontract(func_name='makeOffer', input_types=['uint32', 'address', 'string'], input_values=[cid, buyer_addr, buyer_access_string], output_types=None)
+
+    def rejectOffer(self, cid, buyer_addr):
+        return self.sendtocontract(func_name="rejectOffer", input_types=['uint32', 'address'], input_values=[cid, buyer_addr], output_types=None)
+
+    def setPrice(self, cid, price):
+        return self.sendtocontract(func_name="setPrice", input_types=['uint32', 'uint32'], input_values=[cid, price], output_types=None)
 
 
 

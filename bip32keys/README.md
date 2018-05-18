@@ -30,11 +30,17 @@ This utilities used for generating public / private keys / blockchain address an
         - `address_to_hex` --- convert address to hex format. Drop magic byte and checksum
         - `is_valid_address` --- check is address valid
         - `get_magic_byte` --- return magic byte
-- `qtum_utils` --- packet that contains class `Qtum` which was based on the `Bip32Addresses`
-    - `get_qtum_address` --- return qtum address
-    - `hex_to_qtum_address` --- convert hex to qtum address
-    - `public_key_to_qtum_address` --- convert public key to qtum address
-    - `is_valid_qtum_address` --- check is qtum address valid
+- `qtum_utils` --- packet that contains utils for Qtum
+    - `qtum` --- contain class `Qtum` which was based on the `Bip32Addresses`
+        - `get_qtum_address` --- return qtum address
+        - `hex_to_qtum_address` --- convert hex to qtum address
+        - `public_key_to_qtum_address` --- convert public key to qtum address
+        - `is_valid_qtum_address` --- check is qtum address valid
+- `eth_utuils` --- packet that contains utils for Ethereum
+    - `eth` --- contains class `Ethereum` which was based on the `Bip32Keys`
+        - `__init__` --- init class
+        - `get_address` --- return Ethereum address
+        - `public_key_to_ethereum_address` --- convert public key to Ethereum address
 - `js_client` --- JavaScript library for working with QTUM (https://qtum.org/en/)
     - `base58` --- parameter alpha is alphabet(currenctly igrone, pass empty string), return encode and decode functions of base58check
     - `privateKeyToWif` - convert private key to wif format

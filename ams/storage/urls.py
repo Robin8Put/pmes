@@ -2,6 +2,6 @@ import tornado.web
 import settings
 from ams.storage import views
 
-router = tornado.web.Application([
-        	(r"/*", views.StorageHandler)
+storage_router = tornado.web.Application([
+        	(settings.ENDPOINTS["storage_server"], views.StorageHandler)
         ])

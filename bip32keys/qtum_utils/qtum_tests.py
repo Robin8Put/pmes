@@ -1,4 +1,6 @@
 import unittest
+
+from bip32keys.bip32keys import Bip32Keys
 from qtum_utils.qtum import Qtum
 
 
@@ -151,6 +153,13 @@ class TestUM(unittest.TestCase):
 
     def test_valid_qtum_address(self):
         self.assertTrue(Qtum.is_valid_qtum_address('qZiXFyqVf9vxf6iu47AdfU1FVaHyULUP7e', mainnet=False))
+
+    def test_shared_key(self):
+        keys = Bip32Keys({'entropy': '3123213213213123312c3kjifj3'})
+        keys2 = Bip32Keys({'entropy': 'fdjsofjioej9fsdfjdskfdsjkhfdsj'})
+        self.assertEqual(keys2.get_shared_key(keys.get_public_key()),
+                         keys.get_shared_key(keys2.get_public_key()),
+                         )
 
 
 if __name__ == '__main__':
