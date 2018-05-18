@@ -1,7 +1,7 @@
 import codecs
-import hashlib
 from hashlib import sha256
-from ecdsa import SigningKey, VerifyingKey
+from ecdsa import SigningKey, VerifyingKey, ellipticcurve
+from ecdsa.ellipticcurve import Point, CurveFp
 import ecdsa
 
 from bip32utils import BIP32Key
@@ -25,7 +25,6 @@ class Bip32Keys:
             else:
                 raise NotImplementedError()
 
-
     def init_from_entropy(self, entropy):
         entropy = entropy.encode()
 
@@ -36,7 +35,6 @@ class Bip32Keys:
         self.uncompressed_public_key = decode_hex(Bip32Keys.to_uncompressed_public_key(
             self.get_public_key()
         ))[0]
-
 
     def init_from_private_key(self, private_key):
         sk = SigningKey.from_string(string=decode_hex(private_key)[0], curve=ecdsa.SECP256k1, hashfunc=sha256)
@@ -63,6 +61,10 @@ class Bip32Keys:
 
     @staticmethod
     def to_uncompressed_public_key(public_key):
+        if len(public_key) == 130:
+            return public_key
+        elif len(public_key) == 128:
+            return '04' + public_key
         p_hex = 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F'
         p = int(p_hex, 16)
 
@@ -153,10 +155,36 @@ class Bip32Keys:
         else:
             raise Exception('Unsupported signature format')
 
+    """
+    for asymetric encryption
+    """
+    # Certicom secp256-k1
+    _a = 0x0000000000000000000000000000000000000000000000000000000000000000
+    _b = 0x0000000000000000000000000000000000000000000000000000000000000007
+    _p = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f
+    _Gx = 0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798
+    _Gy = 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8
+    _r = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141
+
+    curve_secp256k1 = ecdsa.ellipticcurve.CurveFp(_p, _a, _b)
+    generator_secp256k1 = ecdsa.ellipticcurve.Point(curve_secp256k1, _Gx, _Gy, _r)
+
+    def get_shared_key(self, another_public_key):
+        return Bip32Keys.generate_shared_key(self.get_private_key(), another_public_key)
+
+    @staticmethod
+    def generate_shared_key(private_key, public_key):
+        public_key = Bip32Keys.to_uncompressed_public_key(public_key)
+        private_key = int(private_key, 16)
+        x = int(public_key[2:66], 16)  # drop prefix
+        y = int(public_key[-64:], 16)
+        another_point = Point(Bip32Keys.curve_secp256k1, x, y)
+        shared_point = another_point * private_key
+        return str(hex(shared_point.x()))[2:] + str(hex(shared_point.y()))[2:]
+
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    keys = Bip32Keys({'private_key': '7a6be1df9cc5d88edce5443ef0fce246123295dd82afae9a57986543272157cc'})
     keys = Bip32Keys({'entropy': '3123213213213123312c3kjifj3'})
     print('public key: ', keys.get_public_key())
     print('private key: ', keys.get_private_key())
@@ -167,3 +195,7 @@ if __name__ == '__main__':
 
     print('compressed: ', Bip32Keys.to_compressed_public_key('041ad7138370ef5e93fb243aff3373e2b92383818dfc20022841b655e0cd6c618cd578261c78e1adfe205c3ade8b81e1722d6058be9155eee55468fbb04b62040e'))
 
+    keys2 = Bip32Keys({'entropy': 'fdjsofjioej9fsdfjdskfdsjkhfdsj'})
+    print('shared key', keys2.get_shared_key(keys.get_public_key()))
+    print('shared key', keys.get_shared_key(keys2.get_public_key()))
+    print('shared key', Bip32Keys.generate_shared_key(keys.get_private_key(), keys2.get_public_key()))

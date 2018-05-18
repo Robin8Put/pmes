@@ -15,10 +15,7 @@ class Qtum(Bip32Addresses):
 
     @staticmethod
     def public_key_to_qtum_address(public_key, mainnet=True):
-        hex_address = Bip32Addresses.public_key_to_hex_address(public_key)
-        qtum_address = Bip32Addresses.hex_address_to_blockchain_address(hex_address, Qtum._get_magic_byte(mainnet))
-
-        return qtum_address
+        return Bip32Addresses.public_key_to_blockchain_address(public_key, Qtum._get_magic_byte(mainnet))
 
     @staticmethod
     def _get_magic_byte(mainnet):

@@ -30,32 +30,27 @@ table = tornado_components.mongo.Table(dbname=settings.DBNAME,
 class StorageHandler(tornado_components.web.ManagementSystemHandler):
 	"""Class handler Storage API
 	"""
-	def post(self):
+	async def post(self):
 		"""Create new account
 		"""
 		# Get data from request body
-		data = { k: self.get_argument(k) for k in self.request.arguments}
-		# Connect to database
-		table = tornado_components.mongo.Table(dbname=settings.DBNAME,
-										collection=settings.COLLECTION)
+		data = json.loads(self.request.body.decode())
 		# Get just created document
-		document = table.insert(**data)
+		document = await methods.dispatch(data)
 		# Return just created document data
-		self.write({i:document[i] for i in document if i != "_id"})
+		self.write(document)
 
-	def get(self):
+
+
+	async def get(self):
 		"""Retrieve data from database
 		"""
-		data = {k: self.get_argument(k) for k in self.request.arguments}
-		
-		public_key = data.get("public_key", None)
-
-		if not public_key:
+		# Get data from request body
+		data = json.loads(self.request.body.decode())
+		if not data.get("public_key", None):
 			self.write({"error":403, "reason":"Forbidden"})
+		response = await methods.dispatch(data) 
+		self.write(response)
 
-		response = table.find(public_key=public_key)
 
-		self.write({i:response[i] for i in response if i != "_id"})
-
-			
 

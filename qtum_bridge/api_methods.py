@@ -11,7 +11,7 @@ from qtum_blockchain.qtum_blockchain import Qtum_Blockchain
 
 contract_owner = 'qgh88fssi4JrkH8LLvkqvC7SzGxvyApYis'
 contract_owner_hex = 'fdc1ae05c161833cdf135863e332126e15d7568c'
-contract_address = 'c77bb015ea904be419c9214f13daf0e071e7df1f'
+contract_address = '363d33ed942bd543b073101fa6e5ee00aa67cbad'
 decimals = 8
 
 
@@ -225,3 +225,40 @@ async def sellcontent(cid, buyer_addr, access_string):
     result = r8_sc.sellContent(cid, buyer_addr, access_string)
 
     return {'result': result, 'cid': str(cid), 'buyer_addr': buyer_addr, 'access_string': access_string, 'content_owner': content_owner_addr, 'contract_owner_hex': addr}
+
+
+@methods.add
+async def setprice(cid, price):
+    r8_sc = Robin8_SC(contract_address)
+    r8_sc.set_send_params({'sender': contract_owner})
+
+    result = r8_sc.setPrice(cid, price)
+
+    return {'result': result, 'cid': str(cid), 'price': price}
+
+
+@methods.add
+async def getprice(cid):
+    r8_sc = Robin8_SC(contract_address)
+
+    return r8_sc.getPrice(cid)[0]
+
+
+@methods.add
+async def make_offer(cid, buyer_addr, buyer_access_string):
+    r8_sc = Robin8_SC(contract_address)
+    r8_sc.set_send_params({'sender': contract_owner})
+
+    result = r8_sc.makeOffer(cid, buyer_addr, buyer_access_string)
+
+    return {'result': result, 'cid': str(cid), 'buyer_addr': buyer_addr, 'buyer_access_string': buyer_access_string}
+
+
+@methods.add
+async def reject_offer(cid, buyer_addr):
+    r8_sc = Robin8_SC(contract_address)
+    r8_sc.set_send_params({'sender': contract_owner})
+
+    result = r8_sc.rejectOffer(cid, buyer_addr)
+
+    return {'result': result, 'cid': str(cid), 'buyer_addr': buyer_addr}

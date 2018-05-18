@@ -21,8 +21,8 @@ logging.basicConfig(filename='storage.log',level=logging.DEBUG,
 if __name__ == '__main__':
 
 	import settings
-	from urls import router
+	from urls import storage_router
 	# Define port
-	router.listen(settings.storageport)
+	storage_router.listen(settings.storageport)
 	# Start server
 	tornado.ioloop.IOLoop.current().start()

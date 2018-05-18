@@ -28,6 +28,9 @@ from qtum_utils.qtum import Qtum
 class AMSHandler(tornado_components.web.ManagementSystemHandler):
 	"""Account Management System Handler
 	"""
+	def initialize(self, storagehost, balancehost):
+		self.storage = storagehost
+		self.balance = balancehost
 
 	def double_sha256(self, str):
 		"""Creating entropy with double sha256
@@ -44,12 +47,12 @@ class AMSHandler(tornado_components.web.ManagementSystemHandler):
 		"""
 
 		# Include sign-verify mechanism
-		super().post()
+		super().verify()
 
 		# Save data at storage database
 		data = { k: self.get_argument(k) for k in self.request.arguments}
-		storage_url = "%s:%s" % (settings.host, settings.storageport) 
-		new_account = models.create(storage_url, data)
+		new_account = models.create(self.storage, data)
+		logging.debug("[+] -- Start AMS handler")
 		try:
 			error_code = new_account["error"]
 			error_reason = new_account["reason"]
@@ -59,13 +62,12 @@ class AMSHandler(tornado_components.web.ManagementSystemHandler):
 			entropy = self.generate_token()
 			qtum = Qtum(entropy)
 			address = qtum.get_qtum_address()
-			# Send waalet to balance server
+			# Send wallet to balance server
 			balance_params = {
 				"coinid": "qtum",
 				"uid": new_account["id"],
 				"address": address}
-			balance_host = "%s:%s" % (settings.host,settings.balanceport)
-			client = HTTPClient(balance_host)
+			client = HTTPClient(self.balance)
 			client.request(method_name="addaddr", **balance_params)
 
 			# Receive balance from balance host
@@ -75,74 +77,120 @@ class AMSHandler(tornado_components.web.ManagementSystemHandler):
 			balance = client.request(method_name="getbalance", **request_balance)
 
 			#Prepare response 
-			new_account.update({"href": "/api/" + new_account["public_key"],
+			new_account.update({"href": settings.ENDPOINTS["ams"]+"/"+ new_account["public_key"],
 								"balance": balance[address],
 								"address":address})
 
 			self.write(new_account)
 		else:
 			# Raise error if the one does exist
-			raise tornado.web.HTTPError(error_code, error_reason)
+			self.set_status(error_code)
+			self.write(new_account)
+			raise tornado.web.Finish
 
 
 class AccountHandler(tornado_components.web.ManagementSystemHandler):
 
+	def initialize(self, storagehost, balancehost):
+		self.storage = storagehost
+		self.balance = balancehost
+
 	def get(self, public_key):
 		"""Receives public key, looking up document at storage,
 				sends document id to the balance server
 		"""
+		super().verify(public_key)
 		# Get id from database
-		storage_url = "%s:%s" % (settings.host, settings.storageport)
-		request = requests.get(storage_url, params={"public_key": public_key})
-		
+		client = HTTPClient(self.storage)
+		#request = requests.get(self.storage, params={"public_key": public_key})
+		response = client.request(method_name="getaccountdata",
+									public_key=public_key)
 		try:
-			error_code = request.json()["error"]
-			error_reason = request.json()["reason"]
+			error_code = response["error"]
+			error_reason = response["reason"]
 		except:
 			# Receive balance from balance host
 			request_balance = {
-				"uid": request.json()["id"]
+				"uid": response["id"]
 			}
-			balance_host = "%s:%s" % (settings.host,settings.balanceport)
-			client = HTTPClient(balance_host)
+			client = HTTPClient(self.balance)
 			balance = client.request(method_name="getbalance", **request_balance)
 			# Prepare response
-			response = request.json()
 			response.update({"balance":balance})
 			# Return account data
 			self.write(response)
 		else:
-			raise tornado.web.HTTPError(error_code, error_reason)
+			self.set_status(error_code)
+			self.write(response)
+			raise tornado.web.Finish
 
-
-		
 
 
 class BalanceHandler(tornado_components.web.ManagementSystemHandler):
+
+	def initialize(self, storagehost, balancehost):
+		self.storage = storagehost
+		self.balance = balancehost
 
 	def get(self, public_key):
 		"""Receives public key, looking up document at storage,
 				sends document id to the balance server
 		"""
+		super().verify()
 		# Get id from database
 		######################
-		storage_url = "%s:%s" % (settings.host, settings.storageport)
-		request = requests.get(storage_url, params={"public_key": public_key})
+		client = HTTPClient(self.storage)
+		response = client.request(method_name="getaccountdata",
+								  **{"public_key":public_key})
 		
 		try:
-			error_code = request.json()["error"]
-			error_reason = request.json()["reason"]
+			error_code = response["error"]
+			error_reason = response["reason"]
 		except:
 			# Receive balance from balance host
 			###################################
 			request_balance = {
-				"uid": request.json()["id"]
+				"uid": response["id"]
 			}
-			balance_host = "%s:%s" % (settings.host,settings.balanceport)
-			client = HTTPClient(balance_host)
+			client = HTTPClient(self.balance)
 			balance = client.request(method_name="getbalance", **request_balance)
 
 			self.write(balance)
 		else:
-			raise tornado.web.HTTPError(error_code, error_reason)
+			self.set_status(error_code)
+			self.write(response)
+			raise tornado.web.Finish
+
+
+class NewsHandler(tornado_components.web.ManagementSystemHandler):
+	"""GET/POST news for users account
+	"""
+	def initialize(self, storagehost, balancehost):
+		self.storage = storagehost
+		self.balance = balancehost
+
+	def get(self, public_key):
+		"""Receives public key and returns news for users account.
+		"""
+		super().verify()
+		data = {k: self.get_argument(k) for k in self.request.arguments}
+		request_news = {
+				"public_key": public_key
+			}
+	
+		response = RPCClient.getrecentnews(self.storage, request_news)
+		try:
+			error_code = response["error"]
+			error_reason = response["reason"]
+		except:
+			self.write({"news":response})
+		else:
+			self.set_status(error_code)
+			self.write(response)
+			raise tornado.web.Finish
+
+
+
+			
+
 
