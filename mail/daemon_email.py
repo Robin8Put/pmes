@@ -1,7 +1,6 @@
 import sys, os, time, atexit, signal
 
 
-
 class Daemon:
     """This class initialize object daemon.
     Method:

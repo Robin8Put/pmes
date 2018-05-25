@@ -1,11 +1,18 @@
+import logging
+import json
 from pymongo import MongoClient
 from jsonrpcserver.aio import methods
 from qtum import Qtum
+from jsonrpcclient.http_client import HTTPClient
+import settings
 
 client = MongoClient('localhost', 27017)
-db = client.address_balance
-accounts = db.accounts
+db = client[settings.DBNAME]
+accounts = db[settings.BALANCE]
 availablecoinid = ["BTC", "QTUM", "LTC", "ETH"]
+
+
+
 
 @methods.add
 async def test():
@@ -46,51 +53,77 @@ async def addaddr(address, coinid, uid):
 
 
 @methods.add
-async def incbalance(address, amount):
-    amount = float(amount)
-    account = accounts.find_one({"address": address})
-
+async def incbalance(amount=0, uid=None, address=None):
+    amount = int(amount * pow(10,8))
+    # Get account by uid or address
+    if uid:
+        account = accounts.find_one({"uid": uid})
+    elif address:
+        account = accounts.find_one({"address": address})
+    # Increment balance if accoutn exists
     if account:
-        prev_amount = float(account['amount'])
-        new_amount = prev_amount + amount
-
         accounts.find_one_and_update(
-            {"address": address}, {"$set": {"amount": new_amount}})
+            {"address": account["address"]}, {"$inc": {"amount": amount}})
+        result = accounts.find_one({"address":account["address"]})
 
     else:
-        return "Address is not available"
+        return "Uid is not available"
 
-    return {address: new_amount}
+    # Send mail to user
+    accountclient = HTTPClient(settings.storageurl)
+    user = accountclient.request(method_name="getaccountdata", 
+                    **{"id":account["uid"]})
+    # If user not found
+    if "error" in user.keys():
+        return {"error":404, "reason":"Not found"}
+
+    emailclient = HTTPClient(settings.emailurl)
+    result = accounts.find_one({"uid": account["uid"]})
+    balance = int(result["amount"]) / pow(10,8)
+    array = {"to": user["email"],
+             "subject": "Robin8 support",
+             "optional": "To your balance was added %s. No you have %s." % (
+                                amount / 10**8, balance),
+             }
+    emailclient.request(method_name="sendmail", **array)
+
+    # Update users level
+    if int(user["level"]) == 2: 
+        accountclient.request(method_name="updatelevel",
+                                **{"id":account["uid"], "level":3})
+    return {i:result[i] for i in result if i != "_id"}
 
 
 @methods.add
-async def decbalance(address, amount):
-    amount = float(amount)
-    account = accounts.find_one({"address": address})
+async def decbalance(amount=0, uid=None, address=None):
+    amount = int(amount) * pow(10,8)
+    if uid:
+        account = accounts.find_one({"uid": uid})
+    elif address:
+        account = accounts.find_one({"address": address})
 
-    if account:
-        prev_amount = float(account['amount'])
-        new_amount = prev_amount - amount
-
-        accounts.update_one_and_update(
-            {"address": address}, {"$set": {"amount": new_amount}})
+    if account and (float(account["amount"]) - amount) >= 0:
+        accounts.find_one_and_update(
+            {"address": account["address"]}, {"$inc": {"amount": -amount}})
+        result = accounts.find_one({"address":account["address"]})
 
     else:
-        return "Address in not available"
+        return {"error":400, 
+                "reason":"Address does not exist or amount is not enough"}
 
-    return {address: new_amount}
+    return {i:result[i] for i in result if i != "_id"}
 
 
 
 @methods.add
-async def getbalance(uid):
-    balance = {}
-    bios_collection = accounts.find(
-        {"uid": uid}, {"address": 1, "amount": 1})
-    for doc in bios_collection:
-        address = doc['address']
-        amount = doc['amount']
-        balance[address] = amount
-
-    return balance
+async def getbalance(address=None, uid=None):
+    if address:
+        balance = accounts.find_one({"address": address})
+    elif uid:
+        balance = accounts.find_one({"uid": uid})
+        digit = int(balance["amount"]) 
+    if balance:
+        return {address or uid:digit}
+    else:
+        return {"error":404}
 

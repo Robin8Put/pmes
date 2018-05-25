@@ -1,219 +1,560 @@
 # Builtins
 import json
-import time
 import logging
-import datetime
-import string
-from random import choice
-from hashlib import sha256
 
 #Third-party
-from jsonrpcserver import dispatch
-import tornado.web
+import tornado
 import tornado_components.web 
-import tornado_components.mongo
-from jsonrpcclient.http_client import HTTPClient
 from jsonrpcserver.aio import methods
-import requests
-
-# Locals
-import settings
-from tornado_components.rpc_client import RPCClient
-from tornado_components.timestamp import get_time_stamp
+from jsonrpcclient.http_client import HTTPClient
 from qtum_utils.qtum import Qtum
+import settings
 
 
-class DataHandler(tornado_components.web.ManagementSystemHandler):
-	"""Handles blockchain data manipulations
+
+class AllContentHandler(tornado_components.web.ManagementSystemHandler):
+	"""Handles all blockchain content requests
 	"""
 	def get(self):
-		"""Receives data from blockchain
+		"""Returns all content as list 
 		"""
-		# Get parameters from request
-		data = { k: self.get_argument(k) for k in self.request.arguments}
-		bridgehost = "%s:%s" % (settings.host, settings.bridgeport)
-		# Make get data response to the bridge
-		response = RPCClient.data_from_blockchain(bridgehost, data)
-		try:
-			error_code = response["error"]
-			error_reason = response["reason"]
-		except:
-			# Return result
-			self.write(response)
-		else:
-			self.set_status(error_code)
-			self.write(error_reason)
-			raise tornado.web.Finish
+		# List for contents
+		container = []
+		bridgeclient = HTTPClient(settings.bridgeurl)
+		counter = 1
+		while True:
+			# Get description
+			descr = bridgeclient.request(method_name="descrbycid", cid=counter)
+			if not descr.get("data",None) and not descr.get("description", None):
+				break
+			else:
+				# Get Owner address
+				owneraddr = bridgeclient.request(method_name="ownerbycid", cid=counter)
+				# Get price
+				price = bridgeclient.request(method_name="getprice", cid=counter)
+				storageclient = HTTPClient(settings.storageurl)
+				# Get account public key
+				account = storageclient.request(method_name="getaccountbywallet",
+													wallet=owneraddr["owneraddr"])
+				public_key = account.get("public_key", None)
+				# Append to contents list
+				container.append({"cid":counter, "description":descr["data"],
+									"price": price,"owner":public_key, 
+									"owneraddr":owneraddr["owneraddr"]})
+				counter = counter + 1
+		self.write(json.dumps(container))
 
 
-	def post(self):
-		"""Writes data to blockchain
-		"""
-		# Get parameters from request
-		data = { k: self.get_argument(k) for k in self.request.arguments}
-		bridgehost = "%s:%s" % (settings.host, settings.bridgeport)
-		# Make write data to blockchain request
-		response = RPCClient.postcontent(bridgehost, data)
-		try:
-			error_code = response["error"]
-			error_reason = response["reason"]
-		except:
-			# Return result
-			self.write(response)
-		else:
-			self.set_status(error_code)
-			self.write(error_reason)
-			raise tornado.web.Finish
 
 
-class BlockHandler(tornado_components.web.ManagementSystemHandler):
-	"""Single blockchain block handler
+
+class ContentHandler(tornado_components.web.ManagementSystemHandler):
+	"""Handles blockchain content requests
 	"""
-	def get(self):
-		"""Receives block data
+
+	def get(self, public_key):
+		"""Returns content from blockchain
+		Accepts:
+			- hash or cid or (hash and cid)
+		Returns:
+			-  cid, hash and content
 		"""
-		bridgehost = "%s:%s" % (settings.host, settings.bridgeport)
-		# Request last block to blockchain
-		response = RPCClient.lastblockid(bridgehost)
-		try:
-			error_code = response["error"]
-			error_reason = response["reason"]
-		except:
-			# Return block id
+		# Check if public_key exists
+		storage_client = HTTPClient(settings.storageurl)
+		account = storage_client.request(method_name="getaccountdata", public_key=public_key)
+		if "error" in account.keys():
+			self.set_status(account["error"])
+			self.write(account)
+			raise tornado.web.Finish
+		else:
+			# Get cid and hash
+			cid = self.get_argument("cid", None)
+			hash_ = self.get_argument("hash", None)
+			# Check if any exists
+			if not any([cid, hash_]):
+				self.set_status(400)
+				self.write({"error":400, 
+							"reason":"Missed required fields"})
+				raise tornado.web.Finish
+			# Make requests to bridge
+			bridge_client = HTTPClient(settings.bridgeurl)
+			if cid and str(cid).isdigit():
+				owner = bridge_client.request(method_name="ownerbycid", cid=cid)
+				data = bridge_client.request(method_name="readbycid", cid=cid)
+				response = {"owner":owner.get("owneraddr", "Not found"),
+							"data":data.get("hash", "Not found")}
+			elif hash_:
+				cid = bridge_client.request(method_name="getcid", hash=hash_)
+				data = bridge_client.request(method_name="ipfscat", hash=hash_)
+				owner = bridge_client.request(method_name="ownerbycid", cid=cid["cid"])
+				response = {"cid":cid.get("cid"),"data":data.get("data"),
+							"owner":owner.get("owneraddr")}
+				if not cid["cid"]:
+					response.update({"error": "Hash not found"})
 			self.write(response)
-		else:
-			self.set_status(error_code)
-			self.write(error_reason)
-			raise tornado.web.Finish
+		
 
 
+	def post(self, public_key):
+		"""Writes content to blockchain
 
-class OwnerHandler(tornado_components.web.ManagementSystemHandler):
-	"""single address owner handler
-	"""
-	def get(self):
-		"""Receives owners data
+		Accepts:
+			- cus (content)
+			- public_key
+
 		"""
-		# Get parameters from request
-		data = { k: self.get_argument(k) for k in self.request.arguments}
-		bridgehost = "%s:%s" % (settings.host, settings.bridgeport)
-		# Make response to blockchain
-		response = RPCClient.getownerbycid(bridgehost, data)
-		try:
-			error_code = response["error"]
-			error_reason = response["reason"]
-		except:
-			# Return owners data
-			self.write({"owner":response})
-		else:
-			self.set_status(error_code)
-			self.write(error_reason)
-			raise tornado.web.Finish
+		super().verify()
+		# Check if public_key exists
+		storage_client = HTTPClient(settings.storageurl)
+		account = storage_client.request(method_name="getaccountdata", public_key=public_key)
 
-	def put(self):
-		"""Change owners data
-		"""
-		# Get parameters from request
-		data = { k: self.get_argument(k) for k in self.request.arguments}
-		bridgehost = "%s:%s" % (settings.host, settings.bridgeport)
-		# Make change request to blockchain
-		response = RPCClient.changeowner(bridgehost, data)
-		try:
-			error_code = response["error"]
-			error_reason = response["reason"]
-		except:
-			# Return updated owners data
-			self.write({"owner":response})
-		else:
-			self.set_status(error_code)
-			self.write(error_reason)
+		if "error" in account.keys():
+			self.set_status(account["error"])
+			self.write(account)
 			raise tornado.web.Finish
+		else:
+			# Get message from request 
+			message = json.loads(self.get_body_argument("message", "{}"))
+			if not message:
+				self.set_status(403)
+				self.write({"error":403, "reason":"Forbidden"})
+				raise tornado.web.Finish
+			# Overload data dictionary
+			cus = message.get("cus", None)
+			description = message.get("description", None)
+			price = message.get("price", None)
+			if not all([cus, description, price]):
+				self.set_status(400)
+				self.write({"error":400, "reason":"Missed required fields"})
+				raise tornado.web.Finish
+			# Send requests to bridge
+			bridge_client = HTTPClient(settings.bridgeurl)
+			owneraddr = Qtum.public_key_to_hex_address(public_key)
+			data = {"cus":cus, 
+					"owneraddr":owneraddr, 
+					"description":description, 
+					"price":price
+					}
+			response = bridge_client.request(method_name="makecid", **data)
+			logging.debug("[+] -- Debug post content")
+			logging.debug(response)
+			try:
+				response["error"]
+			except:
+				self.set_status(400)
+				self.write(response)
+				raise tornado.web.Finish
+			else:
+				self.write(response)
+
 
 
 class DescriptionHandler(tornado_components.web.ManagementSystemHandler):
-	"""Handles contents descriptions within blockchain
+	"""Handles blockchain content description requests
 	"""
-	def get(self):
+	def get(self, cid):
 		"""Receives content description from blockchain
 		"""
-		# Get parameters from request
-		data = { k: self.get_argument(k) for k in self.request.arguments}
-		bridgehost = "%s:%s" % (settings.host, settings.bridgeport)
-		# Make description request to blockchain
-		response = RPCClient.getcontentdescr(bridgehost, data)
-		try:
-			error_code = response["error"]
-			error_reason = response["reason"]
-		except:
-			# Return description
-			self.write({"description":response})
-		else:
-			self.set_status(error_code)
-			self.write(error_reason)
+		# Get all parameters from request
+		if not cid or not cid.isdigit():
+			self.set_status(400)
+			self.write({"error":400, 
+					"reason":"Missed required fields or cid is not digit"})
 			raise tornado.web.Finish
 
-	def post(self):
-		"""Set contents description
+		# Send requests to bridge
+		bridge_client = HTTPClient(settings.bridgeurl)
+		response = bridge_client.request(method_name="descrbycid", cid=cid)
+		self.write(response)
+
+
+	def post(self, cid):
+		"""Set description for content
 		"""
-		# Get parameters from request
-		data = { k: self.get_argument(k) for k in self.request.arguments}
-		bridgehost = "%s:%s" % (settings.host, settings.bridgeport)
-		# Make appropriate request to blockchain
-		response = RPCClient.setdescrforcid(bridgehost, data)
-		try:
-			error_code = response["error"]
-			error_reason = response["reason"]
-		except:
-			# Return result
-			self.write(response)
-		else:
-			self.set_status(error_code)
-			self.write(error_reason)
+		super().verify()
+
+		# Check if required fields exists
+		public_key = self.get_body_argument("public_key", None)
+		message = json.loads(self.get_body_argument("message", "{}"))
+		cid = message.get("cid")
+		descr = message.get("description")
+
+		if not all([public_key, cid, descr]):
+			self.set_status(400)
+			self.write({"error":400, "reason":"Missed required fields"})
 			raise tornado.web.Finish
+		
+		# Get content owner
+		bridge_client = HTTPClient(settings.bridgeurl)
+		response = bridge_client.request(method_name="ownerbycid", cid=cid)
+		if "error" in response.keys():
+			error_code = response["code"]
+			self.set_status(error_code)
+			self.write({"error":error_code, "reason":response["error"]})
+		else:
+			# Check if content owner has current public key 
+			if not response["owneraddr"] == Qtum.public_key_to_hex_address(public_key):
+				self.set_status(403)
+				self.write({"error":403, "reason":"Owner does not match."})
+			# Set description for content
+			request = bridge_client.request(method_name="setdescrforcid", 
+							cid=cid, descr=descr, owneraddr=response["owneraddr"])
+			if "error" in request.keys():
+				self.set_status(request["error"])
+				self.write(request)
+				raise tornado.web.Finish
+			self.write(request)
+		
 
 
-class AccessHandler(tornado_components.web.ManagementSystemHandler):
-	"""Handles access marks
+class PriceHandler(tornado_components.web.ManagementSystemHandler):
+	"""Handles content price requests
 	"""
-	def get(self):
-		"""Get access string
+	def get(self, cid):
+		"""Receives price for current cid
+
+		Accepts:
+			- cid
 		"""
-		# Get parameters from request
-		data = { k: self.get_argument(k) for k in self.request.arguments}
-		bridgehost = "%s:%s" % (settings.host, settings.bridgeport)
-		# Make access string request to blockchain
-		response = RPCClient.last_access_string(bridgehost, data)
-		try:
-			error_code = response["error"]
-			error_reason = response["reason"]
-		except:
-			# Return access string
-			self.write({"access_string":response})
-		else:
-			self.set_status(error_code)
-			self.write(error_reason)
+		bridge_client = HTTPClient(settings.bridgeurl)
+		price = bridge_client.request(method_name="getprice", cid=cid)
+		self.write({"price":price})
+
+
+	def post(self, cid):
+		"""Sets price for blockchain content
+
+		Accepts:
+			- cid
+			- owners public key
+			- price
+		""" 
+		super().verify()
+		
+		message = json.loads(self.get_body_argument("message", "{}"))
+		cid = message.get("cid", "")
+		price = message.get("price", "")
+		public_key = self.get_body_argument("public_key", "")
+		
+		if not all([public_key, str(cid).isdigit(), str(price).isdigit()]):
+			self.set_status(400)
+			self.write({"error":400, "reason":"Missed required fields"})
+			raise tornado.web.Finish
+		# Check if current public key is content owner
+		bridge_client = HTTPClient(settings.bridgeurl)
+		response = bridge_client.request(method_name="ownerbycid", cid=cid)
+
+		if "error" in response.keys():
+			self.set_status(404)
+			self.write({"error":404, "reason":"Owner not found."})
 			raise tornado.web.Finish
 
+		if not response["owneraddr"] == Qtum.public_key_to_hex_address(public_key):
+			self.set_status(403)
+			self.write({"error":403, "reason":"Owner does not match."})
+			raise tornado.web.Finish
+		# Make setprice request to the bridge
+		response = bridge_client.request(method_name="setprice", 
+									cid=cid, price=price, owneraddr=response["owneraddr"])
+		self.write(response)
 
-class SalesHandler(tornado_components.web.ManagementSystemHandler):
-	"""Handles sales events
-	"""	
-	def post(self):
-		"""Sells content
+
+
+class OfferHandler(tornado_components.web.ManagementSystemHandler):
+	"""Handles requests binded with offers (make, reject etc)
+	"""
+	def post(self, public_key):
+		"""Creates new offer
+
+		Accepts:
+			- buyer public key
+			- cid
+			- buyer access string
+		Returns:
+			- offer parameters as dictionary
 		"""
-		# Get parameters from request
-		data = { k: self.get_argument(k) for k in self.request.arguments}
-		bridgehost = "%s:%s" % (settings.host, settings.bridgeport)
-		# Make sell content to blockchain
-		response = RPCClient.sellcontent(bridgehost, data)
+		super().verify()
+		
+		message = json.loads(self.get_body_argument("message"))
+		buyer_access_string = message.get("buyer_access_string")
+		cid = message.get("cid")
+		# Get cid price from bridge
+		bridge_client = HTTPClient(settings.bridgeurl)
+		price = bridge_client.request(method_name="getprice", cid=cid)
+		# Check if price is not zero
+		if not price:
+			self.set_status(403)
+			self.write({"error":403,
+						"reason":"Price of content is too low."})
+			raise tornado.web.Finish
+			
+		if not all([message, buyer_access_string, str(cid).isdigit()]):
+			self.set_status(400)
+			self.write({"error":400, "reason":"Missed required fields"})
+			raise tornado.web.Finish
+		# Check if public key exists
+		storage_client = HTTPClient(settings.storageurl)
+		account = storage_client.request(method_name="getaccountdata", 
+									public_key=public_key)
+		if "error" in account.keys():
+			# If account does not exist
+			self.set_status(account["error"])
+			self.write(account)
+			raise tornado.web.Finish
+		else:
+			#Get balance
+			balance_client = HTTPClient(settings.balanceurl)
+			balance = balance_client.request(method_name="getbalance", uid=account["id"])
+			#Detect owner
+			owneraddr = bridge_client.request(method_name="ownerbycid", cid=cid)
+			owneraddr = owneraddr.get("owneraddr","")
+			if owneraddr == Qtum.public_key_to_hex_address(public_key):
+				self.set_status(400)
+				self.write({"error":400, 
+							"reason":"Content belongs to current user"})
+				raise tornado.web.Finish
+			# Get difference with balance and price
+			difference = float(balance[str(account["id"])]) - float(price)
+			if difference >= 0:
+				# Send news for seller
+				newsdata = {
+					"event_type":"made offer",
+					"cid":cid,
+					"access_string":buyer_access_string,
+					"buyer_pubkey":public_key,
+					"buyer_addr":Qtum.public_key_to_hex_address(public_key),
+					"owneraddr":owneraddr
+				}
+				storage_client.request(method_name="setnews", **newsdata)
+
+				
+				# Make offer
+				buyer_addr = Qtum.public_key_to_hex_address(public_key)
+				offer_data = {
+					"cid":cid,
+					"buyer_addr": buyer_addr,
+					"buyer_access_string":buyer_access_string
+				}
+				response = bridge_client.request(method_name="make_offer", **offer_data)
+				
+				# Send appropriate mail to seller
+				seller = storage_client.request(method_name="getaccountbywallet",
+													wallet=owneraddr)
+				try:
+					email = seller["email"]
+				except:
+					self.set_status(404)
+					self.write({"error":404, 
+								"reason":"Sellers account was not found"})
+					raise tornado.web.Finish
+				else:
+					emaildata = {
+						"to": email,
+						"subject": "Robin8 support",
+             			"optional": "You`ve got a new offer from %s" % public_key
+             	
+					}
+					logging.debug("[+] -- Debug email data")
+					logging.debug(emaildata)
+					emailclient = HTTPClient(settings.emailurl)
+					emailclient.request(method_name="sendmail", **emaildata)
+				# Return response from bridge
+				self.write(response)
+			else:
+				# If Insufficient funds
+				self.set_status(402)
+				self.write({"error":402, "reason":"Insufficient funds"})
+				raise tornado.web.Finish
+
+
+
+	def put(self, public_key):
+		"""Reject offer
+
+		Accepts:
+			- cid
+			- buyer public key
+			- buyer address
+		"""
+		super().verify()
+		
+		# Check if message contains required data
+		message = json.loads(self.get_body_argument("message", "{}"))
+		logging.debug(message)
 		try:
-			error_code = response["error"]
-			error_reason = response["reason"]
+			cid = message["offer_id"]["cid"]
+			buyer_addr = message["offer_id"]["buyer_addr"]
 		except:
-			# Return result
+			self.set_status(400)
+			self.write({"error":400, "reason":"Missed required fields"})
+			raise tornado.web.Finish
+		else:
+			pass
+		# Check if public key exists
+		storage_client = HTTPClient(settings.storageurl)
+		account = storage_client.request(method_name="getaccountdata", 
+										public_key=public_key)
+		if "error" in account.keys():
+			error_code = account["error"]
+			self.set_status(error_code)
+			self.write(account)
+			raise tornado.web.Finish
+	
+		# Check if one of seller or buyer rejects offer
+		bridge_client = HTTPClient(settings.bridgeurl)
+		owneraddr = bridge_client.request(method_name="ownerbycid", cid=cid)
+		owneraddr = owneraddr.get("owneraddr","")
+		hex_ = Qtum.public_key_to_hex_address(public_key)
+		if buyer_addr == hex_ or owneraddr == hex_:
+			# Reject offer
+			response = bridge_client.request(method_name="reject_offer",
+											cid=cid, buyer_addr=buyer_addr)
+			buyer = storage_client.request(method_name="getaccountbywallet",
+													wallet=buyer_addr)
+			try:
+				email = buyer["email"]
+			except:
+				self.set_status(404)
+				self.write({"error":404, 
+							"reason":"Buyers account was not found."})
+				raise tornado.web.Finish
+			else:
+				emaildata = {
+					"to": email,
+					"subject": "Robin8 support",
+         			"optional": "Your offer with cid %s was rejected." % cid
+         	
+				}
+				emailclient = HTTPClient(settings.emailurl)
+				emailclient.request(method_name="sendmail", **emaildata)
+			
 			self.write(response)
 		else:
-			self.set_status(error_code)
-			self.write(error_reason)
+			# Avoid rejecting offer
+			self.set_status(403)
+			self.write({"error": 403, "reason":"Forbidden"})
+
+
+
+
+class DealHandler(tornado_components.web.ManagementSystemHandler):
+	"""Handles accept offer requests
+	"""
+	def post(self, public_key):
+		"""Accepting offer
+
+		Function accepts:
+			- cid
+			- buyer access string
+			- buyer public key
+			- seller public key
+
+		"""
+		super().verify()
+		
+		# Check if message contains required data
+		message = json.loads(self.get_body_argument("message"))
+		buyer_access_string = message.get("buyer_access_string")
+		cid = message.get("cid")
+		buyer_pubkey = message.get("buyer_pubkey")
+		
+		if not all([buyer_access_string, cid, buyer_pubkey]):
+			self.set_status(400)
+			self.write({"error":400, "reason":"Missed required fields"})
 			raise tornado.web.Finish
 
+		# Check if public keys exists
+		storage_client = HTTPClient(settings.storageurl)
+		seller_account = storage_client.request(method_name="getaccountdata", 
+										public_key=public_key)
+	
+		try:
+			error_code = seller_account["error"]
+		except:
+			pass
+		else:
+			self.set_status(error_code)
+			self.write(seller_account)
+			raise tornado.web.Finish
+		buyer_account = storage_client.request(method_name="getaccountdata", 
+										public_key=buyer_pubkey)
+		try:
+			error_code = buyer_account["error"]
+		except:
+			pass
+		else:
+			self.set_status(error_code)
+			self.write(buyer_account)
+			raise tornado.web.Finish
+
+		# Check if content belongs to current account
+		bridge_client = HTTPClient(settings.bridgeurl)
+		owneraddr = bridge_client.request(method_name="ownerbycid", cid=cid)
+		owneraddr = owneraddr.get("owneraddr")
+		if owneraddr != Qtum.public_key_to_hex_address(public_key):
+			self.set_status(403)
+			self.write({"error":403, "reason":"Forbidden"})
+			raise tornado.web.Finish
+
+		buyer_access_string = Qtum.to_compressed_public_key(buyer_access_string)
+
+		
+		#Get balance
+		balance_client = HTTPClient(settings.balanceurl)
+		balance = balance_client.request(method_name="getbalance", 
+										uid=buyer_account["id"])
+
+		# Get cid price from bridge
+		bridge_client = HTTPClient(settings.bridgeurl)
+		price = bridge_client.request(method_name="getprice", cid=cid)
+		logging.debug("[+] -- Price debugging")
+		logging.debug(price)
+		if not price:
+			self.set_status(500)
+			self.write({"error":500, 
+						"reason":"Can not sell %s. The price is 0" % str(cid)})
+			raise tornado.web.Finish
+
+		# Get difference with balance and price
+		difference = float(balance[str(buyer_account["id"])]) - float(price)
+		if difference >= 0:
+			# Change content owner
+			chownerdata = {
+				"cid":cid,
+				"new_owner": Qtum.public_key_to_hex_address(buyer_pubkey),
+				"access_string": buyer_access_string
+			}
+			chown = bridge_client.request(method_name="changeowner", **chownerdata)
+			if "error" in chown.keys():
+				self.set_status(chown["error"])
+				self.write(chown)
+				raise tornado.web.Finish
+
+			# Sellcontent
+			selldata = {
+				"cid":cid,
+				"buyer_addr":Qtum.public_key_to_hex_address(buyer_pubkey),
+				"access_string":buyer_access_string
+			}
+			sell = bridge_client.request(method_name="sellcontent", **selldata)
+			
+			# Check if selling was successfull
+			try:
+				sell["content_owner"]
+			except:
+				self.set_status(500)
+				self.write({"error":500, "reason":"Unpossible to implement selling."})
+				raise tornado.web.Finish
+			else:
+				logging.debug("[+] -- Balance exchange debugging")
+				# Increment and decrement balances of seller and buyer
+				balance_client.request(method_name="decbalance", 
+									uid=buyer_account["id"], amount=price)
+				balance_client.request(method_name="incbalance", 
+									uid=seller_account["id"], amount=price)
+				self.write({**sell, **chown})
+				#self.write(sell)
+		else:
+			# If Insufficient funds
+			self.set_status(402)
+			self.write({"error":402, "reason":"Insufficient funds"})

@@ -8,18 +8,13 @@ from random import choice
 from hashlib import sha256
 
 #Third-party
-from jsonrpcserver import dispatch
 import tornado.web
 import tornado_components.web 
-import tornado_components.mongo
 from jsonrpcclient.http_client import HTTPClient
-from jsonrpcserver.aio import methods
-import requests
 
 # Locals
 from . import models
 import settings
-from tornado_components.rpc_client import RPCClient
 from tornado_components.timestamp import get_time_stamp
 from qtum_utils.qtum import Qtum
 
@@ -51,24 +46,36 @@ class AMSHandler(tornado_components.web.ManagementSystemHandler):
 
 		# Save data at storage database
 		data = { k: self.get_argument(k) for k in self.request.arguments}
-		new_account = models.create(self.storage, data)
-		logging.debug("[+] -- Start AMS handler")
-		try:
-			error_code = new_account["error"]
-			error_reason = new_account["reason"]
-		except:
+		new_account = models.create_account(self.storage, data)
+		logging.debug(new_account.keys())
+		if "error" in new_account.keys():
+			# Raise error if the one does exist
+			self.set_status(new_account["error"])
+			self.write(new_account)
+			raise tornado.web.Finish
+		else:
 			# Create wallet
 			#entropy = self.double_sha256(public_key.encode())
 			entropy = self.generate_token()
-			qtum = Qtum(entropy)
+			qtum = Qtum(entropy, mainnet=False)
 			address = qtum.get_qtum_address()
+
+			# Write wallet to database
+			wallet = Qtum.public_key_to_hex_address(data["public_key"])
+			walletdata = {
+				"public_key":data["public_key"],
+				"wallet": wallet
+			}
+			logging.debug(walletdata)
+			models.create_wallet(self.storage, walletdata)
+
 			# Send wallet to balance server
 			balance_params = {
 				"coinid": "qtum",
 				"uid": new_account["id"],
 				"address": address}
 			client = HTTPClient(self.balance)
-			client.request(method_name="addaddr", **balance_params)
+			new_addr = client.request(method_name="addaddr", **balance_params)
 
 			# Receive balance from balance host
 			request_balance = {
@@ -76,18 +83,22 @@ class AMSHandler(tornado_components.web.ManagementSystemHandler):
 			}
 			balance = client.request(method_name="getbalance", **request_balance)
 
+			balance_as_digit = int(balance[str(new_account["id"])]) / 10**8
 			#Prepare response 
 			new_account.update({"href": settings.ENDPOINTS["ams"]+"/"+ new_account["public_key"],
-								"balance": balance[address],
+								"balance": balance_as_digit,
 								"address":address})
+			# Send mail to user
+			email_data = {
+				"to": new_account["email"],
+            	"subject": "Robin8 Support",
+             	"optional": "Your account was created on %s" % settings.host + new_account["href"]
+            }
+			email_client = HTTPClient(settings.emailurl)
+			email_client.request(method_name="sendmail", **email_data)
 
 			self.write(new_account)
-		else:
-			# Raise error if the one does exist
-			self.set_status(error_code)
-			self.write(new_account)
-			raise tornado.web.Finish
-
+		
 
 class AccountHandler(tornado_components.web.ManagementSystemHandler):
 
@@ -99,7 +110,7 @@ class AccountHandler(tornado_components.web.ManagementSystemHandler):
 		"""Receives public key, looking up document at storage,
 				sends document id to the balance server
 		"""
-		super().verify(public_key)
+		super().verify()
 		# Get id from database
 		client = HTTPClient(self.storage)
 		#request = requests.get(self.storage, params={"public_key": public_key})
@@ -115,8 +126,9 @@ class AccountHandler(tornado_components.web.ManagementSystemHandler):
 			}
 			client = HTTPClient(self.balance)
 			balance = client.request(method_name="getbalance", **request_balance)
+			balance_as_digit = int(balance[str(response["id"])]) / pow(10,8)
 			# Prepare response
-			response.update({"balance":balance})
+			response.update({"balance":balance_as_digit})
 			# Return account data
 			self.write(response)
 		else:
@@ -126,7 +138,7 @@ class AccountHandler(tornado_components.web.ManagementSystemHandler):
 
 
 
-class BalanceHandler(tornado_components.web.ManagementSystemHandler):
+class NewsHandler(tornado_components.web.ManagementSystemHandler):
 
 	def initialize(self, storagehost, balancehost):
 		self.storage = storagehost
@@ -137,60 +149,21 @@ class BalanceHandler(tornado_components.web.ManagementSystemHandler):
 				sends document id to the balance server
 		"""
 		super().verify()
-		# Get id from database
-		######################
-		client = HTTPClient(self.storage)
-		response = client.request(method_name="getaccountdata",
-								  **{"public_key":public_key})
-		
-		try:
-			error_code = response["error"]
-			error_reason = response["reason"]
-		except:
-			# Receive balance from balance host
-			###################################
-			request_balance = {
-				"uid": response["id"]
-			}
-			client = HTTPClient(self.balance)
-			balance = client.request(method_name="getbalance", **request_balance)
 
-			self.write(balance)
-		else:
-			self.set_status(error_code)
-			self.write(response)
+		client = HTTPClient(settings.storageurl)
+		response = client.request(method_name="getnews", public_key=public_key)
+		# If we`ve got a empty or list with news 
+		if isinstance(response, list):
+			self.write(json.dumps(response))
 			raise tornado.web.Finish
-
-
-class NewsHandler(tornado_components.web.ManagementSystemHandler):
-	"""GET/POST news for users account
-	"""
-	def initialize(self, storagehost, balancehost):
-		self.storage = storagehost
-		self.balance = balancehost
-
-	def get(self, public_key):
-		"""Receives public key and returns news for users account.
-		"""
-		super().verify()
-		data = {k: self.get_argument(k) for k in self.request.arguments}
-		request_news = {
-				"public_key": public_key
-			}
-	
-		response = RPCClient.getrecentnews(self.storage, request_news)
-		try:
-			error_code = response["error"]
-			error_reason = response["reason"]
-		except:
-			self.write({"news":response})
-		else:
-			self.set_status(error_code)
-			self.write(response)
-			raise tornado.web.Finish
-
-
-
-			
-
+		# If we`ve got a message with error
+		elif isinstance(response, dict):
+			try:
+				error_code = response["error"]
+			except:
+				self.write(response)
+			else:
+				self.set_status(error_code)
+				self.write(response)
+				raise tornado.web.Finish
 

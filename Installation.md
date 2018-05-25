@@ -97,13 +97,13 @@ ps -ax | grep qtumd
 
 PMES works with four modules: AMS, balance, pdms and qtum_bridge.
 
-Therefore, for running application you should run 5 servers:
+Therefore, for running application you should run  servers:
 
-1. **ams** server:
+1. **ams and pdms** server:
 
 ```bash
 source venv/bin/activate
-python3 ams/main.py
+python3 main.py
 ```
 
 2. **storage** server for AMS:
@@ -127,9 +127,19 @@ source venv/bin/activate
 python3 qtum_bridge/main.py
 ```
 
-5. **pdms** server:
+5. **email** server:
 
 ```bash
 source venv/bin/activate
-python3 pdms/main.py
+python3 email_new.py start
+python3 mail/index.py
 ```
+
+6. **coin** server:
+
+```bash
+source venv/bin/activate
+python3 coin/one_coin.py start
+```
+
+

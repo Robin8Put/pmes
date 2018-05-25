@@ -84,7 +84,7 @@ class Table(object):
             self.email.find_one_and_delete(i)
         return mass
 
-    def count(self, data):
+    def count(self, data=None):
         return self.email.find(data).count()
 
     def show_db(self):

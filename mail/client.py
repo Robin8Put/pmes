@@ -5,9 +5,11 @@ from jsonrpcclient.tornado_client import TornadoClient
 # initialization tornado client
 client = TornadoClient('http://localhost:8080/')
 # template for parameters
-array = {"to": "to@gmail.com",
-         "subject": "text",
-         "optional": ["New text for you"],
+data = 100
+list_new = "On your account added {} coin".format(data)
+array = {"to": "kontorchuk@gmail.com",
+         "subject": "Robin8",
+         "optional": list_new,
          }
 # method api
 method = 'sendmail'

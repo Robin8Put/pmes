@@ -23,7 +23,7 @@ class ManagementSystemHandler(tornado.web.RequestHandler):
 		return datetime.datetime.fromtimestamp(ts).strftime('%Y%m%d%H%M')
 
 
-	def verify(self, public_key=None):
+	def verify(self):
 		"""Abstract method.
 		Signature verifying logic.
 
@@ -32,17 +32,13 @@ class ManagementSystemHandler(tornado.web.RequestHandler):
 		logging.debug(data)
 
 		try:
-			if not public_key:
-				public_key = data["public_key"]
-			else:
-				public_key = public_key
+			public_key = data["public_key"]
 			message = data["message"]
 			signature = data["signature"]
 
 			dumped_message = json.loads(message)
 			timestamp = dumped_message.get("timestamp", None)
-			email = dumped_message.get("email", None)
-			device_id = dumped_message.get("device_id", None)
+			
 			assert ManagementSystemHandler.get_time_stamp() == timestamp
 
 		except:

@@ -121,86 +121,6 @@ request = requests.post("http://127.0.0.1:%s/api/accounts" % settings.pmesport,
 
 assert request.status_code == 400
 
-"""
-# Try to repeat creating
-valid_data = {
-	"public_key":"04be7fc91026eeff5c3ad93b800a457aeab1b5fb494d8797f47a4519f47d8ee8d0c12973892bdd48877a66e549ab3f53b0eb768e082b1273610e1eb6a7718e78fa",
-	"signature":"304402201ccb4679cfc8221b542996799579eacf217b80caf77b1351f82630e31af914df022054e3eddca9d465c27cc1aab3977547d04a9ffa8b3adf490356265da68afb2554",
-	"message":"aaa",
-	"email":"denis@mail.ru",
-	"device_id":"kjhlkj"
-}
-request = requests.post("http://127.0.0.1:%s/api/accounts" % settings.pmesport, 
-									data=valid_data)
-print(request.text)
-
-# Create new account with invalid signature
-valid_data = {
-	"public_key":"04be7fc91026eeff5c3ad93b800a457aeab1b5fb494d8797f47a4519f47d8ee8d0c12973892bdd48877a66e549ab3f53b0eb768e082b1273610e1eb6a7718e78fa",
-	"signature":"304402201ccb4679cfc8221b542996799579eaef217b80caf77b1351f82630e31af914df022054e3eddca9d465c27cc1aab3977547d04a9ffa8b3adf490356265da68afb2554",
-	"message":"aaa",
-	"email":"denis@mail.ru",
-	"device_id":"kjhlkj"
-}
-request = requests.post("http://127.0.0.1:%s/api/accounts" % settings.pmesport, 
-									data=valid_data)
-assert request.status_code == 403
-
-
-
-# Create new account without public key
-invalid_data1 = {
-	"signature":"304402201ccb4679cfc8221b542996799579eacf217b80caf77b1351f82630e31af914df022054e3eddca9d465c27cc1aab3977547d04a9ffa8b3adf490356265da68afb2554",
-	"message":"aaa",
-	"email":"denis@mail.ru",
-	"device_id":"kjhlkj"
-}
-request = requests.post("http://127.0.0.1:%s/api/accounts" % settings.pmesport, 
-									data=invalid_data1)
-assert request.status_code == 403
-
-
-
-
-# Create new account without signature
-invalid_data1 = {
-	"public_key":"04be7fc91026eeff5c3ad93b800a457aeab1b5fb494d8797f47a4519f47d8ee8d0c12973892bdd48877a66e549ab3f53b0eb768e082b1273610e1eb6a7718e78fa",
-	"message":"aaa",
-	"email":"denis@mail.ru",
-	"device_id":"kjhlkj"
-}
-request = requests.post("http://127.0.0.1:%s/api/accounts" % settings.pmesport, 
-									data=invalid_data1)
-assert request.status_code == 403
-
-# Create new account without message
-invalid_data1 = {
-	"signature":"304402201ccb4679cfc8221b542996799579eacf217b80caf77b1351f82630e31af914df022054e3eddca9d465c27cc1aab3977547d04a9ffa8b3adf490356265da68afb2554",
-	"public_key":"04be7fc91026eeff5c3ad93b800a457aeab1b5fb494d8797f47a4519f47d8ee8d0c12973892bdd48877a66e549ab3f53b0eb768e082b1273610e1eb6a7718e78fa",
-	"email":"denis@mail.ru",
-	"device_id":"kjhlkj"
-}
-request = requests.post("http://127.0.0.1:%s/api/accounts" % settings.pmesport, 
-									data=invalid_data1)
-assert request.status_code == 403
-
-# Create new account with public key, signature, message
-#			and without all required fields
-invalid_data = {
-	"public_key":"04be7fc91026eeff5c3ad93b800a457aeab1b5fb494d8797f47a4519f47d8ee8d0c12973892bdd48877a66e549ab3f53b0eb768e082b1273610e1eb6a7718e78fa",
-	"signature":"304402201ccb4679cfc8221b542996799579eacf217b80caf77b1351f82630e31af914df022054e3eddca9d465c27cc1aab3977547d04a9ffa8b3adf490356265da68afb2554",
-	"message":"aaa",
-	"device_id":"kjhlkj"
-}
-request = requests.post("http://127.0.0.1:%s/api/accounts" % settings.pmesport, 
-									data=invalid_data)
-assert request.status_code == 400
-
-# Get balance
-request = requests.get("http://127.0.0.1:%s/api/accounts/04be7fc91026eeff5c3ad93b800a457aeab1b5fb494d8797f47a4519f47d8ee8d0c12973892bdd48877a66e549ab3f53b0eb768e082b1273610e1eb6a7718e78fa/balance" % settings.pmesport)
-print(request.json())
-"""
-
 
 # Get accounts data
 request = requests.get("http://127.0.0.1:%s/api/accounts/04e2a4c921001b7510cf9a499fba3e6147a73a977196cbffd9ad863171b95a089ddedaf8231e842ff2be63be926ca345836a7edc3d5e098bdeb0a2ff7ddca7f156" % settings.pmesport,
@@ -214,22 +134,13 @@ assert "artem@mail.ru" in request.json()["email"]
 
 
 message = json.dumps({
-	"cid":1,
-	"price":23,
-	"timestamp": get_time_stamp()
-})
-
-dataforsetprice = {
-	"message":message,
-	"public_key":public_key,
-	"signature":Bip32Keys.sign_message(message, private_key),
+		"timestamp": get_time_stamp()
+	})
+data = {
+	"message": message,
+	"public_key": public_key,
+	"signature": Bip32Keys.sign_message(message, private_key)
 }
 
-request = requests.post("http://127.0.0.1:%s/api/blockchain/data/price" % settings.pmesport, data=dataforsetprice)
-
-print(request.json()) 
-
-
-request = requests.get("http://127.0.0.1:%s/api/blockchain/data/price" % settings.pmesport, params={"cid":1})
-
-print(request.json())
+request = requests.get("http://127.0.0.1:%s/api/accounts/040c07e377168074f29df2838526322516e34591ddb6bf7ca74cbdf03435a176e039fc4960352e551ed0ed5f252503bcd4e8b6dc44e8ad018baff473860a6999bc/news" % settings.pmesport,
+	                    params=data)

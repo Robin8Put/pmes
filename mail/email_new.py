@@ -2,43 +2,58 @@ from daemon_email import Daemon
 import sys
 import smtplib
 from models import Table
+import logging
+from time import sleep
 
 
 # initialize db_name "email" and collection "email"
 db = Table("email", "email")
+#logging.basicConfig(level=logging.DEBUG, filename="test.log", format="%(message)s")
 
 
 def sendmail(array):
     # function for read data in db and send mail
     # unzip data
-    username = 'example@gmail.com'
-    password = 'password'
+    username = 'eastern.server.engine@gmail.com'
+    password = '9018540z'
     FROM = username
     TO = [array["to"]]
     SUBJECT = array["subject"]
     # check on correct data in optional
-    if type(array["optional"]) == list and array["optional"]:
-        TEXT = array["optional"][0]
+    if type(array["optional"]) == str and array["optional"]:
+        TEXT = array["optional"]
     else:
         return "Error: missed argument"
     # make template
+
     message = """From: %s\nTo: %s\nSubject: %s\n\n%s""" % (FROM, ", ".join(TO), SUBJECT, TEXT)
-    server = smtplib.SMTP('smtp.gmail.com:587')
-    server.ehlo()
-    server.starttls()
-    # authorizing user, must setup your account
-    server.login(username, password)
-    server.sendmail(FROM, TO, message)
-    server.quit()
+    try:
+        server = smtplib.SMTP('smtp.gmail.com:587')
+        logging.info(server)
+        server.ehlo()
+        server.starttls()
+        # authorizing user, must setup your account
+        server.login(username, password)
+        server.sendmail(FROM, TO, message)
+        server.quit()
+        return "Success"
+    except:
+        return "Error"
+
 
 
 class MyDaemon(Daemon):
     def run(self):
         # main program for demonizing
         while True:
-            array = db.pop_100el()
-            for i in array:
-                sendmail(i)
+            count = db.count()
+            #loging.critical(count)
+            if count:
+                array = db.pop_100el()
+                for i in array:
+                    sendmail(i)
+            else:
+                sleep(2)
 
 
 if __name__ == "__main__":

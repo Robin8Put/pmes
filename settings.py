@@ -4,62 +4,75 @@ import logging
 
 
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(BASE_DIR)
+
+
 
 host = "http://127.0.0.1"
 
-amsport = 8000
+pmesport = 8000
 storageport = 8001
-pdmsport = 8003
-bridgeport = 8004
-balanceport = 8005
-historyport = 8006
+bridgeport = 8003
+balanceport = 8004
+historyport = 8005
+emailport = 8006
+
+pmeshost = "%s:%s" % (host, pmesport)
+storagehost = "%s:%s" % (host, storageport)
+bridgehost = "%s:%s" % (host, bridgeport)
+balancehost = "%s:%s" % (host, balanceport)
+historyhost = "%s:%s" % (host, historyport)
+emailhost = "%s:%s" % (host, emailport)
+
+
 
 ENDPOINTS = {
-	#Public API(get data for new account)
+	#Public API requests
+
+	# POST new account
 	"ams": r"/api/accounts",       
-	#Get accounts data
+	#GET accounts data
 	"account": r"/api/accounts/([a-zA-Z0-9]+?)",
-	#Get/Post balance
-	"balance": r"/api/accounts/([a-zA-Z0-9]+?)/balance",
-	# GET/POST news for account
-	"news": r"/api/accounts/([a-zA-Z0-9]+?)/news",  
-	#GRUD data with blockchain
-	"blockchain_data": r"/api/blockchain/data", 
-	# GET/POST/PUT content price
-	"price":r"/api/blockchain/data/price", 
-	#Get last block id 
-	"lastblockid": r"/api/blockchain/lastblockid",
-	#GRUD owner by cid
-	"owner": r"/api/blockchain/owner",
-	#Get/POST content description
-	"description": r"/api/blockchain/description",
-	#GRUD content description
-	"access_string": r"/api/blockchain/access_string",
-	#Sale with blockchain
-	"sale": r"/api/blockchain/sale",
-	#Make offer
-	"make_offer": r"/api/blockchain/make_offer",
-	#Accept offer
-	"accept_offer": r"/api/blockchain/accept",
-	#Reject offer
-	"reject_offer": r"/api/blockchain/reject",
-	#History server
-	"history_server": r"/api/history",
-	#Balance server
-	"balance_server": r"/api/balance",
-	#Dridge server
-	"bridge_server": r"/api/bridge",
-	#Storage server
-	"storage_server": r"/api/storage"
+	# GET news
+	"news": r"/api/accounts/([a-zA-Z0-9]+?)/news",
+	# GET/POST blockchain content
+	"content": r"/api/blockchain/([a-zA-Z0-9]+?)/content",
+	# GET/POST content description
+	"description": r"/api/blockchain/([0-9]+)/description",
+	# GET/POST content price
+	"price": r"/api/blockchain/([0-9]+)/price",
+	# POST/DELETE offer
+	"offer": r"/api/blockchain/([a-zA-Z0-9]+?)/offer",
+	# POST deal
+	"deal": r"/api/blockchain/([a-zA-Z0-9]+?)/deal",
+
+	# json-rpc requests
+	"blockchain": r"/api/blockchain",
+	"allcontent": r"/api/blockchain/content", 
+	"history": r"/api/history",
+	"balance": r"/api/balance",
+	"bridge": r"/api/bridge",
+	"storage": r"/api/storage",
+	"email": r"/api/email"
 }
 
-storage_url = "%s:%s%s" % (host, storageport, ENDPOINTS["storage_server"])
+storageurl = "%s%s" % (storagehost, ENDPOINTS["storage"])
 
-balance_url = "%s:%s%s" % (host, balanceport, ENDPOINTS["balance_server"])
+balanceurl = "%s%s" % (balancehost, ENDPOINTS["balance"])
 
-bridge_url = "%s:%s%s" % (host, bridgeport, ENDPOINTS["bridge_server"]) 
+bridgeurl = "%s%s" % (bridgehost, ENDPOINTS["bridge"])
+
+historyurl = "%s%s" % (historyhost, ENDPOINTS["history"]) 
+
+#emailurl = "%s%s" % (emailhost, ENDPOINTS["email"]) 
+emailurl = "%s%s" % (emailhost, ENDPOINTS["email"])
+
 
 DBNAME = "pmes"
-COLLECTION = "accounts"
+ACCOUNTS = "accounts"
 NEWS = "news"
-CID = "cid"
+WALLET = "wallet"
+BALANCE = "balance"
+
+AVAILABLE_COIN_ID = ["BTC", "QTUM", "LTC", "ETH"]

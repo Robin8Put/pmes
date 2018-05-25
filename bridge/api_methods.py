@@ -7,16 +7,22 @@ from robin8.Robin8_SC import Qtum_SC, Robin8_SC
 from R8_Balance import R8_Balance
 from hashlib import sha256
 from qtum_blockchain.qtum_blockchain import Qtum_Blockchain
-
+from robin8_billing import robin8_billing
+import logging
+import settings
+from jsonrpcclient.http_client import HTTPClient
 
 contract_owner = 'qgh88fssi4JrkH8LLvkqvC7SzGxvyApYis'
 contract_owner_hex = 'fdc1ae05c161833cdf135863e332126e15d7568c'
-contract_address = '363d33ed942bd543b073101fa6e5ee00aa67cbad'
+contract_address = '0e78155f8c503c6f6f97aa54cfdcecd250eda0d5'
 decimals = 8
 
 
 api_pass = 'AP'
 
+billing = robin8_billing.Robin8_Billig("robin8_billing/billing")
+storageclient = HTTPClient(settings.storageurl)
+balanceclient = HTTPClient(settings.balanceurl)
 
 def init_qtum():
     rpc_connection = AuthServiceProxy("http://%s:%s@127.0.0.1:8333" % ("qtumuser", "qtum2018"))
@@ -82,11 +88,11 @@ async def ipfscat(hash):
     if not ipfs_data:
         version = ipfs.version()
         if not version:
-            return {"error": "ipfs not read"}
+            return {"data": "ipfs not read"}
         else:
-            return {"error": "ipfs hash not found", "code": 404}
+            return {"data": "ipfs hash not found", "code": 404}
 
-    return ipfs_data
+    return {"data":ipfs_data}
 
 
 @methods.add
@@ -95,9 +101,9 @@ async def getcid(hash):
     r8_sc = Robin8_SC(contract_address)
     cid = r8_sc.getCID(hash)[0]
     if cid == 0:
-        return {'error': 'Hash not found'}
+        return {'cid': None}
 
-    return str(cid)
+    return {"cid":str(cid)}
 
 
 
@@ -107,10 +113,10 @@ async def readbycid(cid):
     cus = robin8.getCUS(cid)[0].decode()
 
     if not cus:
-        return {'error': 'Not found', 'code': 404}
+        return {'content':None, 'code': 404}
     if cus[0:2] == 'Qm' and len(cus) > 30:
         return await ipfscat(cus)
-    return cus
+    return {"content":cus}
 
 
 @methods.add
@@ -120,15 +126,15 @@ async def ownerbycid(cid):
 
     owner_hex_addr = r8_sc.getOwner(cid)[0]
     if not owner_hex_addr:
-        return {'error': 'Not found', 'code': 404}
+        return {'owneraddr': None, 'code': 404}
     owner_hex_addr = owner_hex_addr[2:]  # remove 0x
     if owner_hex_addr.replace('0', '') == '':
-        return {'error': 'Not found', 'code': 404}
+        return {'owneraddr': None, 'code': 404}
     qtum = init_qtum()
 
     owneraddr = qtum.fromhexaddress(owner_hex_addr)
 
-    return owner_hex_addr
+    return {"owneraddr":owner_hex_addr}
 
 
 @methods.add
@@ -137,16 +143,40 @@ async def descrbycid(cid):
 
     descr = r8_sc.CIDtoDescription(cid)[0].decode()
     if not descr:
-        return {'error': 'Not found', 'code': 404}
+        return {'description': None, 'code': 404}
 
     if descr[0:2] == 'Qm' and len(descr) > 30:
         return await ipfscat(descr)
 
-    return descr
+    return {"description":descr}
 
 
 @methods.add
-async def makecid(cus, owneraddr): #addr, blockid, secret):
+async def makecid(cus, owneraddr, description, price): #addr, blockid, secret):
+    logging.debug("[+] -- Debug estimating")
+    logging.debug(owneraddr)
+    content_fee = billing.estimate_upload_fee(len(cus))
+
+    logging.debug(content_fee)
+    descr_fee = billing.estimate_set_descr_fee(len(description))
+
+    user = storageclient.request(method_name="getaccountbywallet", 
+                                wallet=owneraddr)
+    logging.debug(user)
+    balance = balanceclient.request(method_name="getbalance", uid=user["id"])
+    logging.debug(balance)
+    pr = int(content_fee) + int(descr_fee) 
+    logging.debug(" -price - ")
+    logging.debug(pr)
+
+    diff = ( int(balance[str(user["id"])]) * pow(10,8) ) - pr
+    logging.debug("difference")
+    logging.debug(diff)
+
+    if diff < 0:
+        return {"error":403, "reason": "Balance is not enough."}
+
+
     addr = contract_owner
     # blockid = await lastblockid()
     # if not verify_secret(api_pass, blockid, addr, owneraddr, cus, secret=secret):
@@ -157,20 +187,33 @@ async def makecid(cus, owneraddr): #addr, blockid, secret):
     r8_ipfs = R8_IPFS()
 
     ipfs_hash = r8_ipfs.upload_to_ipfs(cus)
+    descr_hash = r8_ipfs.upload_to_ipfs(description)
 
     cid = r8_sc.getCID(ipfs_hash)[0]
     print(cid)
     if cid != 0:
         return {'error': 'file was uploaded'}
 
-    result = r8_sc.makeCID(ipfs_hash, owneraddr)
-    print(result)
+    result = r8_sc.makeCID(ipfs_hash, owneraddr, descr_hash, price)
+    
+    balanceclient.request(method_name="decbalance", uid=user["id"], 
+                    amount=int(pr))
 
     return {'result': result, 'hash': ipfs_hash, 'cus': cus, 'addr': addr, 'owner_hex_addr': owneraddr}#, 'blockid': blockid, 'secret': secret}
 
 
 @methods.add
-async def setdescrforcid(cid, descr):#, addr, blockid, secret):
+async def setdescrforcid(cid, descr, owneraddr):#, addr, blockid, secret):
+    user = storageclient.request(method_name="getaccountbywallet", 
+                                            wallet=owneraddr)
+    balance = balanceclient.request(method_name="getbalance", 
+                                            uid=user["id"])
+
+    fee = billing.estimate_set_descr_fee(len(descr))
+
+    if float(balance[str(user["id"])]) - float(fee) < 0:
+        return {"error":403, "reason":"Owner does not have enough balance."}
+
     addr = contract_owner
     # blockid = await lastblockid()
     # if not verify_secret(api_pass, blockid, addr, cid, descr, secret=secret):
@@ -182,6 +225,8 @@ async def setdescrforcid(cid, descr):#, addr, blockid, secret):
     ipfs_hash = ipfs.upload_to_ipfs(descr)
 
     result = r8_sc.setCIDdescription(cid, ipfs_hash)
+
+    balanceclient.request(method_name="decbalance", uid=user["id"], amount=fee)
 
     return {'result': result, 'cid': str(cid), 'descr': descr, 'addr': addr}  # 'secret': secret, 'blockid': blockid}
 
@@ -199,6 +244,18 @@ async def last_access_string(cid):
 
 @methods.add
 async def changeowner(cid, new_owner, access_string):
+
+    user = storageclient.request(method_name="getaccountbywallet", 
+                                            wallet=new_owner)
+    balance = balanceclient.request(method_name="getbalance", 
+                                            uid=user["id"])
+
+    fee = billing.estimate_change_owner_fee()
+
+    if int(balance[str(user["id"])]) - int(fee) < 0:
+        return {"error":403, "reason":"New owner does not have enough balance."}
+
+
     addr = contract_owner_hex
     r8_sc = Robin8_SC(contract_address)
     r8_sc.set_send_params({'sender': contract_owner})
@@ -209,11 +266,24 @@ async def changeowner(cid, new_owner, access_string):
     prev_owner_hex = r8_sc.getOwner(cid)[0][2:]
     prev_owner = qtum.fromhexaddress(prev_owner_hex)
 
+    balanceclient.request(method_name="decbalance", uid=user["id"], amount=fee)
+
+
     return {'result': result, 'cid': str(cid), 'new_owner': new_owner, 'access_string': access_string, 'prev_owner': prev_owner, 'contract_owner_hex': addr}
 
 
 @methods.add
 async def sellcontent(cid, buyer_addr, access_string):
+
+    user = storageclient.request(method_name="getaccountbywallet", 
+                                wallet=buyer_addr)
+    balance = balanceclient.request(method_name="getbalance", uid=user["id"])
+
+    fee = billing.estimate_sale_fee()
+
+    if int(balance[str(user["id"])]) - int(fee) < 0:
+        return {"error":403, "reason": "Balance is not enough."}
+
     addr = contract_owner
     r8_sc = Robin8_SC(contract_address)
     r8_sc.set_send_params({'sender': contract_owner})
@@ -224,17 +294,32 @@ async def sellcontent(cid, buyer_addr, access_string):
 
     result = r8_sc.sellContent(cid, buyer_addr, access_string)
 
+    balanceclient.request(method_name="decbalance", uid=user["id"], amount=fee)
+
     return {'result': result, 'cid': str(cid), 'buyer_addr': buyer_addr, 'access_string': access_string, 'content_owner': content_owner_addr, 'contract_owner_hex': addr}
 
 
 @methods.add
-async def setprice(cid, price):
+async def setprice(cid, price, owneraddr):
+    fee = billing.estimate_set_price_fee()
+
+    user = storageclient.request(method_name="getaccountbywallet", 
+                                wallet=owneraddr)
+    balance = balanceclient.request(method_name="getbalance", uid=user["id"])
+    
+    price = int(fee)
+
+    if int(balance[str(user["id"])]) - price < 0:
+        return {"error":403, "reason": "Balance is not enough."}
+
     r8_sc = Robin8_SC(contract_address)
     r8_sc.set_send_params({'sender': contract_owner})
 
     result = r8_sc.setPrice(cid, price)
 
-    return {'result': result, 'cid': str(cid), 'price': price}
+    balanceclient.request(method_name="decbalance", uid=user["id"], amount=fee)
+
+    return {'result': result, 'cid': str(cid), 'price': int(price) / 10**8}
 
 
 @methods.add

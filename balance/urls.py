@@ -5,5 +5,5 @@ import balance.views
 
 
 balance_router = tornado.web.Application([
-        	(settings.ENDPOINTS["balance_server"], balance.views.MainHandler),
-        ])
+        	(settings.ENDPOINTS["balance"], balance.views.MainHandler),
+        ], debug=True)

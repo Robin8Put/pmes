@@ -14,6 +14,11 @@ def validate_params(params):
             if v < 1:
                 raise Exception('Illegal cid parameter')
             params[k] = v
+        elif k == 'price':
+            v = int(v)
+            if v < 1:
+                raise Exception('Invalid price')
+            params[k] = v
         elif k == 'hash':
             if len(str(v)) < 10 or len(str(v)) > 50:
                 raise Exception('Bad hash parameter')
@@ -56,14 +61,3 @@ class MainHandler(tornado.web.RequestHandler):
             self.set_header('Content-type', 'application/json; charset=UTF-8')
             self.write(data)
 
-
-def make_app():
-    return tornado.web.Application([
-        (r"/", MainHandler),
-    ])
-
-
-if __name__ == "__main__":
-    app = make_app()
-    app.listen(8888)
-    tornado.ioloop.IOLoop.current().start()

@@ -11,8 +11,8 @@ contract_address = '4f9ab7a8f5a2238b4315978e14305ce8db856f34'
 class Qtum_SC:
     send_params = {
         'amount': 0,
-        'gasLimit': 250000,
-        'gasPrice': '0.00000049',
+        'gasLimit': 350000,
+        'gasPrice': '0.000001',
         'sender': '',
     }
 

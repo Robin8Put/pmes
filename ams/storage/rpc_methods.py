@@ -1,125 +1,170 @@
 from jsonrpcserver.aio import methods
+from jsonrpcclient.http_client import HTTPClient
 import pymongo
 import tornado_components.mongo
 import settings
 import logging
 
 
+
+
 class NewsTable(tornado_components.mongo.Table):
 	"""Added method for retrieving last rows.
 	"""
 
-	def insert_cid(self, **params):
-		"""Inserts content id to database (related to account)
+	def insert_wallet(self, **params):
+		"""Inserts wallet to database (related to account)
+
+		Accepts:
+			- public_key
+			- wallet
+		Returns:
+			- new row as dict
 		"""
 		if not params:
-			result = {"error":400, "reason":"Missed required fields"}
+			return {"error":400, "reason":"Missed required fields"}
+
+		if not all([params.get("public_key"), params.get("wallet")]):
+			return {"error":400, "reason":"Missed required fields"}
+
 
 		account = self.collection.find_one({"public_key": params["public_key"]})
+
 		# Set database connection
-		cids_client = pymongo.MongoClient()
-		cids_db = cids_client[settings.DBNAME]
-		cids_collection = cids_db[settings.CID]
+		wallet_client = pymongo.MongoClient()
+		wallet_db = wallet_client[settings.DBNAME]
+		wallet_collection = wallet_db[settings.WALLET]
 
 		data = {
 			"account_id": account["id"],
-			"cid": params["cid"]
+			"wallet": params["wallet"]
 		}
 		# Create row
-		cids_collection.insert_one(data)
+		wallet_collection.insert_one(data)
+		# Get just created wallet
+		row = wallet_collection.find_one({"wallet":params["wallet"]})
 
-		row = cids_collection.find_one({"cid":cid})
-
-		if row:
-			return {i:row[i] for i in row if i != "_id"}
-		else:
-			return {"error":500, 
-					"reason":"Not created"}
+		return row
 
 
 
 	def find_recent_news(self, **params):
-		"""Accepts account public key and returns
-		amount of recent news for account.
-		"""
-		if not params:
-			result = {"error":400, "reason":"Missed required fields"}
-		#Get account by public key
-		account = self.collection.find_one({"public_key": params["public_key"]})
-		if account:
-			#Get account id
-			account_id = account["id"]
-			#Get news amount for current account
-			account_news_amount = account["news_count"]
-		else:
-			return {"error":404, "reason":"Not Found"}
+		"""Looking up recent news for account.
 
-		# Get news amount for current account from news collection
+		Accepts:
+			- public_key
+		Returns:
+			- list with dicts or empty
+		"""
+		# Check if params is not empty
+		if not params:
+			return {"error":400, "reason":"Missed required fields"}
+		# Check if required parameter does exist
+		public_key = params.get("public_key", None)
+		if not public_key:
+			return {"error":400, "reason":"Missed required fields"}
+		# Check if current public_key does exist in database
+		account = self.collection.find_one({"public_key": public_key})
+		if not account:
+			return {"error":404, "reason":"Current user not found"}
+
+		
 		# Connect to news collection
 		news_client = pymongo.MongoClient()
 		news_db = news_client[settings.DBNAME]
 		news_collection = news_db[settings.NEWS]
-		try:
-			# Get news 
-			result = news_collection.find({"account_id":account_id}
-									).sort("{$natural: -1}").limit(
-										account_news_amount)
-		except Exception as e:
-			logging.debug(str(e))
-			return {"error":404, "reason":"Not Found"}
-		else:
-			# Set news amount to zero.
-			self.collection.find_one_and_update(
-							{"public_key": params["public_key"]},
-							{"$set": {"news_count": 0}})
-			return list(result)
+		
+
+		if not account["news_count"]:
+			return []
+		
+		# Get last "news_count" news from database
+		news = news_collection.find({"account_id":account["id"]}
+								).sort([("$natural", -1)]).limit(
+									account["news_count"])
+		# remove from result "_id" field	
+		result = [{i:j[i] for i in j if i != "_id"} for j in news]
+		
+		# Set news amount to zero.
+		self.collection.find_one_and_update(
+						{"public_key": params["public_key"]},
+						{"$set": {"news_count": 0}})
+		return result
+
 
 
 	def insert_news(self, **params):
-		"""
-		Accepts fields:
-			event_type, buyer_id, cid, access_string
-		Return {"result":"ok"} or {"error":int(code), "reason":str(reason)}
+		"""Inserts news for account
+
+		Accepts:
+			- event_type
+			- cid
+			- access_string (of buyer)
+			- buyer_pubkey
+		Returns:
+			- dict with result
 		"""
 		if not params:
-			result = {"error":400, "reason":"Missed required fields"}
-		#Get account by public key
-		account = self.collection.find_one({"public_key": params["public_key"]})
-		if account:
-			#Get account id
-			account_id = account["id"]
-			#Get news amount for current account
-			account_news_amount = account["news_count"]
-		else:
-			return {"error":404, "reason":"Not Found"}
-		# Connect to news table 
-		news = tornado_components.mongo.Table(dbname=settings.DBNAME,
-											collection=settings.NEWS)
-		news_client = pymongo.MongoClient()
-		news_db = news.client[settings.DBNAME]
-		news_collection = news_db[settings.NEWS]
+			return {"error":400, "reason":"Missed required fields"}
+		event_type = params.get("event_type", None)
+		cid = params.get("cid", None)
+		access_string = params.get("access_string", None)
+		buyer_pubkey = params.get("buyer_pubkey", None)
+		buyer_addr = params.get("buyer_addr", None)
+		owneraddr = params.get("owneraddr", None)
 
+		logging.debug("[+] -- Insert news debugging")
+		logging.debug(params)
+		if not all([event_type, cid, access_string, buyer_pubkey, buyer_addr, owneraddr]):
+			return {"error":400, "reason":"Missed required fields"}			
+
+
+		# Get address of content owner and check if it exists
+		bridge_client = HTTPClient(settings.bridgeurl)
+		wallet = bridge_client.request(method_name="ownerbycid",cid=cid)
+		#Get account by wallet
+		wallet_client = pymongo.MongoClient()
+		wallet_db = wallet_client[settings.DBNAME]
+		wallet_collection = wallet_db[settings.WALLET]
+		wallet = wallet_collection.find_one({"wallet": owneraddr})
+		if not wallet:
+			return {"error":404,"reason":"Content owner not found"}
+		account = self.collection.find_one({"id":wallet["account_id"]})
+		# Check if current public_key does exist in database
+		buyeraccount = self.collection.find_one({"public_key": buyer_pubkey})
+		if not buyeraccount:
+			return {"error":404,"reason":"Buyer not found"}
+		
+		# Connect to news table 
+		news_client = pymongo.MongoClient()
+		news_db = news_client[settings.DBNAME]
+		news_collection = news_db[settings.NEWS]
+		logging.debug(account)
 		# Insert news to news collection
 		# Update news amount at accounts collection
 		try:
-			row = {"account_id":account_id, "event_type": params["event_type"],
-					"buyer_address": params["buyer_address"], "cid":params["cid"],
-					"access_string":params["access_string"]}
+			row = {"event_type": event_type, 
+					"buyer_addr":buyer_addr,
+					"cid":cid,
+					"access_string":access_string,
+					"buyer_pubkey": buyer_pubkey,
+					"account_id": account["id"]}
 		except:
 			result = {"error":400, "reason":"Missed required fields."}
 		else:
 			# Update counter inside accounts table
 			self.collection.find_one_and_update(
-							{"public_key": params["public_key"]},
+							{"id": account["id"]},
 							{"$inc": {"news_count": 1}})
 			# Insert data to news table
 			news_collection.insert_one(row)
+
 			result = {"result":"ok"}
 		return result
 
 
 
-table = NewsTable(dbname=settings.DBNAME, collection=settings.COLLECTION)
+table = NewsTable(dbname=settings.DBNAME, collection=settings.ACCOUNTS)
 
 
 @methods.add
@@ -129,27 +174,44 @@ async def createaccount(**params):
 
 
 @methods.add
-async def getnews(**params):
-	news = table.find_recent_news(**params)
-	result = [{i:j[i] for i in j if i != "_id"} for j in news]
-	return result
-	#return {i:news[i] for i in news if i != "_id"}
-
-
-@methods.add 
-async def setnews(**params):
-	result = table.insert_news(**params)
-	return result
-
-
-@methods.add
 async def getaccountdata(**params):
 	document = table.find(**params)
 	return {i:document[i] for i in document if i != "_id"}
 
 
 @methods.add
-async def addcid(**params):
-	document = table.insert_cid(**params)
+async def createwallet(**params):
+	document = table.insert_wallet(**params)
 	return {i:document[i] for i in document if i != "_id"}
+
+
+@methods.add
+async def getnews(**params):
+	news = table.find_recent_news(**params)
+	return news
+
+@methods.add 
+async def setnews(**params):
+	result = table.insert_news(**params)
+	return result
+
+@methods.add 
+async def getaccountbywallet(**params):
+	wallettable = NewsTable(dbname=settings.DBNAME, 
+							collection=settings.WALLET)
+	wallet = wallettable.find(**params)
+	try:
+		document = table.find(**{"id":wallet["account_id"]})
+	except:
+		document = {"public_key":None}
+	return {i:document[i] for i in document if i != "_id"}
+
+@methods.add
+async def updatelevel(**params):
+	document = table.find(**{"id":params["id"]})
+	data = {"_id":document["id"],
+			"level":params["level"]}
+	updated = table.update(**data)
+	return {i:updated[i] for i in updated if i != "_id"}
+
 

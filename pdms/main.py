@@ -18,9 +18,9 @@ logging.basicConfig(filename='pdms.log',level=logging.DEBUG,
 
 if __name__ == '__main__':
 	import settings
-	from urls import router
+	from urls import pdms_router
 	# Define port
-	router.listen(settings.pdmsport)
+	pdms_router.listen(settings.pdmsport)
 	# Start server
 	tornado.ioloop.IOLoop.current().start()
 	
