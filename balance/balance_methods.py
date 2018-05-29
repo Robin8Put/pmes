@@ -1,129 +1,175 @@
 import logging
 import json
-from pymongo import MongoClient
+from tornado.ioloop import IOLoop
+from motor.motor_tornado import MotorClient
 from jsonrpcserver.aio import methods
 from qtum import Qtum
-from jsonrpcclient.http_client import HTTPClient
+from jsonrpcclient.tornado_client import TornadoClient
 import settings
 
-client = MongoClient('localhost', 27017)
-db = client[settings.DBNAME]
-accounts = db[settings.BALANCE]
-availablecoinid = ["BTC", "QTUM", "LTC", "ETH"]
 
 
 
 
 @methods.add
-async def test():
-    return 'It works'
+async def addaddr(address=None, coinid=None, uid=None):
+    """ Adding wallet address to database """
+    try:
+        client = MotorClient()
+        db = client[settings.DBNAME]
+        balances = db[settings.BALANCE]
+    except:
+        return {"error":500,
+                "reason":"connection with database refused"}
 
-
-@methods.add
-async def post_test(car):
-    return 'Your car is %s' % car
-
-
-@methods.add
-async def addaddr(address, coinid, uid):
-    if Qtum.is_valid_address(address):
-        if coinid.upper() in availablecoinid:
-            try:
-                uid = int(uid)
-                account = accounts.find_one({"address": address})
-                if account:
-                    return "address is in database already"
-                else:
-                    account = {
-                        "address": address,
-                        "coinid": coinid,
-                        "amount": 0,
-                        "uid": uid,
-                    }
-                    accounts.insert_one(account)
-                    client.close()
-
-                    return "address added to database"
-            except ValueError:
-                return "uid is not integer"
-        else:
-            return "coinid is not available now"
-    else:
-        return "address is not valid"
-
+    # check if required parameters exist
+    if not all([address, coinid, uid]):
+        return {"error":400,
+                "reason": "Missed required fields"}
+    # Validate coin and address
+    if not Qtum.is_valid_address(address) and coinid.upper() not in settings.AVAILABLE_COIN_ID:
+        return {"error":400,
+                "reason":"Address or cion is not valid"}
+    # Check if current address does exist    
+    balance = await balances.find_one({"address": address})
+    if balance:
+        return {"error":400,
+                "reason": "Current address does exist."}
+    # Create new wallet
+    new_balance = {
+        "address": address,
+        "coinid": coinid,
+        "amount": 0,
+        "uid": uid,
+    }
+    res = await balances.insert_one(new_balance)
+    client.close()
+    return {"created":"ok"}
+        
 
 @methods.add
 async def incbalance(amount=0, uid=None, address=None):
+    """ Increments users balance """
+    try:
+        client = MotorClient()
+        db = client[settings.DBNAME]
+        balances = db[settings.BALANCE]
+    except:
+        return {"error":500,
+                "reason":"connection with database refused"}
+    # Check if required fields 
+    if not uid and not address:
+        return {"error":400,
+                "reason":"Mised required fields or amount is not digit"}
+    # Check if avount
     amount = int(amount * pow(10,8))
+    if not amount:
+        return {"error":400, "reason":"Funds is zero"}
     # Get account by uid or address
     if uid:
-        account = accounts.find_one({"uid": uid})
+        balance = await balances.find_one({"uid": uid})
     elif address:
-        account = accounts.find_one({"address": address})
+        balance = await balances.find_one({"address": address})
     # Increment balance if accoutn exists
-    if account:
-        accounts.find_one_and_update(
-            {"address": account["address"]}, {"$inc": {"amount": amount}})
-        result = accounts.find_one({"address":account["address"]})
-
-    else:
-        return "Uid is not available"
-
-    # Send mail to user
-    accountclient = HTTPClient(settings.storageurl)
-    user = accountclient.request(method_name="getaccountdata", 
-                    **{"id":account["uid"]})
-    # If user not found
-    if "error" in user.keys():
+    if not balance:
         return {"error":404, "reason":"Not found"}
 
-    emailclient = HTTPClient(settings.emailurl)
-    result = accounts.find_one({"uid": account["uid"]})
-    balance = int(result["amount"]) / pow(10,8)
-    array = {"to": user["email"],
-             "subject": "Robin8 support",
-             "optional": "To your balance was added %s. No you have %s." % (
-                                amount / 10**8, balance),
-             }
-    emailclient.request(method_name="sendmail", **array)
-
+    await balances.find_one_and_update(
+        {"address": balance["address"]}, {"$inc": {"amount": amount}})
+    result = await balances.find_one({"address":balance["address"]})
     # Update users level
-    if int(user["level"]) == 2: 
-        accountclient.request(method_name="updatelevel",
-                                **{"id":account["uid"], "level":3})
-    return {i:result[i] for i in result if i != "_id"}
+    client_storage = TornadoClient(settings.storageurl)
+    account = await client_storage.request(method_name="getaccountdata",
+                                            **{"id":balance["uid"]})
+    if "error" in account.keys():
+        return {"error":500,
+                "reason":"While incrementing balance current user was not found"}
+    if int(account["level"]) == 2: 
+        client_storage.request(method_name="updatelevel",
+                                **{"id":account["id"], "level":3})
+    # Send mail to user
+    client_email = TornadoClient(settings.emailurl)
+    email_data = {
+            "to": account["email"],
+            "subject": "Robin8 Support",
+            "optional": "You`ve got %s tokens. Now your balance is %s" %(
+                        amount/pow(10,8), int(result["amount"]) / pow(10,8)) 
+        }
+    #await client_email.request(method_name="sendmail", **email_data)
+
+    # Return result
+    result = {i:result[i] for i in result if i != "_id"}
+    result["amount"] = int(result["amount"]) / pow(10,8)
+    client.close()
+    return result
+
 
 
 @methods.add
 async def decbalance(amount=0, uid=None, address=None):
-    amount = int(amount) * pow(10,8)
+    """ Decrements users balance """
+    try:
+        client = MotorClient()
+        db = client[settings.DBNAME]
+        balances = db[settings.BALANCE]
+    except:
+        return {"error":500,
+                "reason":"connection with database refused"}
+    # Check if required fields exist
+    if not uid and not address:
+        return {"error":400,
+                "reason":"Missed required fields or amount is not digit"}
+    # check if amount is not 0
+    amount = int(amount * pow(10,8))
+    if not amount:
+        return {"error":400, 
+                "reason":"Funds is zero"}
+    # Get account
     if uid:
-        account = accounts.find_one({"uid": uid})
+        balance = await balances.find_one({"uid": uid})
     elif address:
-        account = accounts.find_one({"address": address})
-
-    if account and (float(account["amount"]) - amount) >= 0:
-        accounts.find_one_and_update(
-            {"address": account["address"]}, {"$inc": {"amount": -amount}})
-        result = accounts.find_one({"address":account["address"]})
-
-    else:
+        balance = await balances.find_one({"address": address})
+    # Check if balance is enough
+    if balance and (int(balance["amount"]) - amount) < 0:
         return {"error":400, 
                 "reason":"Address does not exist or amount is not enough"}
-
-    return {i:result[i] for i in result if i != "_id"}
+    # Update account
+    await balances.find_one_and_update(
+        {"address": balance["address"]}, {"$inc": {"amount": -amount}})
+    result = await balances.find_one({"address":balance["address"]})
+    # Return balance
+    balance = {i:result[i] for i in result if i != "_id"}
+    balance["amount"] = int(balance["amount"]) / pow(10,8)
+    client.close()
+    return balance
 
 
 
 @methods.add
 async def getbalance(address=None, uid=None):
+    """ Returns users balance """
+    try:
+        client = MotorClient()
+        db = client[settings.DBNAME]
+        balances = db[settings.BALANCE]
+    except:
+        return {"error":500,
+                "reason":"connection with database refused"}
+    # Check if required parameters exist
+    if not address and not uid:
+        return {"error":400,
+                "reason":"Missed required fields"}
+
     if address:
-        balance = accounts.find_one({"address": address})
+        balance = await balances.find_one({"address": address})
     elif uid:
-        balance = accounts.find_one({"uid": uid})
-        digit = int(balance["amount"]) 
-    if balance:
-        return {address or uid:digit}
-    else:
-        return {"error":404}
+        balance = await balances.find_one({"uid": uid})
+    if not balance:
+        return {"error":404,
+                "reason":"Current address does not exist"}
+    # convert balance to human readable result
+    digit = int(balance["amount"]) / pow(10,8)
+    client.close()
+    return {address or uid:digit}
+   
 

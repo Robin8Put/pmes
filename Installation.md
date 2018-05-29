@@ -64,8 +64,6 @@ source venv/bin/activate
 pip3 install -r requirements.txt
 ```
 
-Add [bip32keys](bip32keys/bip32keys), [qtum_utils](bip32keys/qtum_utils) and [tornado_components](tornado_components) directories to the `venv/lib/python3.6/site-packages`. (Will be in the pip shortly)
-
 # Running servers
 
 Run Mongo DB:
@@ -97,49 +95,32 @@ ps -ax | grep qtumd
 
 PMES works with four modules: AMS, balance, pdms and qtum_bridge.
 
-Therefore, for running application you should run  servers:
+Therefore, for running application you should run 4 servers:
 
-1. **ams and pdms** server:
+1. **ams** and **pdms** servers:
 
 ```bash
 source venv/bin/activate
 python3 main.py
 ```
 
-2. **storage** server for AMS:
-
-```bash
-source venv/bin/activate
-python3 ams/storage/main.py
-```
-
-3. **balance** server:
+2. **balance** server:
 
 ```bash
 source venv/bin/activate
 python3 balance/main.py
 ```
 
-4. **bridge** server:
+3. **bridge** server:
 
 ```bash
 source venv/bin/activate
-python3 qtum_bridge/main.py
+python3 pdms/bridge/main.py
 ```
 
-5. **email** server:
+4. **storage** server for AMS:
 
 ```bash
 source venv/bin/activate
-python3 email_new.py start
-python3 mail/index.py
+python3 ams/storage/main.py
 ```
-
-6. **coin** server:
-
-```bash
-source venv/bin/activate
-python3 coin/one_coin.py start
-```
-
-

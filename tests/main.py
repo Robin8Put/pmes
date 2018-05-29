@@ -31,10 +31,10 @@ def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
 def create_account_with_valid_data():
 	print("---------------------------------------------------------------------")
 	print("\n[+] -- Creating seller")
-	time.sleep(1)
+	#time.sleep(1)
 	url = "%s:%s%s" % (settings.host, settings.pmesport, settings.ENDPOINTS["ams"])
 	print("Request to:   " + url)
-	time.sleep(2)
+	#time.sleep(2)
 	public_key = "04e2a4c921001b7510cf9a499fba3e6147a73a977196cbffd9ad863171b95a089ddedaf8231e842ff2be63be926ca345836a7edc3d5e098bdeb0a2ff7ddca7f156"
 	private_key = "bde5a03e2547b1fe47029ae12a2a1c678223c85fb5f2714f7605cea85ea3ebc9"
 	email = "heroyooki@gmail.com"
@@ -50,12 +50,7 @@ def create_account_with_valid_data():
 		"signature": Bip32Keys.sign_message(message, private_key)
 	}
 	request = requests.post(url, data=data)
-	assert "public_key" in request.json().keys() 
-	assert "balance" in request.json().keys()
-	assert request.json()["balance"] >= 0
-	assert request.json()["email"] == "heroyooki@gmail.com"
-	print(request.json())
-	print("\nSeller id is: " + str(request.json()["id"]))
+	print(request.text)
 	print("-------------------------------------------------------------------")
 
 #################################################################################
@@ -168,7 +163,7 @@ def write_data_to_blockchain():
 	message = json.dumps({
 			"cus": id_generator(),
 			"description":id_generator(),
-			"price": 3*10**8,
+			"price": 3,
 			"timestamp": get_time_stamp()
 		})
 	data = {
@@ -244,7 +239,6 @@ def setprice_for_content(cid, price):
 	request = requests.post(url, data=data)
 	print(request.text)
 	response = requests.get(url)
-	print("\nYour price is: " + str(response.json()["price"]))
 	print("----------------------------------------------------------------------")
 
 #################################################################################
@@ -310,6 +304,35 @@ def make_offer_from_buyer_to_seller(cid):
 	message = json.dumps({
 			"cid":cid,
 			"buyer_access_string":public_key,
+			"timestamp": get_time_stamp()
+		})
+	data = {
+		"message": message,
+		"public_key": public_key,
+		"signature": Bip32Keys.sign_message(message, private_key)
+	}
+	url = "%s:%s%s" % (settings.host, settings.pmesport, 
+						"/api/blockchain/%s/offer" % public_key)
+	print("Request to url: " + url)
+	time.sleep(2)
+	request = requests.post(url, data=data)
+	print(request.text)
+	
+
+	print("-----------------------------------------------------------------------")
+
+##################################################################################
+						# Make offer by buyer for seller
+def make_offer_from_buyer_to_seller_with_price(cid, price):
+	print("\n[+] -- Make offer for seller")
+	time.sleep(1)
+	public_key = "04e78671c682ad58fb746dd24275db0e9d693dea80a6471faf598e444cbfe9e88e0653c273f36b5ac474c2d7c9d5048c2395a43820a7e1b044d25d18483e36b310"
+	private_key = "1ebaa1c3b723a04cfbcdc39bebaebac23da71b5f4f95607d0793958b993d758f"
+	
+	message = json.dumps({
+			"cid":cid,
+			"buyer_access_string":public_key,
+			"offer_price":price,
 			"timestamp": get_time_stamp()
 		})
 	data = {
@@ -449,9 +472,9 @@ def get_all_content():
 if __name__ == '__main__':
 	from test_news import *
 	"""
-	"""
 	#
 	# Create testing balance table
+	
 	client = pymongo.MongoClient()
 	balance_db = client[settings.DBNAME]
 	balance = balance_db[settings.BALANCE]
@@ -464,14 +487,16 @@ if __name__ == '__main__':
 	client.pmes.autoincrement.remove()
 	accounts_db[settings.WALLET].remove()
 	accounts_db[settings.NEWS].remove()
+	"""
 
 
-	cid = 31
-	price=3
-	inc = 10
-	hash_="QmXzHPjMk9VkcBVJ6nSWbmxDuEzMTEMH1DvybVopKFtsmw"
-	
-	create_account_with_valid_data()
+
+	cid = 82
+	price=4
+	inc = 20
+	hash_="QmTwUP3wPsQ7LGhTrPnXFBEWSc4xrJB7ZFnfhq687AQnuY"
+
+	#create_account_with_valid_data()
 	#increment_buyers_balance(inc, 2)
 	#create_account_with_existing_data()
 	#create_account_with_invalid_data1()
@@ -484,6 +509,7 @@ if __name__ == '__main__':
 	#create_buyer_with_valid_data()
 	#increment_buyers_balance(inc, 3)
 	#make_offer_from_buyer_to_seller(cid=cid)
+	#make_offer_from_buyer_to_seller_with_price(cid=cid, price=13)
 	#getaccountdata()
 	#get_news_for_seller()
 	#accept_offer_from_buyer(cid,2,3)
