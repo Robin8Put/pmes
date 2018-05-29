@@ -5,7 +5,7 @@ import logging
 # Third-party
 import tornado.ioloop
 
-PROJ_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROJ_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 if PROJ_DIR not in sys.path:
 	sys.path.append(PROJ_DIR)
