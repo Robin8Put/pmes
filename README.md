@@ -15,7 +15,9 @@ This repository contains the following modules:
 
 1. **ams** - manage user's accounts (registration, authorization, profile management)
 2. **balance** - provide work with wallets (add wallets, view/increment/decrement balance in the wallet)
+2. **billing** - provide ability to upload and sale fee estimation
 4. **bip32keys** - utilities used for simplifying communication with crypto-libraries
+4. **coin** - parses blockchain transactions to find our wallets and synchronize amount of money in blockchain with wallets in our system
 3. **history** - save logs about actions and history of transactions
 5. **mail** - save and send mails
 6. **pdms** - Profile Data Management System (PDMS). Contains **qtum_bridge** that provides access to information of Robin8 Smart Contract based on Qtum BlockChain
