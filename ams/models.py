@@ -1,5 +1,4 @@
 import requests
-from jsonrpcclient.http_client import HTTPClient
 import settings
 import logging
 import json
@@ -13,7 +12,7 @@ model = {
 	"optional": ("phone",)
 }
 
-def create_account(host, data):
+async def create_account(client, data):
 	"""Describes, validates data.
 	Calls create account method.
 	"""
@@ -27,8 +26,7 @@ def create_account(host, data):
 				"reason":"Missed required fields"}
 
 	# Unique constraint
-	client = HTTPClient(host)
-	get_account = client.request(method_name="getaccountdata",
+	get_account = await client.request(method_name="getaccountdata",
 								public_key=data["public_key"])
 
 	# Try get account with current public key
@@ -43,16 +41,10 @@ def create_account(host, data):
 		row = {i:data[i] for i in data 
 				if i in model["required"] or i in model["optional"]}
 		row.update({i:model["default"][i] for i in model["default"]})
-		response = client.request(method_name="createaccount", **row)
+		response = await client.request(method_name="createaccount", **row)
 
 		return response
 
 
-def create_wallet(host, data):
-	"""Creates wallet table with account relation
-	"""
-	client = HTTPClient(host)
-	response = client.request(method_name="createwallet", **data)
-	return response
 
 

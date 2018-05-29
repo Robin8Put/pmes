@@ -4,6 +4,9 @@ import logging
 
 # Third-party
 import tornado.ioloop
+import tornado.wsgi
+import wsgiref.simple_server
+
 
 PROJ_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -21,4 +24,5 @@ if __name__ == '__main__':
 	balance_router.listen(settings.balanceport)
 	# Start server
 	tornado.ioloop.IOLoop.current().start()
+
 	
