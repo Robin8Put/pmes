@@ -9,7 +9,7 @@ Profile Management EcoSystem (PMEC) provides next functionality:
 - change owner of data
 - sell content
 
-View API details in the file [Robin8_BlockChain_PDMS_API.md](pdms/Robin8_BlockChain_PDMS_API.md).
+View API details in the file [Robin8_BlockChain_PMES_API.md](Robin8_BlockChain_PMES_API.md).
 
 This repository contains the following modules:
 
