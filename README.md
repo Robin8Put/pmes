@@ -28,7 +28,7 @@ Installation and running of PMES is described [here](Installation.md).
 
 For using Profile Management EcoSystem:
 
-1. Run [PDMS modules](Installation.md)
+1. Run [PMES modules](Installation.md)
 2. Run [Python mock client](https://github.com/Robin8Put/pdms_py_client)
 3. Create client object and use mentioned functionalities as described in python mock client
 
