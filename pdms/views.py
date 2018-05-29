@@ -59,6 +59,7 @@ class AllContentHandler(tornado_components.web.ManagementSystemHandler):
 class ContentHandler(tornado_components.web.ManagementSystemHandler):
 	"""Handles blockchain content requests
 	"""
+
 	def initialize(self, client_bridge, client_storage, client_balance, client_email):
 		self.client_bridge = client_bridge
 		self.client_storage = client_storage

@@ -62,4 +62,16 @@ class ManagementSystemHandler(tornado.web.RequestHandler):
 			if not flag:
 			    raise tornado.web.HTTPError(403)
 
+	def get(self, *args, **kwargs):
+		self.set_status(405)
+		self.write({"error":405, "reason":"Method not allowed."})
+
+	def post(self, *args, **kwargs):
+		self.set_status(405)
+		self.write({"error":405, "reason":"Method not allowed."})
+
+	def put(self, *args, **kwargs):
+		self.set_status(405)
+		self.write({"error":405, "reason":"Method not allowed."})
+
 			    
