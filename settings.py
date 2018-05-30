@@ -74,5 +74,6 @@ ACCOUNTS = "accounts"
 NEWS = "news"
 WALLET = "wallet"
 BALANCE = "balance"
+OFFER = "offer"
 
 AVAILABLE_COIN_ID = ["BTC", "QTUM", "LTC", "ETH"]

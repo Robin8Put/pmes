@@ -20,6 +20,31 @@ from tornado_components.timestamp import get_time_stamp
 from qtum_utils.qtum import Qtum
 
 
+class BalanceHandler(tornado.web.RequestHandler):
+
+
+	def initialize(self, client_storage, client_balance, client_email):
+		self.client_storage = client_storage
+		self.client_balance = client_balance
+		self.client_email = client_email
+
+
+	async def get(self, uid):
+
+		balance = await self.client_balance.request(method_name="getbalance",
+												uid=uid)
+		self.write(balance)
+
+
+	async def post(self, uid):
+		logging.debug("[+] -- Debugging balance")
+		amount = self.get_body_argument("amount")
+		logging.debug(amount)
+		logging.debug(uid)
+		balance = await self.client_balance.request(method_name="incbalance",
+												uid=uid, amount=amount)
+		self.write(balance)
+
 
 class AMSHandler(tornado_components.web.ManagementSystemHandler):
 	"""Account Management System Handler
@@ -30,13 +55,13 @@ class AMSHandler(tornado_components.web.ManagementSystemHandler):
 		self.client_email = client_email 
 
 
-	def double_sha256(self, str):
+	async def double_sha256(self, str):
 		"""Creating entropy with double sha256
 		"""
 		return sha256(sha256(str).digest()).hexdigest()
 
 
-	def generate_token(self, length=16, chars=string.ascii_letters + string.punctuation + string.digits):
+	async def generate_token(self, length=16, chars=string.ascii_letters + string.punctuation + string.digits):
 		return "".join(choice(chars) for x in range(0, length))
 
 	
@@ -58,8 +83,8 @@ class AMSHandler(tornado_components.web.ManagementSystemHandler):
 			raise tornado.web.Finish
 
 		# Create wallet
-		#entropy = self.double_sha256(public_key.encode())
-		entropy = self.generate_token()
+		#entropy = await self.double_sha256(public_key.encode())
+		entropy = await self.generate_token()
 		qtum = Qtum(entropy, mainnet=False)
 		address = qtum.get_qtum_address()
 
@@ -69,7 +94,7 @@ class AMSHandler(tornado_components.web.ManagementSystemHandler):
 			"public_key":data["public_key"],
 			"wallet": wallet
 		}
-		self.client_storage.request(method_name="createwallet", **walletdata)
+		await self.client_storage.request(method_name="createwallet", **walletdata)
 
 		# Send wallet to balance server
 		balance_params = {
@@ -85,8 +110,6 @@ class AMSHandler(tornado_components.web.ManagementSystemHandler):
 		}
 		balance = await self.client_balance.request(method_name="getbalance", 
 													**request_balance)
-		logging.debug("[+] -- Balance debugging")
-		logging.debug(balance)
 		balance_as_digit = int(balance[str(new_account["id"])])
 		#Prepare response 
 		new_account.update({"href": settings.ENDPOINTS["ams"]+"/"+ new_account["public_key"],
@@ -98,7 +121,7 @@ class AMSHandler(tornado_components.web.ManagementSystemHandler):
         	"subject": "Robin8 Support",
          	"optional": "Your account was created on %s" % settings.host + new_account["href"]
         }
-		#self.client_email.request(method_name="sendmail", **email_data)
+		#await self.client_email.request(method_name="sendmail", **email_data)
 
 		self.write(new_account)
 		
@@ -119,9 +142,11 @@ class AccountHandler(tornado_components.web.ManagementSystemHandler):
 		# Get id from database
 		response = await self.client_storage.request(method_name="getaccountdata",
 												public_key=public_key)
-		try:
-			error_code = response["error"]
-		except:
+		if "error" in response.keys():
+			self.set_status(response["error"])
+			self.write(response)
+			raise tornado.web.Finish
+		else:
 			# Receive balance from balance host
 			balance = await self.client_balance.request(method_name="getbalance", 
 														 uid=response["id"])
@@ -130,10 +155,7 @@ class AccountHandler(tornado_components.web.ManagementSystemHandler):
 			response.update({"balance":balance_as_digit})
 			# Return account data
 			self.write(response)
-		else:
-			self.set_status(error_code)
-			self.write(response)
-			raise tornado.web.Finish
+
 
 
 

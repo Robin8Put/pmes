@@ -333,6 +333,16 @@ class OfferHandler(tornado_components.web.ManagementSystemHandler):
 			self.set_status(account["error"])
 			self.write(account)
 			raise tornado.web.Finish
+
+		# Check if current offer exists
+		offer = await self.client_storage.request(method_name="getoffer",
+			cid=cid, buyer_addr=Qtum.public_key_to_hex_address(public_key))
+		if "cid" in offer.keys():
+			self.set_status(403)
+			self.write({"error":403,
+						"reason":"Current offer already exists"})
+			raise tornado.web.Finish
+
 	
 		#Get balance
 		balance = await self.client_balance.request(method_name="getbalance", 
@@ -344,7 +354,7 @@ class OfferHandler(tornado_components.web.ManagementSystemHandler):
 		if owneraddr == Qtum.public_key_to_hex_address(public_key):
 			self.set_status(400)
 			self.write({"error":400, 
-						"reason":"Content not belongs to current user"})
+						"reason":"Content belongs to current user"})
 			raise tornado.web.Finish
 		# Get difference with balance and price
 		difference = float(balance[str(account["id"])]) - float(price)
@@ -359,7 +369,7 @@ class OfferHandler(tornado_components.web.ManagementSystemHandler):
 				"buyer_addr":Qtum.public_key_to_hex_address(public_key),
 				"owneraddr":owneraddr
 			}
-			self.client_storage.request(method_name="setnews", **newsdata)
+			await self.client_storage.request(method_name="setnews", **newsdata)
 
 			
 			# Make offer
@@ -390,8 +400,11 @@ class OfferHandler(tornado_components.web.ManagementSystemHandler):
          			"optional": "You`ve got a new offer from %s" % public_key
          	
 				}
-				self.client_email.request(method_name="sendmail", **emaildata)
-			# Return response from bridge
+				#await self.client_email.request(method_name="sendmail", **emaildata)
+				# Insert offer to the database
+				await self.client_storage.request(method_name="insertoffer",
+									cid=cid, price=price, buyer_addr=buyer_addr)
+				# Return response from bridge
 			self.write(response)
 		else:
 			# If Insufficient funds
@@ -431,6 +444,15 @@ class OfferHandler(tornado_components.web.ManagementSystemHandler):
 			self.set_status(error_code)
 			self.write(account)
 			raise tornado.web.Finish
+
+		# Check if current offer exists
+		offer = await self.client_storage.request(method_name="getoffer",
+									cid=cid, buyer_addr=buyer_addr)
+		if not "cid" in offer.keys():
+			self.set_status(400)
+			self.write({"error":400,
+						"reason":"Current offer does not exist"})
+			raise tornado.web.Finish
 	
 		# Check if one of seller or buyer rejects offer
 		owneraddr = await self.client_bridge.request(method_name="ownerbycid", cid=cid)
@@ -456,8 +478,10 @@ class OfferHandler(tornado_components.web.ManagementSystemHandler):
          			"optional": "Your offer with cid %s was rejected." % cid
          	
 				}
-				self.client_email.request(method_name="sendmail", **emaildata)
-			
+				#await self.client_email.request(method_name="sendmail", **emaildata)
+				# Remove offer from database
+				await self.client_storage.request(method_name="removeoffer",
+								cid=cid, buyer_addr=buyer_addr)
 			self.write(response)
 		else:
 			# Avoid rejecting offer
@@ -532,6 +556,15 @@ class DealHandler(tornado_components.web.ManagementSystemHandler):
 			self.write({"error":403, "reason":"Forbidden"})
 			raise tornado.web.Finish
 
+		# Check if current offer exists
+		offer = await self.client_storage.request(method_name="getoffer",
+			cid=cid, buyer_addr=Qtum.public_key_to_hex_address(public_key))
+		if "cid" in offer.keys():
+			self.set_status(403)
+			self.write({"error":403,
+						"reason":"Current offer already exists"})
+			raise tornado.web.Finish
+
 		buyer_access_string = Qtum.to_compressed_public_key(buyer_access_string)
 
 		
@@ -585,6 +618,12 @@ class DealHandler(tornado_components.web.ManagementSystemHandler):
 									uid=buyer_account["id"], amount=price)
 				await self.client_balance.request(method_name="incbalance", 
 									uid=seller_account["id"], amount=price)
+
+				# Remove offer from database
+				await self.client_storage.request(method_name="removeoffer",
+						cid=cid, price=price, 
+						buyer_addr=Qtum.public_key_to_hex_address(public_key))
+				
 				self.write({**sell, **chown})
 				#self.write(sell)
 		else:

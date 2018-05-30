@@ -1,5 +1,5 @@
 from jsonrpcserver.aio import methods
-from jsonrpcclient.http_client import HTTPClient
+from jsonrpcclient.tornado_client import TornadoClient
 import pymongo
 from motor.motor_tornado import MotorClient
 import tornado_components.mongo
@@ -9,7 +9,7 @@ import logging
 
 
 
-class NewsTable(tornado_components.mongo.Table):
+class StorageTable(tornado_components.mongo.Table):
 	"""Added method for retrieving last rows.
 	"""
 
@@ -32,9 +32,8 @@ class NewsTable(tornado_components.mongo.Table):
 		account = await self.collection.find_one({"public_key": params["public_key"]})
 
 		# Set database connection
-		wallet_client = MotorClient()
-		wallet_db = wallet_client[settings.DBNAME]
-		wallet_collection = wallet_db[settings.WALLET]
+		
+		wallet_collection = self.database[settings.WALLET]
 
 		data = {
 			"account_id": account["id"],
@@ -71,9 +70,8 @@ class NewsTable(tornado_components.mongo.Table):
 
 		
 		# Connect to news collection
-		news_client = pymongo.MongoClient()
-		news_db = news_client[settings.DBNAME]
-		news_collection = news_db[settings.NEWS]
+		
+		news_collection = self.database[settings.NEWS]
 		
 
 		if not account["news_count"]:
@@ -104,6 +102,8 @@ class NewsTable(tornado_components.mongo.Table):
 		Returns:
 			- dict with result
 		"""
+		logging.debug("[+] -- Logging news inserting")
+		logging.debug(params)
 		if not params:
 			return {"error":400, "reason":"Missed required fields"}
 		event_type = params.get("event_type", None)
@@ -112,20 +112,19 @@ class NewsTable(tornado_components.mongo.Table):
 		buyer_pubkey = params.get("buyer_pubkey", None)
 		buyer_addr = params.get("buyer_addr", None)
 		owneraddr = params.get("owneraddr", None)
+		offer_price = params.get("offer_price", None)
 
-		logging.debug("[+] -- Insert news debugging")
-		logging.debug(params)
-		if not all([event_type, cid, access_string, buyer_pubkey, buyer_addr, owneraddr]):
+		if not all([event_type, cid, access_string, offer_price, 
+					buyer_pubkey, buyer_addr, owneraddr]):
 			return {"error":400, "reason":"Missed required fields"}			
 
 
 		# Get address of content owner and check if it exists
-		bridge_client = HTTPClient(settings.bridgeurl)
-		wallet = bridge_client.request(method_name="ownerbycid",cid=cid)
+		client_bridge = TornadoClient(settings.bridgeurl)
+		wallet = await client_bridge.request(method_name="ownerbycid",cid=cid)
 		#Get account by wallet
-		wallet_client = MotorClient()
-		wallet_db = wallet_client[settings.DBNAME]
-		wallet_collection = wallet_db[settings.WALLET]
+
+		wallet_collection = self.database[settings.WALLET]
 		wallet = await wallet_collection.find_one({"wallet": owneraddr})
 		if not wallet:
 			return {"error":404,"reason":"Content owner not found"}
@@ -136,21 +135,29 @@ class NewsTable(tornado_components.mongo.Table):
 			return {"error":404,"reason":"Buyer not found"}
 		
 		# Connect to news table 
-		news_client = MotorClient()
-		news_db = news_client[settings.DBNAME]
-		news_collection = news_db[settings.NEWS]
-		logging.debug(account)
+		
+		news_collection = self.database[settings.NEWS]
 		# Insert news to news collection
 		# Update news amount at accounts collection
+		
+
+		offer_collection = self.database[settings.OFFER]
+		buyer_price = await offer_collection.find_one({
+									"cid": cid, 
+									"account_id":buyeraccount["id"]}) 
+		logging.debug(cid)
+		logging.debug(buyeraccount["id"])
 		try:
 			row = {"event_type": event_type, 
 					"buyer_addr":buyer_addr,
 					"cid":cid,
 					"access_string":access_string,
 					"buyer_pubkey": buyer_pubkey,
-					"account_id": account["id"]}
-		except:
-			result = {"error":400, "reason":"Missed required fields."}
+					"seller_price": offer_price,
+					"buyer_price": buyer_price["price"]}
+		except Exception as e:
+			result = {"error":400, "reason":"Missed required fields.",
+							"except": str(e)}
 		else:
 			# Update counter inside accounts table
 			await self.collection.find_one_and_update(
@@ -163,8 +170,112 @@ class NewsTable(tornado_components.mongo.Table):
 		return result
 
 
+	async def insert_offer(self, **params):
+		"""Inserts new offer to database (related to buyers account)
 
-table = NewsTable(dbname=settings.DBNAME, collection=settings.ACCOUNTS)
+		Accepts:
+			- cid
+			- buyer address
+			- price
+		"""
+		if not params:
+			return {"error":400, "reason":"Missed required fields"}
+		# Check if required fields exists
+		cid = params.get("cid")
+		buyer_addr = params.get("buyer_addr")
+		price = params.get("price")
+		# Check if required fileds 
+		if not all([cid, buyer_addr, price]):
+			return {"error":400, "reason":"Missed required fields"}
+		# Get buyer address row from database
+		wallet_collection = self.database[settings.WALLET]
+		wallet = await wallet_collection.find_one({"wallet":buyer_addr})
+		if not wallet:
+			return {"error":404, "reason":"Buyer address not found"}
+		# Try to find offer with account id and cid
+		offer_collection = self.database[settings.OFFER]
+		offer = await offer_collection.find_one(
+							{"account_id":wallet["account_id"],
+							"cid":cid})
+		# If current offer exists avoid creating a new one
+		if offer:
+			return {"error":403, "reason": "Current offer already exists"}
+		# Else write a new offer to database
+		await offer_collection.insert_one({"confirmed":None,
+						"account_id":wallet["account_id"],
+						"cid":cid, "price":price})
+		new_offer = await offer_collection.find_one({
+						"account_id":wallet["account_id"],
+						"cid":cid})
+		return {i:new_offer[i] for i in new_offer if i != "_id"}
+	
+
+	async def get_offer(self, **params):
+		"""Receives offer data if exists
+
+		Accepts:
+			- cid
+			- buyer address
+		"""
+		if not params:
+			return {"error":400, "reason":"Missed required fields"}
+		# Check if required fields exists
+		cid = params.get("cid")
+		buyer_addr = params.get("buyer_addr")
+		# Check if required fileds 
+		if not all([cid, buyer_addr]):
+			return {"error":400, "reason":"Missed required fields"}
+		# Get buyer address row from database
+		wallet_collection = self.database[settings.WALLET]
+		wallet = await wallet_collection.find_one({"wallet":buyer_addr})
+		if not wallet:
+			return {"error":404, "reason":"Buyer address not found"}
+				# Try to find offer with account id and cid
+		offer_collection = self.database[settings.OFFER]
+		offer = await offer_collection.find_one(
+							{"account_id":wallet["account_id"],
+							"cid":cid})
+		# If current offer exists avoid creating a new one
+		if not offer:
+			return {"error":404, "reason": "Current offer not found"}
+		else:
+			return {i:offer[i] for i in offer if i != "_id"}
+
+
+	async def remove_offer(self, **params):
+		"""Receives offer data if exists
+
+		Accepts:
+			- cid
+			- buyer address
+		"""
+		if not params:
+			return {"error":400, "reason":"Missed required fields"}
+		# Check if required fields exists
+		cid = params.get("cid")
+		buyer_addr = params.get("buyer_addr")
+		# Check if required fileds 
+		if not all([cid, buyer_addr]):
+			return {"error":400, "reason":"Missed required fields"}
+		# Get buyer address row from database
+		wallet_collection = self.database[settings.WALLET]
+		wallet = await wallet_collection.find_one({"wallet":buyer_addr})
+		if not wallet:
+			return {"error":404, "reason":"Buyer address not found"}
+				# Try to find offer with account id and cid
+		offer_collection = self.database[settings.OFFER]
+		removed = await offer_collection.find_one(
+							{"account_id":wallet["account_id"],
+							"cid":cid})
+		await offer_collection.delete_one(
+							{"account_id":wallet["account_id"],
+							"cid":cid})
+		return {i:removed[i] for i in removed if i != "_id"}
+
+
+
+
+table = StorageTable(dbname=settings.DBNAME, collection=settings.ACCOUNTS)
 
 
 @methods.add
@@ -197,7 +308,7 @@ async def setnews(**params):
 
 @methods.add 
 async def getaccountbywallet(**params):
-	wallettable = NewsTable(dbname=settings.DBNAME, 
+	wallettable = StorageTable(dbname=settings.DBNAME, 
 							collection=settings.WALLET)
 	wallet = await wallettable.find(**params)
 	try:
@@ -213,5 +324,28 @@ async def updatelevel(**params):
 			"level":params["level"]}
 	updated = await table.update(**data)
 	return {i:updated[i] for i in updated if i != "_id"}
+
+
+@methods.add 
+async def insertoffer(**params):
+	offertable = StorageTable(dbname=settings.DBNAME,
+							collection=settings.OFFER)
+	result = await offertable.insert_offer(**params)
+	return result
+
+@methods.add 
+async def getoffer(**params):
+	offertable = StorageTable(dbname=settings.DBNAME,
+						collection=settings.OFFER)
+	result = await offertable.get_offer(**params)
+	return result
+
+@methods.add 
+async def removeoffer(**params):
+	offertable = StorageTable(dbname=settings.DBNAME,
+						collection=settings.OFFER)
+	result = await offertable.remove_offer(**params)
+	return result
+
 
 

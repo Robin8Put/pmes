@@ -11,18 +11,19 @@ from robin8_billing import robin8_billing
 import logging
 import settings
 from jsonrpcclient.http_client import HTTPClient
+from jsonrpcclient.tornado_client import TornadoClient
 
 contract_owner = 'qgh88fssi4JrkH8LLvkqvC7SzGxvyApYis'
 contract_owner_hex = 'fdc1ae05c161833cdf135863e332126e15d7568c'
-contract_address = '0e78155f8c503c6f6f97aa54cfdcecd250eda0d5'
+contract_address = '52b81892235027453bcdbc2ec25ec7253c531efc'
 decimals = 8
 
 
 api_pass = 'AP'
 
 billing = robin8_billing.Robin8_Billig("robin8_billing/billing")
-storageclient = HTTPClient(settings.storageurl)
-balanceclient = HTTPClient(settings.balanceurl)
+client_storage = TornadoClient(settings.storageurl)
+client_balance = TornadoClient(settings.balanceurl)
 
 def init_qtum():
     rpc_connection = AuthServiceProxy("http://%s:%s@127.0.0.1:8333" % ("qtumuser", "qtum2018"))
@@ -157,12 +158,12 @@ async def makecid(cus, owneraddr, description, price): #addr, blockid, secret):
 
     descr_fee = billing.estimate_set_descr_fee(len(description))
 
-    user = storageclient.request(method_name="getaccountbywallet", 
+    user = await client_storage.request(method_name="getaccountbywallet", 
                                 wallet=owneraddr)
     if "error" in user.keys():
         return user
 
-    balance = balanceclient.request(method_name="getbalance", uid=user["id"])
+    balance = await client_balance.request(method_name="getbalance", uid=user["id"])
 
     if balance[str(user["id"])] == "Not found":
         return {"error":404, "reason":"User not found in balance"}
@@ -174,7 +175,7 @@ async def makecid(cus, owneraddr, description, price): #addr, blockid, secret):
     if diff < 0:
         return {"error":403, "reason": "Balance is not enough."}
 
-    decbalance = balanceclient.request(method_name="decbalance", uid=user["id"], 
+    decbalance = await client_balance.request(method_name="decbalance", uid=user["id"], 
                                             amount=common_price)
 
     if "error" in decbalance.keys():
@@ -203,12 +204,12 @@ async def makecid(cus, owneraddr, description, price): #addr, blockid, secret):
 
 @methods.add
 async def setdescrforcid(cid, descr, owneraddr):#, addr, blockid, secret):
-    user = storageclient.request(method_name="getaccountbywallet", 
-                                wallet=buyer_addr)
+    user = await client_storage.request(method_name="getaccountbywallet", 
+                                wallet=owneraddr)
     if "error" in user.keys():
         return user
 
-    balance = balanceclient.request(method_name="getbalance", uid=user["id"])
+    balance = await client_balance.request(method_name="getbalance", uid=user["id"])
 
     if balance[str(user["id"])] == "Not found":
         return {"error":404, "reason":"User not found in balance"}
@@ -219,7 +220,7 @@ async def setdescrforcid(cid, descr, owneraddr):#, addr, blockid, secret):
     if int(balance[str(user["id"])]) - int(fee) < 0:
         return {"error":403, "reason":"Owner does not have enough balance."}
 
-    decbalance = balanceclient.request(method_name="decbalance", uid=user["id"], 
+    decbalance = await client_balance.request(method_name="decbalance", uid=user["id"], 
                                 amount=fee)
 
     if "error" in decbalance.keys():
@@ -254,12 +255,12 @@ async def last_access_string(cid):
 @methods.add
 async def changeowner(cid, new_owner, access_string):
 
-    user = storageclient.request(method_name="getaccountbywallet", 
+    user = await client_storage.request(method_name="getaccountbywallet", 
                                             wallet=new_owner)
     if "error" in user.keys():
         return user
 
-    balance = balanceclient.request(method_name="getbalance", 
+    balance = await client_balance.request(method_name="getbalance", 
                                             uid=user["id"])
     if balance[str(user["id"])] == "Not found":
         return {"error":404, "reason":"User not found in balance"}
@@ -269,7 +270,7 @@ async def changeowner(cid, new_owner, access_string):
     if int(balance[str(user["id"])]) - int(fee) < 0:
         return {"error":403, "reason":"New owner does not have enough balance."}
 
-    decbalance = balanceclient.request(method_name="decbalance", uid=user["id"], 
+    decbalance = await client_balance.request(method_name="decbalance", uid=user["id"], 
                                 amount=fee)
 
     if "error" in decbalance.keys():
@@ -285,7 +286,7 @@ async def changeowner(cid, new_owner, access_string):
     prev_owner_hex = r8_sc.getOwner(cid)[0][2:]
     prev_owner = qtum.fromhexaddress(prev_owner_hex)
 
-  
+    
 
     return {'result': result, 'cid': str(cid), 'new_owner': new_owner, 'access_string': access_string, 'prev_owner': prev_owner, 'contract_owner_hex': addr}
 
@@ -293,12 +294,12 @@ async def changeowner(cid, new_owner, access_string):
 @methods.add
 async def sellcontent(cid, buyer_addr, access_string):
 
-    user = storageclient.request(method_name="getaccountbywallet", 
+    user = await client_storage.request(method_name="getaccountbywallet", 
                                 wallet=buyer_addr)
     if "error" in user.keys():
         return user
 
-    balance = balanceclient.request(method_name="getbalance", uid=user["id"])
+    balance = await client_balance.request(method_name="getbalance", uid=user["id"])
 
     if balance[str(user["id"])] == "Not found":
         return {"error":404, "reason":"User not found in balance"}
@@ -308,7 +309,7 @@ async def sellcontent(cid, buyer_addr, access_string):
     if int(balance[str(user["id"])]) - int(fee) < 0:
         return {"error":403, "reason": "Balance is not enough."}
 
-    decbalance = balanceclient.request(method_name="decbalance", uid=user["id"], 
+    decbalance = await client_balance.request(method_name="decbalance", uid=user["id"], 
                                 amount=fee)
 
     if "error" in decbalance.keys():
@@ -332,17 +333,17 @@ async def sellcontent(cid, buyer_addr, access_string):
 async def setprice(cid, price, owneraddr):
     fee = billing.estimate_set_price_fee()
 
-    user = storageclient.request(method_name="getaccountbywallet", 
+    user = await client_storage.request(method_name="getaccountbywallet", 
                                 wallet=owneraddr)
     if "error" in user.keys():
         return user
 
-    balance = balanceclient.request(method_name="getbalance", uid=user["id"])
+    balance = await client_balance.request(method_name="getbalance", uid=user["id"])
 
     if balance[str(user["id"])] == "Not found":
         return {"error":404, "reason":"User not found in balance"}
     fee = fee / pow(10,8)
-    decbalance = balanceclient.request(method_name="decbalance", uid=user["id"], 
+    decbalance = await client_balance.request(method_name="decbalance", uid=user["id"], 
                                 amount=fee)
 
     if "error" in decbalance.keys():
@@ -375,6 +376,7 @@ async def make_offer(cid, buyer_addr, offer_price, buyer_access_string):
     r8_sc.set_send_params({'sender': contract_owner})
 
     result = r8_sc.makeOffer(cid, buyer_addr, offer_price, buyer_access_string)
+
 
     return {'result': result, 'cid': str(cid), 'offer_price': offer_price,
             'buyer_addr': buyer_addr, 'buyer_access_string': buyer_access_string}
