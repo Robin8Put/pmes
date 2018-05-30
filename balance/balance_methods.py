@@ -11,16 +11,14 @@ import settings
 
 
 
+
 @methods.add
 async def addaddr(address=None, coinid=None, uid=None):
     """ Adding wallet address to database """
-    try:
-        client = MotorClient()
-        db = client[settings.DBNAME]
-        balances = db[settings.BALANCE]
-    except:
-        return {"error":500,
-                "reason":"connection with database refused"}
+
+    client = MotorClient()
+    db = client[settings.DBNAME]
+    balances = db[settings.BALANCE]
 
     # check if required parameters exist
     if not all([address, coinid, uid]):
@@ -43,31 +41,35 @@ async def addaddr(address=None, coinid=None, uid=None):
         "uid": uid,
     }
     res = await balances.insert_one(new_balance)
-    client.close()
     return {"created":"ok"}
         
 
 @methods.add
 async def incbalance(amount=0, uid=None, address=None):
     """ Increments users balance """
-    try:
-        client = MotorClient()
-        db = client[settings.DBNAME]
-        balances = db[settings.BALANCE]
-    except:
-        return {"error":500,
-                "reason":"connection with database refused"}
+    client = MotorClient()
+    db = client[settings.DBNAME]
+    balances = db[settings.BALANCE]
     # Check if required fields 
+    logging.debug("[+] -- Incbalance debugging")
+    logging.debug(uid)
+    logging.debug(amount)
     if not uid and not address:
         return {"error":400,
                 "reason":"Mised required fields or amount is not digit"}
     # Check if avount
-    amount = int(amount * pow(10,8))
+    try:
+        amount = float(amount) * pow(10,8)
+    except:
+        return {"error":400, "error": "Unrecognized amount type"}
+
     if not amount:
         return {"error":400, "reason":"Funds is zero"}
+    
     # Get account by uid or address
     if uid:
-        balance = await balances.find_one({"uid": uid})
+        balance = await balances.find_one({"uid": int(uid)})
+        logging.debug(balance)
     elif address:
         balance = await balances.find_one({"address": address})
     # Increment balance if accoutn exists
@@ -85,7 +87,7 @@ async def incbalance(amount=0, uid=None, address=None):
         return {"error":500,
                 "reason":"While incrementing balance current user was not found"}
     if int(account["level"]) == 2: 
-        client_storage.request(method_name="updatelevel",
+        await client_storage.request(method_name="updatelevel",
                                 **{"id":account["id"], "level":3})
     # Send mail to user
     client_email = TornadoClient(settings.emailurl)
@@ -100,7 +102,6 @@ async def incbalance(amount=0, uid=None, address=None):
     # Return result
     result = {i:result[i] for i in result if i != "_id"}
     result["amount"] = int(result["amount"]) / pow(10,8)
-    client.close()
     return result
 
 
@@ -108,25 +109,25 @@ async def incbalance(amount=0, uid=None, address=None):
 @methods.add
 async def decbalance(amount=0, uid=None, address=None):
     """ Decrements users balance """
-    try:
-        client = MotorClient()
-        db = client[settings.DBNAME]
-        balances = db[settings.BALANCE]
-    except:
-        return {"error":500,
-                "reason":"connection with database refused"}
+    client = MotorClient()
+    db = client[settings.DBNAME]
+    balances = db[settings.BALANCE]
     # Check if required fields exist
     if not uid and not address:
         return {"error":400,
                 "reason":"Missed required fields or amount is not digit"}
     # check if amount is not 0
-    amount = int(amount * pow(10,8))
+    try:
+        amount = float(amount) * pow(10,8)
+    except:
+        return {"error":400, "error": "Unrecognized amount type"}
+
     if not amount:
         return {"error":400, 
                 "reason":"Funds is zero"}
     # Get account
     if uid:
-        balance = await balances.find_one({"uid": uid})
+        balance = await balances.find_one({"uid": int(uid)})
     elif address:
         balance = await balances.find_one({"address": address})
     # Check if balance is enough
@@ -140,7 +141,6 @@ async def decbalance(amount=0, uid=None, address=None):
     # Return balance
     balance = {i:result[i] for i in result if i != "_id"}
     balance["amount"] = int(balance["amount"]) / pow(10,8)
-    client.close()
     return balance
 
 
@@ -148,13 +148,9 @@ async def decbalance(amount=0, uid=None, address=None):
 @methods.add
 async def getbalance(address=None, uid=None):
     """ Returns users balance """
-    try:
-        client = MotorClient()
-        db = client[settings.DBNAME]
-        balances = db[settings.BALANCE]
-    except:
-        return {"error":500,
-                "reason":"connection with database refused"}
+    client = MotorClient()
+    db = client[settings.DBNAME]
+    balances = db[settings.BALANCE]
     # Check if required parameters exist
     if not address and not uid:
         return {"error":400,
@@ -169,7 +165,6 @@ async def getbalance(address=None, uid=None):
                 "reason":"Current address does not exist"}
     # convert balance to human readable result
     digit = int(balance["amount"]) / pow(10,8)
-    client.close()
     return {address or uid:digit}
    
 

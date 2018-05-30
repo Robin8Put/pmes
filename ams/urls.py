@@ -12,5 +12,6 @@ context = dict(client_storage=TornadoClient(settings.storageurl),
 ams_router = tornado.web.Application([
         	(settings.ENDPOINTS["ams"], ams.views.AMSHandler, context),
         	(settings.ENDPOINTS["account"], ams.views.AccountHandler, context),
-        	(settings.ENDPOINTS["news"], ams.views.NewsHandler, context)], 
+        	(settings.ENDPOINTS["news"], ams.views.NewsHandler, context),
+        	(r"/api/accounts/(\d+)/balance", ams.views.BalanceHandler, context)], 
                 debug=True)

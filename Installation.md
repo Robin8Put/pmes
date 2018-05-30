@@ -64,6 +64,8 @@ source venv/bin/activate
 pip3 install -r requirements.txt
 ```
 
+Add [bip32keys](bip32keys/bip32keys), [qtum_utils](bip32keys/qtum_utils) and [tornado_components](tornado_components) directories to the `venv/lib/python3.6/site-packages`. (Will be in the pip shortly)
+
 # Running servers
 
 Run Mongo DB:
@@ -130,7 +132,7 @@ python3 pdms/qtum_bridge/main.py
 
 ```bash
 source venv/bin/activate
-python3 email_new.py start
+python3 mail/email_new.py start
 python3 mail/index.py
 ```
 

@@ -7,8 +7,8 @@ client = TornadoClient('http://localhost:8080/')
 # template for parameters
 data = 100
 list_new = "On your account added {} coin".format(data)
-array = {"to": "kontorchuk@gmail.com",
-         "subject": "Robin8",
+array = {"to": "example_to@gmail.com",
+         "subject": "subject",
          "optional": list_new,
          }
 # method api
