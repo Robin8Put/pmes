@@ -4,6 +4,8 @@ This API provides access to information of Profile Management EcoSystem (PMES).
 
 The API uses the REST API standard.
 
+Now host is here: http://188.165.240.143.
+
 API-methods:
 
 - [Create new account](#create-new-account)

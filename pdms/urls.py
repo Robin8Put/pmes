@@ -1,13 +1,14 @@
 from jsonrpcclient.tornado_client import TornadoClient
+from tornado_components.web import RobustTornadoClient
 import tornado.web
 import settings
 from pdms import views
 
 
-context = dict(client_storage=TornadoClient(settings.storageurl), 
-               client_balance=TornadoClient(settings.balanceurl),
-               client_email=TornadoClient(settings.emailurl),
-               client_bridge=TornadoClient(settings.bridgeurl))
+context = dict(client_storage=RobustTornadoClient(settings.storageurl), 
+               client_balance=RobustTornadoClient(settings.balanceurl),
+               client_email=RobustTornadoClient(settings.emailurl),
+               client_bridge=RobustTornadoClient(settings.bridgeurl))
 
 
 pdms_router = tornado.web.Application([

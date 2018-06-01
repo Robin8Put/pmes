@@ -14,13 +14,17 @@ import tornado_components.web
 
 
 # Locals
-from . import models
 import settings
 from tornado_components.timestamp import get_time_stamp
 from qtum_utils.qtum import Qtum
 
 
 class BalanceHandler(tornado.web.RequestHandler):
+
+	def set_default_headers(self):
+		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+		self.set_header('Access-Control-Allow-Methods', 'POST, GET, PUT, OPTIONS')
 
 
 	def initialize(self, client_storage, client_balance, client_email):
@@ -45,10 +49,18 @@ class BalanceHandler(tornado.web.RequestHandler):
 												uid=uid, amount=amount)
 		self.write(balance)
 
+	def options(self):
+		self.write(json.dumps(["GET", "POST"]))
+
 
 class AMSHandler(tornado_components.web.ManagementSystemHandler):
 	"""Account Management System Handler
 	"""
+	def set_default_headers(self):
+		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+		self.set_header('Access-Control-Allow-Methods', 'POST, GET, PUT, OPTIONS')
+
 	def initialize(self, client_storage, client_balance, client_email):
 		self.client_storage = client_storage
 		self.client_balance = client_balance
@@ -74,8 +86,8 @@ class AMSHandler(tornado_components.web.ManagementSystemHandler):
 
 		# Save data at storage database
 		data = { k: self.get_argument(k) for k in self.request.arguments}
-		new_account = await models.create_account(self.client_storage, data)
-	
+		new_account = await self.client_storage.request(method_name="createaccount",
+															**data)
 		if "error" in new_account.keys():
 			# Raise error if the one does exist
 			self.set_status(new_account["error"])
@@ -124,9 +136,18 @@ class AMSHandler(tornado_components.web.ManagementSystemHandler):
 		#await self.client_email.request(method_name="sendmail", **email_data)
 
 		self.write(new_account)
+
+
+	def options(self):
+		self.write(json.dumps(["POST"]))
 		
 
 class AccountHandler(tornado_components.web.ManagementSystemHandler):
+
+	def set_default_headers(self):
+		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+		self.set_header('Access-Control-Allow-Methods', 'POST, GET, PUT, OPTIONS')
 
 	def initialize(self, client_storage, client_balance, client_email):
 		self.client_storage = client_storage
@@ -156,10 +177,19 @@ class AccountHandler(tornado_components.web.ManagementSystemHandler):
 			# Return account data
 			self.write(response)
 
+	def options(self):
+		self.write(json.dumps(["GET"]))
 
 
 
 class NewsHandler(tornado_components.web.ManagementSystemHandler):
+
+
+	def set_default_headers(self):
+		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+		self.set_header('Access-Control-Allow-Methods', 'POST, GET, PUT, OPTIONS')
+
 
 	def initialize(self, client_storage, client_balance, client_email):
 		self.client_storage = client_storage
@@ -189,4 +219,8 @@ class NewsHandler(tornado_components.web.ManagementSystemHandler):
 				self.set_status(error_code)
 				self.write(response)
 				raise tornado.web.Finish
+
+
+	def options(self):
+		self.write(json.dumps(["GET"]))
 

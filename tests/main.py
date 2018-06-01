@@ -330,8 +330,6 @@ def make_offer_from_buyer_to_seller_with_price(cid, price):
 	print("Request to url: " + url)
 	request = requests.post(url, data=data)
 	print(request.text)
-	
-
 	print("-----------------------------------------------------------------------")
 
 
@@ -362,7 +360,7 @@ def accept_offer_from_buyer(cid, suid, buid):
 						"/api/blockchain/%s/deal" % public_key)
 	print("Request to: " + url)
 	print("\nBalances before deal.")
-	client = TornadoClient(settings.balanceurl)
+	client = HTTPClient(settings.balanceurl)
 	sellerbalance = client.request(method_name="getbalance", uid=suid)
 	buyerbalance = client.request(method_name="getbalance", uid=buid)
 
@@ -372,8 +370,8 @@ def accept_offer_from_buyer(cid, suid, buid):
 	print("\nBalances after deal.")
 	sellerbalance = client.request(method_name="getbalance", uid=suid)
 	buyerbalance = client.request(method_name="getbalance", uid=buid)
-	print(sellerbalance[str(suid)])
-	print(buyerbalance[str(buid)])
+	print(sellerbalance)
+	print(buyerbalance)
 
 
 ################################################################################
@@ -457,12 +455,12 @@ if __name__ == '__main__':
 	client.pmes.offer.remove()
 	client.pmes.balance.remove()
 	client.pmes.autoincrement.remove()
-
 	"""
-	cid = 4
+
+	cid = 56
 	price=4
 	inc = 20
-	hash_="QmYE4akDgupM9uddFnvPytFsmPQd3Vx586VyBVbVLfZyLd"
+	hash_="QmZfDWzkzyKESQ45y9TxvhH44gA3umNr2khUhZtU5VxkbK"
 
 	#create_account_with_valid_data()
 	#increment_balance(inc, 1)
@@ -473,14 +471,14 @@ if __name__ == '__main__':
 	#write_invalid_data_to_blockchain()
 	#get_data_from_blockchain(hash_=hash_)
 
-	#setprice_for_content(cid=cid, price=price)
+	#setprice_for_content(cid=cid, price=2)
 	#create_buyer_with_valid_data()
-	#increment_balance(inc, 3)
-	make_offer_from_buyer_to_seller(cid=cid)
-	#make_offer_from_buyer_to_seller_with_price(cid=cid, price=13)
+	#increment_balance(inc, 2)
+	#make_offer_from_buyer_to_seller(cid=cid)
+	#make_offer_from_buyer_to_seller_with_price(cid=cid, price=2)
 	#getaccountdata()
-	#get_news_for_seller()
-	#accept_offer_from_buyer(cid,2,3)
+	get_news_for_seller()
+	#accept_offer_from_buyer(cid,1,2)
 	#reject_offer_by_owner(cid)
 	#reject_offer_by_buyer(cid)
 	#get_all_content()

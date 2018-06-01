@@ -1,12 +1,13 @@
 from jsonrpcclient.tornado_client import TornadoClient
+from tornado_components.web import RobustTornadoClient
 import tornado.web
 import settings
 import ams.views
 
 
-context = dict(client_storage=TornadoClient(settings.storageurl), 
-               client_balance=TornadoClient(settings.balanceurl),
-               client_email=TornadoClient(settings.emailurl))
+context = dict(client_storage=RobustTornadoClient(settings.storageurl), 
+               client_balance=RobustTornadoClient(settings.balanceurl),
+               client_email=RobustTornadoClient(settings.emailurl))
 
 
 ams_router = tornado.web.Application([

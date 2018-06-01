@@ -16,6 +16,13 @@ import settings
 class AllContentHandler(tornado_components.web.ManagementSystemHandler):
 	"""Handles all blockchain content requests
 	"""
+
+	def set_default_headers(self):
+		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+		self.set_header('Access-Control-Allow-Methods', 'POST, GET, PUT, OPTIONS')
+
+
 	def initialize(self, client_bridge, client_storage, client_balance, client_email):
 		self.client_bridge = client_bridge
 		self.client_storage = client_storage
@@ -52,6 +59,9 @@ class AllContentHandler(tornado_components.web.ManagementSystemHandler):
 				counter = counter + 1
 		self.write(json.dumps(container))
 
+	def options(self):
+		self.write(json.dumps(["GET"]))
+
 
 
 
@@ -66,8 +76,13 @@ class ContentHandler(tornado_components.web.ManagementSystemHandler):
 		self.client_balance = client_balance
 		self.client_email = client_email
 
-	
-	async def get(self, public_key):
+	def set_default_headers(self):
+		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+		self.set_header('Access-Control-Allow-Methods', 'POST, GET, PUT, OPTIONS')
+
+
+	async def get(self, public_key=None):
 		"""Returns content from blockchain
 		Accepts:
 			- hash or cid or (hash and cid)
@@ -114,7 +129,7 @@ class ContentHandler(tornado_components.web.ManagementSystemHandler):
 		
 
 
-	async def post(self, public_key):
+	async def post(self, public_key=None):
 		"""Writes content to blockchain
 
 		Accepts:
@@ -164,10 +179,21 @@ class ContentHandler(tornado_components.web.ManagementSystemHandler):
 			self.write(response)
 
 
+	def options(self):
+		self.write(json.dumps(["GET", "POST"]))
+
+
 
 class DescriptionHandler(tornado_components.web.ManagementSystemHandler):
 	"""Handles blockchain content description requests
 	"""
+
+
+	def set_default_headers(self):
+		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+		self.set_header('Access-Control-Allow-Methods', 'POST, GET, PUT, OPTIONS')
+
 
 	def initialize(self, client_bridge, client_storage, client_balance, client_email):
 		self.client_bridge = client_bridge
@@ -188,6 +214,7 @@ class DescriptionHandler(tornado_components.web.ManagementSystemHandler):
 
 		# Send requests to bridge
 		response = await self.client_bridge.request(method_name="descrbycid", cid=cid)
+		logging.debug(response)
 		self.write(response)
 
 
@@ -226,12 +253,23 @@ class DescriptionHandler(tornado_components.web.ManagementSystemHandler):
 			self.write(request)
 			raise tornado.web.Finish
 		self.write(request)
+
+
+	def options(self):
+		self.write(json.dumps(["GET", "POST"]))
 	
 
 
 class PriceHandler(tornado_components.web.ManagementSystemHandler):
 	"""Handles content price requests
 	"""
+
+
+	def set_default_headers(self):
+		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+		self.set_header('Access-Control-Allow-Methods', 'POST, GET, PUT, OPTIONS')
+
 
 	def initialize(self, client_bridge, client_storage, client_balance, client_email):
 		self.client_bridge = client_bridge
@@ -289,6 +327,9 @@ class PriceHandler(tornado_components.web.ManagementSystemHandler):
 								cid=cid, price=price, owneraddr=response["owneraddr"])
 		self.write(response)
 
+	def options(self):
+		self.write(json.dumps(["GET", "POST"]))
+
 
 
 class OfferHandler(tornado_components.web.ManagementSystemHandler):
@@ -301,7 +342,13 @@ class OfferHandler(tornado_components.web.ManagementSystemHandler):
 		self.client_email = client_email
 
 
-	async def post(self, public_key):
+	def set_default_headers(self):
+		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+		self.set_header('Access-Control-Allow-Methods', 'POST, GET, PUT, OPTIONS')
+
+
+	async def post(self, public_key=None):
 		"""Creates new offer
 
 		Accepts:
@@ -316,7 +363,7 @@ class OfferHandler(tornado_components.web.ManagementSystemHandler):
 		message = json.loads(self.get_body_argument("message"))
 		buyer_access_string = message.get("buyer_access_string")
 		cid = message.get("cid")
-		price = message.get("offer_price")
+		price = message.get("price")
 		# Get cid price from bridge
 		if not price:
 			price = await self.client_bridge.request(method_name="getprice", cid=cid)
@@ -359,24 +406,13 @@ class OfferHandler(tornado_components.web.ManagementSystemHandler):
 		# Get difference with balance and price
 		difference = float(balance[str(account["id"])]) - float(price)
 		if difference >= 0:
-			# Send news for seller
-			newsdata = {
-				"event_type":"made offer",
-				"cid":cid,
-				"offer_price":price,
-				"access_string":buyer_access_string,
-				"buyer_pubkey":public_key,
-				"buyer_addr":Qtum.public_key_to_hex_address(public_key),
-				"owneraddr":owneraddr
-			}
-			await self.client_storage.request(method_name="setnews", **newsdata)
 
 			
 			# Make offer
 			buyer_addr = Qtum.public_key_to_hex_address(public_key)
 			offer_data = {
 				"cid":cid,
-				"offer_price":price,
+				"price":price,
 				"buyer_addr": buyer_addr,
 				"buyer_access_string":buyer_access_string
 			}
@@ -394,17 +430,11 @@ class OfferHandler(tornado_components.web.ManagementSystemHandler):
 							"reason":"Sellers account was not found"})
 				raise tornado.web.Finish
 			else:
-				emaildata = {
-					"to": email,
-					"subject": "Robin8 support",
-         			"optional": "You`ve got a new offer from %s" % public_key
-         	
-				}
-				#await self.client_email.request(method_name="sendmail", **emaildata)
+				
 				# Insert offer to the database
 				await self.client_storage.request(method_name="insertoffer",
 									cid=cid, price=price, buyer_addr=buyer_addr)
-				# Return response from bridge
+
 			self.write(response)
 		else:
 			# If Insufficient funds
@@ -414,7 +444,7 @@ class OfferHandler(tornado_components.web.ManagementSystemHandler):
 
 
 
-	async def put(self, public_key):
+	async def put(self, public_key=None):
 		"""Reject offer
 
 		Accepts:
@@ -489,6 +519,8 @@ class OfferHandler(tornado_components.web.ManagementSystemHandler):
 			self.write({"error": 403, "reason":"Forbidden"})
 
 
+	def options(self):
+		self.write(json.dumps(["PUT", "POST"]))
 
 
 class DealHandler(tornado_components.web.ManagementSystemHandler):
@@ -502,33 +534,36 @@ class DealHandler(tornado_components.web.ManagementSystemHandler):
 		self.client_email = client_email
 
 
-	async def post(self, public_key):
-		"""Accepting offer
+	def set_default_headers(self):
+		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+		self.set_header('Access-Control-Allow-Methods', 'POST, GET, PUT, OPTIONS')
+
+	async def post(self, public_key=None):
+		"""Accepting offer by buyer
 
 		Function accepts:
 			- cid
 			- buyer access string
 			- buyer public key
 			- seller public key
-
 		"""
 		super().verify()
-		
 		# Check if message contains required data
 		message = json.loads(self.get_body_argument("message"))
 		buyer_access_string = message.get("buyer_access_string")
 		cid = message.get("cid")
 		buyer_pubkey = message.get("buyer_pubkey")
-		
+
+		# check passes data
 		if not all([buyer_access_string, cid, buyer_pubkey]):
 			self.set_status(400)
 			self.write({"error":400, "reason":"Missed required fields"})
 			raise tornado.web.Finish
 
-		# Check if public keys exists
+		# Check if accounts exists
 		seller_account = await self.client_storage.request(method_name="getaccountdata", 
 										public_key=public_key)
-	
 		try:
 			error_code = seller_account["error"]
 		except:
@@ -558,30 +593,20 @@ class DealHandler(tornado_components.web.ManagementSystemHandler):
 
 		# Check if current offer exists
 		offer = await self.client_storage.request(method_name="getoffer",
-			cid=cid, buyer_addr=Qtum.public_key_to_hex_address(public_key))
-		if "cid" in offer.keys():
-			self.set_status(403)
-			self.write({"error":403,
-						"reason":"Current offer already exists"})
+			cid=cid, buyer_addr=Qtum.public_key_to_hex_address(buyer_pubkey))
+
+		if "error" in offer.keys():
+			self.set_status(offer["error"])
+			self.write(offer)
 			raise tornado.web.Finish
 
 		buyer_access_string = Qtum.to_compressed_public_key(buyer_access_string)
 
-		
-		#Get balance
+		#Get buyers balance
 		balance = await self.client_balance.request(method_name="getbalance", 
 										uid=buyer_account["id"])
-
-		# Get cid price from bridge
-		price = await self.client_bridge.request(method_name="getprice", cid=cid)
-		if not price:
-			self.set_status(500)
-			self.write({"error":500, 
-						"reason":"Can not sell %s. The price is 0" % str(cid)})
-			raise tornado.web.Finish
-
 		# Get difference with balance and price
-		difference = float(balance[str(buyer_account["id"])]) - float(price)
+		difference = float(balance[str(buyer_account["id"])]) - float(offer["price"])
 		if difference >= 0:
 			# Change content owner
 			chownerdata = {
@@ -615,14 +640,13 @@ class DealHandler(tornado_components.web.ManagementSystemHandler):
 			else:
 				# Increment and decrement balances of seller and buyer
 				await self.client_balance.request(method_name="decbalance", 
-									uid=buyer_account["id"], amount=price)
+									uid=buyer_account["id"], amount=offer["price"])
 				await self.client_balance.request(method_name="incbalance", 
-									uid=seller_account["id"], amount=price)
+									uid=seller_account["id"], amount=offer["price"])
 
 				# Remove offer from database
-				await self.client_storage.request(method_name="removeoffer",
-						cid=cid, price=price, 
-						buyer_addr=Qtum.public_key_to_hex_address(public_key))
+				await self.client_storage.request(method_name="removeoffer",cid=cid,
+						buyer_addr=Qtum.public_key_to_hex_address(buyer_pubkey))
 				
 				self.write({**sell, **chown})
 				#self.write(sell)
@@ -630,3 +654,7 @@ class DealHandler(tornado_components.web.ManagementSystemHandler):
 			# If Insufficient funds
 			self.set_status(402)
 			self.write({"error":402, "reason":"Insufficient funds"})
+
+
+	def options(self):
+		self.write(json.dumps(["POST"]))

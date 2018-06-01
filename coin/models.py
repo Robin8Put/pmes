@@ -1,23 +1,22 @@
+# Builtins
+import json
+import logging
+
+# Third-party
 import pymongo
-from time import time
+import time
 
 
 class Table(object):
     """Custom driver for writing data to mongodb
-    By default database name is 'pmes',
-             collection name is 'email'
-    Methods:
-        insert - create new documents. Get id and data for update
-        find - find id for input data
-        read - find data for input id
-        update - update documents
-        delete - delete documents
+    By default database name is 'profile_management_system',
+            collection name is 'history'
     """
 
     def __init__(self, db_name=None, collection=None):
         # Set database parameters
         if not db_name:
-            self.db_name = "pmes"
+            self.db_name = "profile_management_system"
         else:
             self.db_name = db_name
         if not collection:
@@ -29,25 +28,24 @@ class Table(object):
 
         self.database = self.client[self.db_name]
 
-        # Set collection name
+        # Set collection nsme
         self.email = self.database[self.collection]
 
-    def insert(self, id=None, **data):
-        # insert - create new documents. Get id and data for update
+    def insert(self, id = None, **data):
         try:
-            if id:
-                data.update({"id": id})
-                if self.email.find_one({"id": id}):
-                    return "Denied"
-            insertedId = self.email.insert_one(data).inserted_id
-            return "Success"
+            if self.email.find_one({"id": id}):
+                return {2: "Denied"}
+            else:
+                if id:
+                    data.update({"id": id})
+                self.email.insert_one(data)
+                return {0: "Success"}
         except:
-            return "Failed"
+            return {1: "Failed"}
 
     def find(self, data=None):
-        # find - find id for input data
         if not data:
-            return "Missing data"
+            return {3: "Missing data"}
         if self.email.find_one(data):
             dict_data = self.email.find_one(data)
             try:
@@ -56,49 +54,57 @@ class Table(object):
                 return dict_data
 
     def read(self, *ids):
-        # read - find data for input id
-        list_dict = []
-        for id in ids:
-            if self.email.find_one({"id": id}):
-                for find_data in self.email.find({"id": id}):
-                    list_dict += [find_data]
-        return list_dict
+        if None not in ids:
+            list_dict = []
+            for i in ids:
+                if self.email.find_one({"id": i}):
+                    for j in self.email.find({"id": i}):
+                        list_dict += [j]
+            return list_dict
+        else:
+            return [{3: "Missing id"}]
 
     def update(self, id=None, **new_data):
-        # update - update documents
         data = {"id": id}
         if not id:
-            return "Missing id"
+            return {3: "Missing id"}
         elif self.email.find_one(data):
             self.email.update_one(data, {"$set": new_data})
-            return "Success"
+            return {0: "Success"}
         else:
-            return "Denied"
+            return {2: "Denied"}
 
     def delete(self, id=None):
-        # delete - delete documents
         if not id:
-            return "Missing data"
+            return {3: "Missing data"}
         if self.email.find_one({"id": id}):
             self.email.delete_one({"id": id})
-            return "Success"
+            return {0: "Success"}
         else:
-            return "Not found"
+            return {4: "Not found"}
 
     def pop_100el(self):
-        # get 100 last documents
         mass = []
-        find_new = self.email.find({"time": {"$lt": time()}})
-        for mail in find_new[:100]:
-            mass += [mail]
-            self.email.find_one_and_delete(mail)
+        for i in self.email.find({"time": {"$lt": time.time()}})[:100]:
+            mass += [i]
+            self.email.find_one_and_delete(i)
         return mass
 
-    def count(self, data=None):
-        # get count documents for data
+    def count(self, data):
         return self.email.find(data).count()
 
     def show_db(self):
-        # print all data from db(for debugging)
+        #count = 0
         for i in self.email.find():
+            #count += 1
             print(i)
+        #print(count)
+
+
+if __name__ == "__main__":
+    err = {"a": "z"}
+    db = Table()
+    db.insert(err)
+    print(db.insert({"a": "r"}, 13))
+    db.show_db()
+    print(db.read((13,)))

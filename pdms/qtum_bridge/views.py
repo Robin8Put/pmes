@@ -30,33 +30,25 @@ def validate_params(params):
 
 class MainHandler(tornado.web.RequestHandler):
     async def get(self):
-        print('get')
         method = self.get_query_argument('method')
         params = {k: self.get_argument(k) for k in self.request.arguments if k != 'method'}
         try:
             validate_params(params)
-
-            print(params)
             response = await methods.dispatch({"jsonrpc": "2.0", "method": method, 'params': params, "id": "null"})
-            print(response)
             self.write(response)
         except Exception as e:
             data = json.dumps({"jsonrpc": "2.0", "result": {"error": str(e)}, "id": "null"})
-            print(data)
             self.set_header('Content-type', 'application/json; charset=UTF-8')
             self.write(data)
 
     async def post(self):
         data = json.loads(self.request.body.decode())
         params = data.get('params', None)
-        print(data, 'test', params)
         try:
             validate_params(params)
-            print('11111111111111')
             response = await methods.dispatch(data)
             self.write(response)
         except Exception as e:
-            print('zhopa')
             data = json.dumps({"jsonrpc": "2.0", "result": {"error": str(e)}, "id": "null"})
             self.set_header('Content-type', 'application/json; charset=UTF-8')
             self.write(data)
