@@ -370,15 +370,21 @@ async def getprice(cid):
 
 
 @methods.add
-async def make_offer(cid, buyer_addr, offer_price, buyer_access_string):
+async def make_offer(cid, buyer_addr, price, buyer_access_string):
+    logging.debug("[+] -- Logging make offer")
+    logging.debug(cid)
+    logging.debug(buyer_addr)
+    logging.debug(price)
+    logging.debug(buyer_access_string)
+
 
     r8_sc = Robin8_SC(contract_address)
     r8_sc.set_send_params({'sender': contract_owner})
+    logging.debug("Start result")
+    result = r8_sc.makeOffer(cid, buyer_addr, price, buyer_access_string)
 
-    result = r8_sc.makeOffer(cid, buyer_addr, offer_price, buyer_access_string)
-
-
-    return {'result': result, 'cid': str(cid), 'offer_price': offer_price,
+    logging.debug(result)
+    return {'result': result, 'cid': str(cid), 'offer_price': price,
             'buyer_addr': buyer_addr, 'buyer_access_string': buyer_access_string}
 
 
