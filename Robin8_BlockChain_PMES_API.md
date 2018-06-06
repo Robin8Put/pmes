@@ -12,9 +12,7 @@ API-methods:
 
 - [Get account data](#get-account-data)
 
-- [Get last news for the account](#get-last-news-for-the-account)
-
-- [Get content from the blockchain](#get-content-from-the-blockchain)
+- [Get all news for the account](#get-all-news-for-the-account)
 
 - [Post content to the blockchain](#post-content-to-the-blockchain)
 
@@ -28,6 +26,8 @@ API-methods:
 
 - [Make offer for buying the content](#make-offer-for-buying-the-content)
 
+- [Make offer for buying the content with proposed price](#make-offer-for-buying-the-content-with-proposed-price)
+
 - [Accept offer](#accept-offer)
 
 - [Reject offer from buyer](#reject-offer-from-buyer)
@@ -35,6 +35,12 @@ API-methods:
 - [Reject offer from owner](#reject-offer-from-owner)
 
 - [Get all content](#get-all-content)
+
+- [Get all content which post user](#get-all-content-which-post-user)
+
+- [Get all offers which made user](#get-all-offers-which-made-user)
+
+- [Get all offers received for content by cid](#get-all-offers-received-for-content-by-cid)
 
 The following is a description of the API-methods:
 
@@ -161,7 +167,7 @@ The following is a description of the API-methods:
 ```
 
 
-## Get last news for the account
+## Get all news for the account
 
 * **URL:** `/api/accounts/[public_key]/news`
 
@@ -191,7 +197,7 @@ The following is a description of the API-methods:
 
     When user send offer to buy content `event_type` is 'made offer'.
 
-    `access_string` is equal to `buyer_pubkey`
+    `access_string` is equal to `buyer_pubkey` now.
 
 ```bash
     [
@@ -210,34 +216,6 @@ The following is a description of the API-methods:
 
     News about actions with user content.
 
-
-## Get content from the blockchain
-
-* **URL:** `/api/blockchain/[public_key]/content`
-
-* **Method:** `GET`
-
-* **URL params**
-
-    `[json]`
-
-    `hash=[string]`
-
-* **Body params**
-
-    None
-
-* **Sample response**
-
-    `[json]`
-
-```bash
-    {
-        'cid': '24', 
-        'data': 'wqsdsd', 
-        'owner': '9df6a9ad7ac301098640a1b3a4968c2985ce7afc'
-    }
-```
 
 ## Post content to the blockchain
 
@@ -482,6 +460,49 @@ The following is a description of the API-methods:
     }
 ```
 
+## Make offer for buying the content with proposed price
+
+* **URL:** `/api/blockchain/[public_key]/offer`
+
+* **Method:** `POST`
+
+* **URL params**
+
+    'public_key=[string]'
+
+* **Body params**
+
+    `[json]`
+
+```bash
+    {
+        "public_key": [string],
+        "message": {
+            "timestamp": [string],
+            "cid": [string],
+            "buyer_access_string": [string],
+            "price": [float]
+        },
+        "signature": [string]
+    }
+```
+
+* **Sample response**
+
+    `[json]`
+
+```bash
+    {
+        'result': {
+            'txid': [string], 
+            'sender': [string], 
+            'hash160': [string]
+        }, 'cid': [string], 
+        'buyer_addr': [string], 
+        'buyer_access_string': [string]
+    }
+```
+
 
 ## Accept offer
 
@@ -672,3 +693,133 @@ The following is a description of the API-methods:
 * **Description**
 
     Get all content that present in the system
+
+
+## Get all content which post user
+
+* **URL:** `/api/accounts/[public_key]/contents`
+
+* **Method:** `GET`
+
+* **URL params**
+
+    `[json]`
+
+```bash
+    {
+        "public_key": [string],
+        "message": {
+            "timestamp": [string]
+        },
+        "signature": [string]
+    }
+```
+
+* **Body params**
+
+    None
+
+* **Sample response**
+
+    `[json]`
+
+```bash
+    [
+        {
+            'cid': [string], 
+            'description': [string], 
+            'price': [float], 
+            'owner': [string], 
+            'owneraddr': [string]
+        },
+        ...
+    ]
+```
+
+## Get all offers which made user
+
+* **URL:** `/api/accounts/[public_key]/output-offers`
+
+* **Method:** `GET`
+
+* **URL params**
+
+    `[json]`
+
+```bash
+    {
+        "public_key": [string],
+        "message": {
+            "timestamp": [string]
+        },
+        "signature": [string]
+    }
+```
+
+* **Body params**
+
+    None
+
+* **Sample response**
+
+    `[json]`
+
+```bash
+    [
+        {
+            'cid': [string],
+            'buyer_price': [float],
+            'seller_price': [float],
+            'buyer_addr': [string], 
+            'buyer_pubkey': [string]
+        },
+        ...
+    ]
+```
+
+* **Description**
+
+    Get all offers which made user to buy access or rights of contents
+
+
+## Get all offers received for content by cid
+
+* **URL:** `/api/accounts/[public_key]/input-offers`
+
+* **Method:** `GET`
+
+* **URL params**
+
+    `[json]`
+
+```bash
+    {
+        "public_key": [string],
+        "message": {
+            "cid": [string]
+            "timestamp": [string]
+        },
+        "signature": [string]
+    }
+```
+
+* **Body params**
+
+    None
+
+* **Sample response**
+
+    `[json]`
+
+```bash
+    [
+        {
+            'cid': [string],
+            'buyer_price': [float],
+            'seller_price': [float],
+            'buyer_addr': [string], 
+            'buyer_pubkey': [string]
+        },
+        ...
+    ]
+```
