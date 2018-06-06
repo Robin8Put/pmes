@@ -12,11 +12,11 @@ context = dict(client_storage=RobustTornadoClient(settings.storageurl),
 
 
 pdms_router = tornado.web.Application([
-        	(settings.ENDPOINTS["blockchain"], views.ContentHandler, context),
-            (settings.ENDPOINTS["allcontent"], views.AllContentHandler, context),
-        	(settings.ENDPOINTS["content"], views.ContentHandler, context),
+        	(settings.ENDPOINTS["blockchain"],  views.ContentHandler,     context),
+          (settings.ENDPOINTS["allcontent"],  views.AllContentHandler,  context),
+        	(settings.ENDPOINTS["content"],     views.ContentHandler,     context),
         	(settings.ENDPOINTS["description"], views.DescriptionHandler, context),
-            (settings.ENDPOINTS["price"], views.PriceHandler, context),
-            (settings.ENDPOINTS["deal"], views.DealHandler, context),
-            (settings.ENDPOINTS["offer"], views.OfferHandler, context)], 
+          (settings.ENDPOINTS["price"],       views.PriceHandler,       context),
+          (settings.ENDPOINTS["deal"],        views.DealHandler,        context),
+          (settings.ENDPOINTS["offer"],       views.OfferHandler,       context)], 
                 debug=True)

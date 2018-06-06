@@ -36,6 +36,12 @@ ENDPOINTS = {
 	"account": r"/api/accounts/([a-zA-Z0-9]+?)",
 	# GET news
 	"news": r"/api/accounts/([a-zA-Z0-9]+?)/news",
+	# GET all users offers
+	"output_offers": r"/api/accounts/([a-zA-Z0-9]+?)/output-offers",
+	# GET all users offers
+	"input_offers": r"/api/accounts/([a-zA-Z0-9]+?)/input-offers",
+	# GET blockchain content
+	"contents": r"/api/accounts/([a-zA-Z0-9]+?)/contents",
 	# GET/POST blockchain content
 	"content": r"/api/blockchain/([a-zA-Z0-9]+?)/content",
 	# GET/POST content description
@@ -75,5 +81,6 @@ NEWS = "news"
 WALLET = "wallet"
 BALANCE = "balance"
 OFFER = "offer"
+CONTENT = "content"
 
 AVAILABLE_COIN_ID = ["BTC", "QTUM", "LTC", "ETH"]

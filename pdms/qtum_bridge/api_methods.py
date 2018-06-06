@@ -152,8 +152,11 @@ async def descrbycid(cid):
     return {"description":descr}
 
 
+
+
 @methods.add
 async def makecid(cus, owneraddr, description, price): #addr, blockid, secret):
+    
     content_fee = billing.estimate_upload_fee(len(cus))
 
     descr_fee = billing.estimate_set_descr_fee(len(description))
@@ -165,12 +168,9 @@ async def makecid(cus, owneraddr, description, price): #addr, blockid, secret):
 
     balance = await client_balance.request(method_name="getbalance", uid=user["id"])
 
-    if balance[str(user["id"])] == "Not found":
-        return {"error":404, "reason":"User not found in balance"}
-
     common_price = (int(content_fee) + int(descr_fee)) / pow(10,8) 
 
-    diff = int(balance[str(user["id"])]) - common_price
+    diff = int(list(balance.values())[0]) - common_price
 
     if diff < 0:
         return {"error":403, "reason": "Balance is not enough."}
@@ -180,7 +180,7 @@ async def makecid(cus, owneraddr, description, price): #addr, blockid, secret):
 
     if "error" in decbalance.keys():
         return decbalance
-
+    
     addr = contract_owner
     # blockid = await lastblockid()
     # if not verify_secret(api_pass, blockid, addr, owneraddr, cus, secret=secret):
@@ -371,12 +371,6 @@ async def getprice(cid):
 
 @methods.add
 async def make_offer(cid, buyer_addr, price, buyer_access_string):
-    logging.debug("[+] -- Logging make offer")
-    logging.debug(cid)
-    logging.debug(buyer_addr)
-    logging.debug(price)
-    logging.debug(buyer_access_string)
-
 
     r8_sc = Robin8_SC(contract_address)
     r8_sc.set_send_params({'sender': contract_owner})
