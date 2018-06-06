@@ -65,6 +65,7 @@ class SearchLogs():
         list_data = []
         for address_block in self.qtum.searchlogs(fromBlock, toBlock, address, topic):
             block_number = address_block["blockNumber"]
+            tranasction_hash = address_block["transactionHash"]
             log_block = address_block["log"]
             for iter_log in log_block:
                 topics_log = iter_log["topics"]
@@ -78,7 +79,8 @@ class SearchLogs():
                     types_value_string = types_value[0]
                     decoded = Qtum_SC.abi_to_params(topics_data, types_value_data)
                     new_decode = self.change_decode(types_value_data, decoded)
-                    list_data += [new_decode]
+                    data_new = [tranasction_hash] + new_decode
+                    list_data += [data_new]
                     #decoded_string = types_value_string.format(new_decode)
                     #print(decoded_string)
         return list_data

@@ -1,7 +1,7 @@
 import json
 
 import pymongo
-
+from motor.motor_tornado import MotorClient
 
 class Table(object):
 	"""Custom driver for writing data to mongodb
@@ -12,27 +12,27 @@ class Table(object):
 	def __init__(self, dbname, collection):
 		# Set database parameters
 
-		self.client = pymongo.MongoClient()
+		self.client = MotorClient()
 
 		self.database = self.client[dbname]
 
 		self.collection = self.database[collection] 
 
 
-	def autoincrement(self):
+	async def autoincrement(self):
 		collection = self.database.autoincrement
-		counter = collection.find_one({"name":"counter"})
+		counter = await collection.find_one({"name":"counter"})
 		if not counter:
-			collection.insert_one({"name":"counter", "id": 1})
-		collection.find_one_and_update(
+			await collection.insert_one({"name":"counter", "id": 0})
+		await collection.find_one_and_update(
 							{"name": "counter"},
 							{"$inc": {"id": 1}})
-		counter = collection.find_one({"name":"counter"})
+		counter = await collection.find_one({"name":"counter"})
 		return counter["id"]
 
 
 
-	def read(self, *_id):
+	async def read(self, *_id):
 		"""Read data from database table.
 		Accepts ids of entries.
 		Returns list of results if success
@@ -48,7 +48,7 @@ class Table(object):
 
 		result = []
 		for i in _id:
-			document = self.collection.find_one({"id":i})
+			document = await self.collection.find_one({"id":i})
 			try:
 				result.append({i:document[i] for i in document
 												if i != "_id"})
@@ -58,7 +58,7 @@ class Table(object):
 
 
 
-	def insert(self, **kwargs):
+	async def insert(self, **kwargs):
 		"""
 		Accepts request object, retrieves data from the one`s body
 		and creates new account. 
@@ -66,13 +66,13 @@ class Table(object):
 		
 		if kwargs:
 			# Create autoincrement for account
-			pk = self.autoincrement()
+			pk = await self.autoincrement()
 			kwargs.update({"id": pk})
 
 			# Create account with received data and autoincrement
-			self.collection.insert_one(kwargs)
+			await self.collection.insert_one(kwargs)
 
-			row = self.collection.find_one({"id": pk})
+			row = await self.collection.find_one({"id": pk})
 
 		else:
 			row = None
@@ -85,7 +85,7 @@ class Table(object):
 
 
 
-	def find(self, **kwargs):
+	async def find(self, **kwargs):
 		"""Find all entries with given search key.
 		Accepts named parameter key and arbitrary values.
 		Returns list of entry id`s.
@@ -98,7 +98,7 @@ class Table(object):
 			return {"error":400, 
 					"reason":"Bad request"}
 
-		document = self.collection.find_one(kwargs)
+		document = await self.collection.find_one(kwargs)
 		
 		if document:
 			return document
@@ -108,7 +108,7 @@ class Table(object):
 
 
 
-	def update(self, _id=None, **new_data):
+	async def update(self, _id=None, **new_data):
 		"""Updates fields values.
 		Accepts id of sigle entry and 
 			fields with values.
@@ -120,21 +120,21 @@ class Table(object):
 			return {"error":400, 
 					"reason":"Missed required fields"}
 
-		document = self.collection.find_one({"id":_id})
+		document = await self.collection.find_one({"id":_id})
 		if not document:
 			return {"error":404, 
 					"reason":"Not found"}
 
 		for key in new_data:
-			self.collection.find_one_and_update(
+			await self.collection.find_one_and_update(
 							{"id": _id},
 							{"$set": {key: new_data[key]}}
 						)
-		updated = self.collection.find_one({"id":_id})
+		updated = await self.collection.find_one({"id":_id})
 		return {"success":200, "reason": "Updated", **updated}
 
 
-	def delete(self, _id=None):
+	async def delete(self, _id=None):
 		"""Delete entry from database table.
 		Accepts id.
 		delete(id) => 1 (if exists)
@@ -145,13 +145,13 @@ class Table(object):
 			return {"error":400, 
 					"reason":"Missed required fields"}
 
-		document = self.collection.find_one({"id": _id})
+		document = await self.collection.find_one({"id": _id})
 
 		if not document:
 			return {"error":404, 
 					"reason":"Not found"}
 
-		deleted_count = self.collection.delete_one(
+		deleted_count = await self.collection.delete_one(
 							{"id": _id}).deleted_count
 
 		return deleted_count

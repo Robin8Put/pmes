@@ -23,8 +23,8 @@ class BalanceHandler(tornado.web.RequestHandler):
 
 	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
-		self.set_header("Access-Control-Allow-Headers", "x-requested-with")
-		self.set_header('Access-Control-Allow-Methods', 'POST, GET, PUT, OPTIONS')
+		self.set_header("Access-Control-Allow-Headers", "Content-Type")
+		self.set_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
 
 
 	def initialize(self, client_storage, client_balance, client_email):
@@ -41,10 +41,12 @@ class BalanceHandler(tornado.web.RequestHandler):
 
 
 	async def post(self, uid):
-		logging.debug("[+] -- Debugging balance")
-		amount = self.get_body_argument("amount")
-		logging.debug(amount)
+		body = json.loads(self.request.body)
+		amount = body.get("amount")
+		logging.debug("[+] -- Balance debugging")
 		logging.debug(uid)
+		logging.debug(amount)
+		logging.debug(type(amount))
 		balance = await self.client_balance.request(method_name="incbalance",
 												uid=uid, amount=amount)
 		self.write(balance)
@@ -56,10 +58,11 @@ class BalanceHandler(tornado.web.RequestHandler):
 class AMSHandler(tornado_components.web.ManagementSystemHandler):
 	"""Account Management System Handler
 	"""
+
 	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
-		self.set_header("Access-Control-Allow-Headers", "x-requested-with")
-		self.set_header('Access-Control-Allow-Methods', 'POST, GET, PUT, OPTIONS')
+		self.set_header("Access-Control-Allow-Headers", "Content-Type")
+		self.set_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
 
 	def initialize(self, client_storage, client_balance, client_email):
 		self.client_storage = client_storage
@@ -82,10 +85,10 @@ class AMSHandler(tornado_components.web.ManagementSystemHandler):
 		"""
 
 		# Include sign-verify mechanism
-		super().verify()
+		#super().verify()
 
 		# Save data at storage database
-		data = { k: self.get_argument(k) for k in self.request.arguments}
+		data = json.loads(self.request.body)
 		new_account = await self.client_storage.request(method_name="createaccount",
 															**data)
 		if "error" in new_account.keys():
@@ -122,32 +125,34 @@ class AMSHandler(tornado_components.web.ManagementSystemHandler):
 		}
 		balance = await self.client_balance.request(method_name="getbalance", 
 													**request_balance)
-		balance_as_digit = int(balance[str(new_account["id"])])
+		balance_as_digit = list(balance.values())[0]
 		#Prepare response 
 		new_account.update({"href": settings.ENDPOINTS["ams"]+"/"+ new_account["public_key"],
 							"balance": balance_as_digit,
 							"address":address})
 		# Send mail to user
-		email_data = {
-			"to": new_account["email"],
-        	"subject": "Robin8 Support",
-         	"optional": "Your account was created on %s" % settings.host + new_account["href"]
-        }
-		#await self.client_email.request(method_name="sendmail", **email_data)
+		if new_account.get("email"):
+			email_data = {
+				"to": new_account["email"],
+	        	"subject": "Robin8 Support",
+	         	"optional": "Your account was created on %s" % settings.host + new_account["href"]
+	        }
+			#await self.client_email.request(method_name="sendmail", **email_data)
 
 		self.write(new_account)
 
-
 	def options(self):
 		self.write(json.dumps(["POST"]))
-		
+
+
 
 class AccountHandler(tornado_components.web.ManagementSystemHandler):
 
 	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
-		self.set_header("Access-Control-Allow-Headers", "x-requested-with")
-		self.set_header('Access-Control-Allow-Methods', 'POST, GET, PUT, OPTIONS')
+		self.set_header("Access-Control-Allow-Headers", "Content-Type")
+		self.set_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+
 
 	def initialize(self, client_storage, client_balance, client_email):
 		self.client_storage = client_storage
@@ -159,7 +164,7 @@ class AccountHandler(tornado_components.web.ManagementSystemHandler):
 		"""Receives public key, looking up document at storage,
 				sends document id to the balance server
 		"""
-		super().verify()
+		#super().verify()
 		# Get id from database
 		response = await self.client_storage.request(method_name="getaccountdata",
 												public_key=public_key)
@@ -171,9 +176,11 @@ class AccountHandler(tornado_components.web.ManagementSystemHandler):
 			# Receive balance from balance host
 			balance = await self.client_balance.request(method_name="getbalance", 
 														 uid=response["id"])
-			balance_as_digit = int(balance[str(response["id"])])
+			logging.debug(balance)
+		
 			# Prepare response
-			response.update({"balance":balance_as_digit})
+			response.update({"balance":list(balance.values())[0]})
+			response.update({"address":list(balance.keys())[0]})
 			# Return account data
 			self.write(response)
 
@@ -187,8 +194,8 @@ class NewsHandler(tornado_components.web.ManagementSystemHandler):
 
 	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
-		self.set_header("Access-Control-Allow-Headers", "x-requested-with")
-		self.set_header('Access-Control-Allow-Methods', 'POST, GET, PUT, OPTIONS')
+		self.set_header("Access-Control-Allow-Headers", "Content-Type")
+		self.set_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
 
 
 	def initialize(self, client_storage, client_balance, client_email):
@@ -201,7 +208,7 @@ class NewsHandler(tornado_components.web.ManagementSystemHandler):
 		"""Receives public key, looking up document at storage,
 				sends document id to the balance server
 		"""
-		super().verify()
+		#super().verify()
 
 		response = await self.client_storage.request(method_name="getnews", 
 												public_key=public_key)
@@ -220,7 +227,139 @@ class NewsHandler(tornado_components.web.ManagementSystemHandler):
 				self.write(response)
 				raise tornado.web.Finish
 
+	def options(self):
+		self.write(json.dumps(["GET"]))
+
+
+class OutputOffersHandler(tornado_components.web.ManagementSystemHandler):
+	"""Allows to retrieve all users output offers. 
+	"""
+	def set_default_headers(self):
+		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header("Access-Control-Allow-Headers", "Content-Type")
+		self.set_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+	
+
+	def initialize(self, client_storage, client_balance, client_email):
+		"""Initializes:
+		- client for storage requests
+		- client for balance requests
+		- client for email requests
+		"""
+		self.client_storage = client_storage
+		self.client_balance = client_balance
+		self.client_email = client_email
+
+
+	async def get(self, public_key):
+		"""Retrieves all users input and output offers
+		Accepts:
+		- public key
+		"""
+		# Sign-verifying functional
+		#super().verify()
+
+		account = await self.client_storage.request(method_name="getaccountdata",
+												public_key=public_key)
+		if "error" in account.keys():
+			self.set_status(account["error"])
+			self.write(account)
+
+		offers = await self.client_storage.request(method_name="getoffers", 
+												public_key=public_key)
+		self.write(json.dumps(offers))
 
 	def options(self):
 		self.write(json.dumps(["GET"]))
+
+
+class InputOffersHandler(tornado_components.web.ManagementSystemHandler):
+	"""Allows to retrieve all users output offers. 
+	"""
+	def set_default_headers(self):
+		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header("Access-Control-Allow-Headers", "Content-Type")
+		self.set_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+	
+
+	def initialize(self, client_storage, client_balance, client_email):
+		"""Initializes:
+		- client for storage requests
+		- client for balance requests
+		- client for email requests
+		"""
+		self.client_storage = client_storage
+		self.client_balance = client_balance
+		self.client_email = client_email
+
+
+	async def get(self, public_key):
+		"""Retrieves all users input and output offers
+		Accepts:
+		- public key
+		"""
+		# Sign-verifying functional
+		#super().verify()
+
+		cid = self.get_argument("cid", None)
+
+		if not cid:
+			self.set_status(400)
+			self.write({"error":400, "reason":"Missed required fields."})
+
+		account = await self.client_storage.request(method_name="getaccountdata",
+												public_key=public_key)
+		if "error" in account.keys():
+			self.set_status(account["error"])
+			self.write(account)
+
+		offers = await self.client_storage.request(method_name="getoffers", 
+												public_key=public_key, cid=cid)
+		self.write(json.dumps(offers))
+
+	def options(self):
+		self.write(json.dumps(["GET"]))
+
+
+class ContentsHandler(tornado_components.web.ManagementSystemHandler):
+	"""Allows to retrieve all users contents
+	"""
+	def set_default_headers(self):
+		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header("Access-Control-Allow-Headers", "Content-Type")
+		self.set_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+
+	def initialize(self, client_storage, client_balance, client_email):
+		"""Initializes:
+		- client for storage requests
+		- client for balance requests
+		- client for email requests
+		"""
+		self.client_storage = client_storage
+		self.client_balance = client_balance
+		self.client_email = client_email
+
+	async def get(self, public_key):
+		"""Retrieves all users contents
+		Accepts:
+		- public key
+		"""
+		# Sign-verifying functional
+		#super().verify()
+		contents = await self.client_storage.request(method_name="getuserscontent",
+														public_key=public_key)
+		self.write(json.dumps(contents))
+
+
+	def options(self):
+		self.write(json.dumps(["GET"]))
+
+
+
+
+
+
+
+
+
 

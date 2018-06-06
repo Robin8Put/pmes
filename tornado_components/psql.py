@@ -6,7 +6,7 @@ class DBResult(object):
 	"""Tool for returning result of database work
 	"""
 	codes = {
-		0: True
+		0: True,
 		1: "Database opened",
 		2: "Database closed",
 		3: "Created/Updated",

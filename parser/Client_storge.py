@@ -1,23 +1,23 @@
 import os
 import sys
+from time import sleep
 from jsonrpcclient.http_client import HTTPClient
 from searchlogs import SearchLogs
-from time import sleep
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-if not BASE_DIR in sys.path:
-    sys.path.append(BASE_DIR)
+sys.path.append(BASE_DIR)
 
 import settings
 
 
-from_i = 150072
+storghost = settings.storageurl
+from_i = 153642
 
 
 class ClientStorge():
-    def __init__(self, storagehost=None):
-        self.history_host = storagehost if storagehost else settings.storageurl
+    def __init__(self, sotrg_host=None):
+        self.history_host = sotrg_host if sotrg_host else storghost
         self.client = HTTPClient(self.history_host)
 
     def insert_offer(self, cid=None, buyer_addr=None, price=None):
@@ -34,9 +34,9 @@ class ClientStorge():
         else:
             return {2: "Missing parameter"}
 
-    def update_offer(self, cid=None, buyer_addr=None, flag=None):
-        if cid and buyer_addr:
-            request = self.client.request(method_name="updateoffer", cid=cid, buyer_addr=buyer_addr, flag=flag)
+    def update_offer(self, txid=None, flag=None):
+        if txid:
+            request = self.client.request(method_name="updateoffer", txid=txid, flag=flag)
             return request
         else:
             return {2: "Missing parameter"}
@@ -48,26 +48,44 @@ class ClientStorge():
         else:
             return {2: "Missing parameter"}
 
+    def update_users_content(self, txid=None, cid=None):
+        if cid and txid:
+            request = self.client.request(method_name="updateuserscontent", cid=cid, txid=txid)
+            return request
+        else:
+            return {2: "Missing parameter"}
+
 
 def block_cl(from_i, to_i, obj_searchlogs, client):
     searchlog = obj_searchlogs.storge(from_i, to_i, {"addresses": ["52b81892235027453bcdbc2ec25ec7253c531efc"]},
                                       {"topics": ["38a9262fedac02428e492594acec49680f630e226196536d6996dafd344db1ea"]})
     for search in searchlog:
-        address = search[0]
-        cid = search[1]
-        price = search[2]
-        print(search)
-        result = client.update_offer(cid, address, 1)
+        txid = search[0]
+        address = search[1]
+        cid = search[2]
+        price = search[3]
+        #print(search)
+        result = client.update_offer(txid, 1)
         if "error" not in result.keys():
             client.mailed_confirm(cid, address, price)
         else:
             pass
 
 
+def new_offer(from_i, to_i, obj_searchlogs, client):
+    searchlog = obj_searchlogs.storge(from_i, to_i, {"addresses": ["52b81892235027453bcdbc2ec25ec7253c531efc"]},
+                                      {"topics": ["9170c205402f594bf92e77397182d7d82ef0df80da3629a76e4f0b56852644b7"]})
+    for search in searchlog:
+        tx_hash = search[0]
+        cid = search[1]
+        result = client.update_users_content(tx_hash, cid)
+
+
+
 def conection_stor():
     while True:
         try:
-            cli = ClientStorge()
+            cli = ClientStorge(storghost)
             return cli
         except:
             sleep(1)
@@ -77,8 +95,10 @@ def conection_search():
     while True:
         try:
             cli = SearchLogs()
+            cli.getblockcount()
             return cli
         except:
+            #print("Qtum CRASH")
             sleep(1)
 
 
@@ -87,17 +107,21 @@ def main_code(from_i):
     obj_searchlogs = conection_search()
     to_i = obj_searchlogs.getblockcount()
     block_cl(from_i, to_i, obj_searchlogs, client)
+    new_offer(from_i, to_i, obj_searchlogs, client)
     from_i = to_i
     while True:
+        #print(obj_searchlogs.getblockcount())
         try:
             getlastblock = obj_searchlogs.getblockcount()
             if getlastblock >= from_i:
                 block_cl(from_i, from_i, obj_searchlogs, client)
+                new_offer(from_i, from_i, obj_searchlogs, client)
                 from_i += 1
                 print(from_i)
             else:
                 sleep(1)
         except:
+            obj_searchlogs = conection_search()
             sleep(1)
 
 

@@ -1,24 +1,126 @@
 # Tornado components
 
-- `rpc_client.py` --- contains `RPCClient` which represent custom jsonrpc client. It includes processing of connection errors also.
-    - `request` --- make request to method by provided host address
-    - `post` --- make post request to method by provided host address with provided parameters
-    - `lastblockid` --- return last block id
-    - `data_from_blockchain` --- get content from blockchain
-    - `getownerbycid` --- get owner by CID (Content IDentifier)
-    - `getcontentdescr` --- get content description
-    - `postcontent` --- post content
-    - `setdescrforcid` --- set description for CID
-    - `last_access_string` --- get last access string
-    - `changeowner` --- change content owner
-    - `sellcontent` --- sell content
 - `timestamp.py` --- convert data to `%Y%m%d%H%M` format. For example, `"201805101200"`
-- `web.py` --- contains `ManagementSystemHandler` class which has sign-verify decorators for both http and rpc requests
+- `web.py`
+    - `RobustTornadoClient` --- client processes refused connections and sends email if happens the one
+    - `ManagementSystemHandler` --- class which has sign-verify decorators for both http and rpc requests
 - Storage RW module
     Read-Write drivers that provide same interface to work with Mongo DB and Postgre SQL.
-
-    Functionality description is [here](db_drivers_functionality.md).
 
     - `mongo.py`
     - `psql.py`
 
+# Storage RW module's has next functionality
+
+- [Read data from database](#read-data-from-database)
+- [Insert data to database](#insert-data-to-database)
+- [Update fields values in database](#update-fields-values-in-database)
+- [Find all entries with given search key in database](#find-all-entries-with-given-search-key-in-database)
+- [Delete entry from database table](#delete-entry-from-database-table)
+
+
+## Read data from database
+
+* **Method:** `read`
+
+* **Params**
+
+    `*id` - ids of entries
+
+* **Return**
+
+    list of results if success or string with error code and explanation
+
+* **Usage example**
+
+```bash
+    read(*id) => [(result), (result)] (if success)
+    read(*id) => [] (if missed)
+    read() => {"error":400, "reason":"Missed required fields"}
+```
+
+## Insert data to database
+
+* **Method:** `insert`
+
+* **Params**
+
+    `**kwargs` - field names and values
+
+* **Return**
+
+    Return success or error based on posibility to pass arbitrary amount of parameters.
+
+* **Usage example**
+
+```bash
+    insert(**kwargs) => {1: 'Success'}
+    insert(**kwargs) => {3: 'Error text'}
+```
+
+## Update fields values in database
+
+* **Method:** `update`
+
+* **Params**
+
+    `*id` - id of sigle entry
+
+    `**kwargs` - field names and values
+
+* **Return**
+
+    Return success or error based on posibility to update parameters.
+
+* **Usage example**
+
+```bash
+    update(id, **kwargs) => {3: 'Created/Updated'} (if success)
+    update(id, **kwargs) => {5: 'Error'} (if error)
+```
+
+## Find all entries with given search key in database
+
+* **Method:** `find`
+
+* **Params**
+
+    `key` - named parameter
+
+    `*values` - arbitrary values
+
+* **Return**
+
+    Return success or error based on posibility to find entries.
+
+* **Usage example**
+
+```bash
+    find(key, *values) => [id, id, id, id] (if exist)
+    find(key, *values) => [] (if does not exist)
+    find() => {5: "Missed required fields"}
+```
+
+## Delete entry from database table
+
+* **Method:** `delete`
+
+* **Params**
+
+    `id` - id of entry that will be deleted
+
+* **Return**
+
+    Return success or error based on posibility to find entries.
+
+* **Usage example**
+
+```bash
+    delete(id) => {0: True} (if exists)
+    delete(id) => {5: 'Error'} (if does not exist)
+    delete() => {5: 'Missed required fields'}
+```
+
+# License
+
+The Robin8 Profile Management EcoSystem and all modules are released under the [Apache License](https://www.apache.org/licenses/LICENSE-2.0).

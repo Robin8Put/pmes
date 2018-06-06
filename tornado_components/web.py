@@ -1,16 +1,35 @@
+import sys
 import json
 import time
 import logging
 import datetime
-from jsonrpcclient.http_client import HTTPClient
+from jsonrpcclient.tornado_client import TornadoClient
 import tornado.web
 from tornado_components.timestamp import get_time_stamp
 from qtum_utils.qtum import Qtum
 
 
 
-	
+class RobustTornadoClient(TornadoClient):
+	"""Client processes refused connections and 
+		sends email if happens the one.
+	"""
+	async def request(self, *args, **kwargs):
+		"""Overrided method. Returns jsonrpc response
+		or fetches exception? returns appropriate data to client
+		and response mail to administrator.
+		"""
+		try:
+			result = await super().request(*args, **kwargs)
+			return result
+		except ConnectionRefusedError:
+			return {"error":500, 
+					"reason": "Service connection error."}
+		except Exception as e:
+			return {"error":500, "reason": str(e)}
 
+
+	
 class ManagementSystemHandler(tornado.web.RequestHandler):
 	"""Overloaded class.
 	Contains:
@@ -28,22 +47,25 @@ class ManagementSystemHandler(tornado.web.RequestHandler):
 		Signature verifying logic.
 
 		"""
-		data = {k:self.get_argument(k) for k in self.request.arguments}
-		logging.debug(data)
-
+		data = json.loads(self.request.body)
 		try:
+			# Check if required fields exist
+			assert "public_key" in data.keys(), "Missed public key in parameters"
+			assert "message" in data.keys(), "Missed message in parameters"
+			assert "signature" in data.keys(),"Missed signature in parameters"
+
 			public_key = data["public_key"]
 			message = data["message"]
 			signature = data["signature"]
-
-			dumped_message = json.loads(message)
-			timestamp = dumped_message.get("timestamp", None)
+			dumped_message = json.dumps(message).replace(" ", "")
+			timestamp = data.get("timestamp", None)
 			
-			assert ManagementSystemHandler.get_time_stamp() == timestamp
+			# Check if
+			#assert ManagementSystemHandler.get_time_stamp() == timestamp, "Timestamps does not match. Try again."
 
-		except:
+		except Exception as e:
 			self.set_status(403)
-			self.write("Missed required fields or timestamps do not match")
+			self.write({"error":403, "reason": str(e)})
 			raise tornado.web.Finish
 
 		else:
@@ -54,13 +76,19 @@ class ManagementSystemHandler(tornado.web.RequestHandler):
 			# If exist - call verifying static method
 			
 			try:
-			    flag = Qtum.verify_message(message, signature, public_key)
-			except:
+			    flag = Qtum.verify_message(dumped_message, signature, public_key)
+			except Exception as e:
 			    # If public key is not valid or it`s missing - return 404 error
-			    raise tornado.web.HTTPError(403)
+			    self.set_status(403)
+			    self.write({"error":403, 
+			    			"reason":"Forbidden. Invalid signature." + str(e)})
+			    raise tornado.web.Finish
 			# If verifying is not valid - return 403 error
 			if not flag:
-			    raise tornado.web.HTTPError(403)
+			    self.status(403)
+			    self.write({"error":403, 
+			    			"reason":"Forbidden. Invalid signature.---"})
+
 
 	def get(self, *args, **kwargs):
 		self.set_status(405)
@@ -71,6 +99,10 @@ class ManagementSystemHandler(tornado.web.RequestHandler):
 		self.write({"error":405, "reason":"Method not allowed."})
 
 	def put(self, *args, **kwargs):
+		self.set_status(405)
+		self.write({"error":405, "reason":"Method not allowed."})
+
+	def delete(self, *args, **kwargs):
 		self.set_status(405)
 		self.write({"error":405, "reason":"Method not allowed."})
 

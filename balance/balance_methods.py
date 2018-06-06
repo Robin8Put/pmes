@@ -90,14 +90,15 @@ async def incbalance(amount=0, uid=None, address=None):
         await client_storage.request(method_name="updatelevel",
                                 **{"id":account["id"], "level":3})
     # Send mail to user
-    client_email = TornadoClient(settings.emailurl)
-    email_data = {
-            "to": account["email"],
-            "subject": "Robin8 Support",
-            "optional": "You`ve got %s tokens. Now your balance is %s" %(
-                        amount/pow(10,8), int(result["amount"]) / pow(10,8)) 
-        }
-    #await client_email.request(method_name="sendmail", **email_data)
+    if account.get("email"):
+        client_email = TornadoClient(settings.emailurl)
+        email_data = {
+                "to": account["email"],
+                "subject": "Robin8 Support",
+                "optional": "You`ve got %s tokens. Now your balance is %s" %(
+                            amount/pow(10,8), int(result["amount"]) / pow(10,8)) 
+            }
+        #await client_email.request(method_name="sendmail", **email_data)
 
     # Return result
     result = {i:result[i] for i in result if i != "_id"}
@@ -165,6 +166,9 @@ async def getbalance(address=None, uid=None):
                 "reason":"Current address does not exist"}
     # convert balance to human readable result
     digit = int(balance["amount"]) / pow(10,8)
-    return {address or uid:digit}
+    return {balance["address"]:digit}
+
+
+
    
 
