@@ -6,13 +6,12 @@ The API uses the REST API standard.
 
 The host is here: http://pdms.robin8.io.
 
-`balance`, `price`, `buyer_price` and `seller_price` represented as: 
+`amount`, `balance`, `offer_price`, `price`, `buyer_price` and `seller_price` represented as `x * 10^8`. Where `x` could be `float`.
 
-```math
-    entity = real_entity * 10^8
-```
+`timestamp` has following format `%Y%m%d%H%M`. For instance, `201806081300` means 2018 June 8 13:00.
 
-Where `real_entity` could be `float`.
+For checking status of transaction in the QTUM blockchain you could use the site https://testnet.qtum.org.
+When the status of transaction changes from `Unconfirmed` to `Success` this means that your data was written to the blockchain.
 
 The API-methods:
 
@@ -100,17 +99,17 @@ The following is a description of the API-methods:
 
 ```bash
     {
+        "address": [string],     # user's wallet address
         "public_key": [string],
         "email": [string],
         "phone": [string],
         "device_id": [string],
-        "count": [int],         # number of wallets
-        "level": [int],         # user account level (2 - when balance is zero (by default), 3 - when balance is not null)
-        "news_count": [int],    # number of news about offers to buy content (0 by default)
-        "id": [int],            # user's identifier
+        "count": [integer],         # number of user's wallets
+        "level": [integer],         # user account level (2 - when balance is zero (by default), 3 - when balance is not null)
+        "news_count": [integer],    # number of news about offers to buy content (0 by default)
+        "id": [integer],            # user's identifier
         "href": [string],       # link to user account
-        "balance": [integer],   # user balance (0 by default)
-        "address": [string]     # user identifier (public key in hash format)
+        "balance": [integer],   # user balance (0 by default) * 10^8
     }
 ```
 
@@ -143,6 +142,8 @@ The following is a description of the API-methods:
 
     `[json]`
 
+    `balance` represented as `real_user_balance * 10^8`. Where `real_user_balance` could be `float`.
+
 ```bash
     {
         "address": [string],    # user's wallet address
@@ -151,11 +152,11 @@ The following is a description of the API-methods:
         "phone": [string], 
         "device_id": [string], 
         "phone": [string], 
-        "count": [int], 
-        "level": [int], 
-        "news_count": [int], 
-        "id": [int], 
-        "balance": [float], 
+        "count": [integer],         # number of user's wallets
+        "level": [integer],         # user account level (2 - when balance is zero (by default), 3 - when balance is not null)
+        "news_count": [integer],    # number of news about offers to buy content (0 by default
+        "id": [integer],            # user's identifier
+        "balance": [integer],   # user balance (0 by default) * 10^8
     }
 ```
 
@@ -190,17 +191,19 @@ The following is a description of the API-methods:
 
     When user send offer to buy content `event_type` is 'made offer'.
 
-    `access_string` is equal to `buyer_pubkey` now.
+    `buyer_price` and `seller_price` represented as `real_price * 10^8`. Where `real_price` could be `float`.
 
 ```bash
     [
         {
-            'event_type': [string], 
-            'buyer_addr': [string], 
-            'cid': [int], 
-            'access_string': [string], 
-            'buyer_pubkey': [string], 
-            'account_id': [integer]
+            "event_type": [string],     # 
+            "access_string": [string],  # now it is user's public key
+            "cid": [integer],           # content identifier 
+            "buyer_address": [string],  # buyer address
+            "buyer_pubkey": [string],   # buyer public key
+            "buyer_price": [integer],   # proposed buyer price * 10^8
+            "seller_price": [integer],  # content price * 10^8
+            "account_id": [integer]     # account identifier
         }
     ]
 ```
@@ -222,9 +225,11 @@ The following is a description of the API-methods:
 
     `[json]`
 
+    `amount` represented as `real_amount * 10^8`. Where `real_amount` (amount on which you want to increment user's balance) could be `float`.
+
 ```bash
     {
-        "amount": [int]
+        "amount": [integer]
     }
 ```
 
@@ -236,21 +241,15 @@ The following is a description of the API-methods:
 
     `[json]`
 
-    When user send offer to buy content `event_type` is 'made offer'.
-
-    `access_string` is equal to `buyer_pubkey` now.
+    `amount` represented as `real_amount * 10^8`. Where `real_amount` could be `float`.
 
 ```bash
-    [
-        {
-            'event_type': [string], 
-            'buyer_addr': [string], 
-            'cid': [int], 
-            'access_string': [string], 
-            'buyer_pubkey': [string], 
-            'account_id': [integer]
-        }
-    ]
+    {
+        "address": [sting],     # wallet address
+        "coinid": [sting],      # type of coin (for instance, "qtum")
+        "amount": [integer],    # updated amout of coins on the user's balance * 10^8
+        "uid": [integer]        # user's identifier
+    }
 ```
 
 * **Description**
@@ -268,14 +267,16 @@ The following is a description of the API-methods:
 
     `[json]`
 
+    `price` represented as `real_price * 10^8`. Where `real_price` (price of content) could be `float`.
+
 ```bash
     {
         "public_key": [string],
         "message": {
             "timestamp": [string],
-            "cus": [string],
-            "price": [string],
-            "description": [string]
+            "cus": [string],        # content encrypted with private key
+            "price": [integer],     # content price * 10^8
+            "description": [string] # content description
         },
         "signature": [string]
     }
@@ -289,33 +290,23 @@ The following is a description of the API-methods:
 
     `[json]`
 
-    `txid` - transaction id
-
-    `sender` - user address
-
-    `cus` - content
-
-    `addr` - user address
-
-    `owner_hex_addr` - hex of user address
-
 ```bash
     {
         "result": {
-            "txid": [string], 
-            "sender": [string], 
-            "hash160": [string]
+            "txid": [string],       # transaction id
+            "sender": [string],     # user address
+            "hash160": [string]     # transaction hash
         }
-        "hash": [string],  
-        "cus": [string], 
-        "addr": [string], 
-        'owner_hex_addr": [string]
+        "hash": [string],           # transaction hash which identify posted content in the blockchain
+        "cus": [string],            # content
+        "addr": [string],           # user's address
+        'owner_hex_addr": [string]  # hex of user address
     }
 ```
 
 * **Description**
 
-    Post data to blockchain via transaction. When transaction will be approved (around 5-10 minutes) user can receive cid (Content-ID).
+    Post data to blockchain via transaction. When transaction will be approved (around 5-10 minutes) user could see posted content in the result of following command [Get all content which post user](#get-all-content-which-post-user).
 
 
 ## Get content from the blockchain by cid
@@ -336,15 +327,17 @@ The following is a description of the API-methods:
 
     `[json]`
 
+    `price` represented as `real_price * 10^8`. Where `real_price` could be `float`.
+
 ```bash
     {   
-        'account_id': [int],
-        'cid': [int],
-        'content': [string],
-        'description': [string],
-        'owner': [string],
-        'price': [int],
-        'txid': [string]
+        "account_id": [integer],    # account identifier
+        "cid": [integer],           # content identifier
+        "content": [string],        # encrypted content
+        "description": [string],    # content description
+        "owner": [string],          # owner public key
+        "price": [integer],         # content price * 10^8
+        "txid": [string]            # transaction identifier
     }
 ```
 
@@ -354,6 +347,8 @@ The following is a description of the API-methods:
 
 
 ## Set description of content for cid
+
+**in progress**
 
 * **URL:** `/api/blockchain/[cid]/description`
 
@@ -372,7 +367,7 @@ The following is a description of the API-methods:
         "public_key": [string],
         "message": {
             "timestamp": [string],
-            "cid": [string],
+            "cid": [integer],
             "description": [string]
         },
         "signature": [string]
@@ -385,19 +380,21 @@ The following is a description of the API-methods:
 
 ```bash
     {
-        'result': {
-            'txid': [string], 
-            'sender': [string], 
-            'hash160': [string]
+        "result": {
+            "txid": [string], 
+            "sender": [string], 
+            "hash160": [string]
         }, 
-        'cid': [string], 
-        'descr': [string], 
-        'addr': [string]
+        "cid": [integer], 
+        "descr": [string], 
+        "addr": [string]
     }
 ``` 
 
 
 ## Set content price
+
+**in progress**
 
 * **URL:** `/api/blockchain/[cid]/price`
 
@@ -416,8 +413,8 @@ The following is a description of the API-methods:
         "public_key": [string],
         "message": {
             "timestamp": [string],
-            "cid": [string],
-            "price": [float]
+            "cid": [integer],
+            "price": [integer]
         },
         "signature": [string]
     }
@@ -429,13 +426,13 @@ The following is a description of the API-methods:
 
 ```bash
     {
-        'result': {
-            'txid': [string], 
-            'sender': [string], 
-            'hash160': [string]
+        "result": {
+            "txid": [string], 
+            "sender": [string], 
+            "hash160": [string]
         }, 
-        'cid': [string], 
-        'price': [float]
+        "cid": [integer], 
+        "price": [integer]
     }
 ```
 
@@ -459,8 +456,8 @@ The following is a description of the API-methods:
         "public_key": [string],
         "message": {
             "timestamp": [string],
-            "cid": [string],
-            "buyer_access_string": [string]
+            "cid": [integer],                   # content identifier
+            "buyer_access_string": [string]     # now it is user's public key
         },
         "signature": [string]
     }
@@ -470,15 +467,19 @@ The following is a description of the API-methods:
 
     `[json]`
 
+    `offer_price` represented as `real_offer_price * 10^8`. Where `real_offer_price` could be `float`.
+
 ```bash
     {
-        'result': {
-            'txid': [string], 
-            'sender': [string], 
-            'hash160': [string]
-        }, 'cid': [string], 
-        'buyer_addr': [string], 
-        'buyer_access_string': [string]
+        "result": {
+            "txid": [string],               # transaction id
+            "sender": [string],             # user address
+            "hash160": [string]             # transaction hash
+        }, 
+        "cid": [integer],                   # content identifier
+        "buyer_address": [string],          # buyer address
+        "buyer_access_string": [string],    # now it is buyer's public key
+        "offer_price": [integer]            # price of content * 10^8
     }
 ```
 
@@ -496,14 +497,16 @@ The following is a description of the API-methods:
 
     `[json]`
 
+    `price` represented as `real_price * 10^8`. Where `real_price` (price proposed for buying contnet) could be `float`.
+
 ```bash
     {
         "public_key": [string],
         "message": {
             "timestamp": [string],
-            "cid": [string],
-            "buyer_access_string": [string],
-            "price": [float]
+            "cid": [integer],                   # content identifier
+            "buyer_access_string": [string],    # now it is user's public key
+            "price": [integer]                  # proposed price for content * 10^8
         },
         "signature": [string]
     }
@@ -513,15 +516,19 @@ The following is a description of the API-methods:
 
     `[json]`
 
+    `offer_price` represented as `real_offer_price * 10^8`. Where `real_offer_price` could be `float`.
+
 ```bash
     {
-        'result': {
-            'txid': [string], 
-            'sender': [string], 
-            'hash160': [string]
-        }, 'cid': [string], 
-        'buyer_addr': [string], 
-        'buyer_access_string': [string]
+        "result": {
+            "txid": [string],               # transaction id
+            "sender": [string],             # user address
+            "hash160": [string]             # transaction hash
+        },
+        "cid": [integer],                   # content identifier
+        "buyer_addr": [string],             # buyer address
+        "buyer_access_string": [string],    # now it is user's public key
+        "offer_price": [integer]            # price of content * 10^8
     }
 ```
 
@@ -545,9 +552,9 @@ The following is a description of the API-methods:
         "public_key": [string],
         "message": {
             "timestamp": [string],
-            "cid": [string],
-            "buyer_access_string": [string],
-            "buyer_pubkey": [string]
+            "cid": [integer],                   # content identifier
+            "buyer_access_string": [string],    # now it is user's public key
+            "buyer_pubkey": [string]            # buyer public key
         },
         "signature": [string]
     }
@@ -559,18 +566,18 @@ The following is a description of the API-methods:
 
 ```bash
     {
-        'result': {
-            'txid': [string], 
-            'sender': [string], 
-            'hash160': [string]
+        "result": {
+            "txid": [string],           # transaction id
+            "sender": [string],         # user address
+            "hash160": [string]         # transaction hash
         }, 
-        'cid': [string], 
-        'buyer_addr': [string], 
-        'access_string': [string], 
-        'content_owner': [string], 
-        'contract_owner_hex': [string], 
-        'new_owner': [string], 
-        'prev_owner': [string]
+        "cid": [integer],               # content identifier
+        "buyer_address": [string],      # buyer address
+        "access_string": [string],      # now it is user's public key
+        "content_owner": [string],      # address of the content owner
+        "contract_owner_hex": [string], # hex of the address of the content owner
+        "new_owner": [string],          # address of the new owner
+        "prev_owner": [string]          # address of the previous owner
     }
 ```
 
@@ -601,8 +608,8 @@ The following is a description of the API-methods:
         "message": {
             "timestamp": [string],
             "offer_id": {
-                "cid": [string],
-                "buyer_addr": [string]
+                "cid": [integer],           # content identifier
+                "buyer_address": [string]   # buyer address
             }
         },
         "signature": [string]
@@ -615,13 +622,13 @@ The following is a description of the API-methods:
 
 ```bash
     {
-        'result': {
-            'txid': [string], 
-            'sender': [string], 
-            'hash160': [string]
+        "result": {
+            "txid": [string],       # transaction id
+            "sender": [string],     # user address
+            "hash160": [string]     # transaction hash
         }, 
-        'cid': [string], 
-        'buyer_addr': [string]
+        "cid": [integer],           # content identifier
+        "buyer_address": [string]   # buyer address
     }
 ```
 
@@ -652,8 +659,8 @@ The following is a description of the API-methods:
         "message": {
             "timestamp": [string],
             "offer_id": {
-                "cid": [string],
-                "buyer_addr": [string]
+                "cid": [integer],           # content identifier
+                "buyer_address": [string]   # buyer address
             }
         },
         "signature": [string]
@@ -666,13 +673,13 @@ The following is a description of the API-methods:
 
 ```bash
     {
-        'result': {
-            'txid': [string]', 
-            'sender': [string], 
-            'hash160': [string]
+        "result": {
+            "txid": [string]",      # transaction id
+            "sender": [string],     # user address
+            "hash160": [string]     # transaction hash
         }, 
-        'cid': [string], 
-        'buyer_addr': [string]
+        "cid": [integer],           # content identifier
+        "buyer_address": [string]   # buyer address
     }
 ```
 
@@ -699,14 +706,16 @@ The following is a description of the API-methods:
 
     `[json]`
 
+    `price` represented as `real_price * 10^8`. Where `real_price` could be `float`.
+
 ```bash
     [
         {
-            'cid': [string], 
-            'description': [string], 
-            'price': [float], 
-            'owner': [string], 
-            'owneraddr': [string]
+            "cid": [integer],           # content identifier
+            "content": [string],        # encrypted content
+            "description": [string],    # content description
+            "price": [integer],         # content price * 10^8
+            "owner": [string],          # owner public key
         },
         ...
     ]
@@ -714,7 +723,7 @@ The following is a description of the API-methods:
 
 * **Description**
 
-    Get all content that present in the system
+    Get all content that present in the blockchain
 
 
 ## Get all content which post user
@@ -733,7 +742,7 @@ The following is a description of the API-methods:
         "message": {
             "timestamp": [string]
         },
-        "signature": [string]
+        "signature": [string]c.
     }
 ```
 
@@ -745,14 +754,15 @@ The following is a description of the API-methods:
 
     `[json]`
 
+    `price` represented as `real_price * 10^8`. Where `real_price` could be `float`.
+
 ```bash
     [
         {
-            'cid': [string], 
-            'description': [string], 
-            'price': [float], 
-            'owner': [string], 
-            'owneraddr': [string]
+            "cid": [integer],            # content identifier
+            "content": [string],         # encrypted content
+            "description": [string],     # content description
+            "price": [integer],          # content price * 10^8
         },
         ...
     ]
@@ -786,14 +796,16 @@ The following is a description of the API-methods:
 
     `[json]`
 
+    `buyer_price` and `seller_price` represented as `real_price * 10^8`. Where `real_price` could be `float`.
+
 ```bash
     [
         {
-            'cid': [string],
-            'buyer_price': [float],
-            'seller_price': [float],
-            'buyer_addr': [string], 
-            'buyer_pubkey': [string]
+            "cid": [integer],           # content identifier
+            "buyer_price": [integer],   # proposed buyer price * 10^8
+            "seller_price": [integer],  # content price * 10^8
+            "owner_addr": [string],     # content owner's address
+            "owner_pubkey": [string]    # content owner's public key
         },
         ...
     ]
@@ -818,7 +830,7 @@ The following is a description of the API-methods:
     {
         "public_key": [string],
         "message": {
-            "cid": [string]
+            "cid": [integer]
             "timestamp": [string]
         },
         "signature": [string]
@@ -833,27 +845,29 @@ The following is a description of the API-methods:
 
     `[json]`
 
+    `buyer_price` and `seller_price` represented as `real_price * 10^8`. Where `real_price` could be `float`.
+
 ```bash
     [
         {
-            'cid': [string],
-            'buyer_price': [float],
-            'seller_price': [float],
-            'buyer_addr': [string], 
-            'buyer_pubkey': [string]
+            "cid": [integer],           # content identifier
+            "buyer_price": [integer],   # proposed buyer price * 10^8
+            "seller_price": [integer],  # content price * 10^8
+            "buyer_addr": [string],     # buyer's address
+            "public_key": [string]      # buyer's public key
         },
         ...
     ]
 ```
 
-## Error message
+## Error message standardization
 
 Standard error answer from the server has next structure:
 
 ```bash
 {
-    'error': [int], 
-    'reason': [string]}
+    "error": [integer], 
+    "reason": [string]}
 ```
 
 Where `error` contains error code, while `reason` contains error description.
