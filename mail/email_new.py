@@ -14,8 +14,8 @@ db = Table("email", "email")
 def sendmail(array):
     # function for read data in db and send mail
     # unzip data
-    username = 'eastern.server.engine@gmail.com'
-    password = '9018540z'
+    username = 'example@gmail.com'
+    password = 'pass'
     FROM = username
     TO = [array["to"]]
     SUBJECT = array["subject"]
