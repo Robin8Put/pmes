@@ -105,20 +105,21 @@ class Bip32Keys:
         priv_key = Bip32Keys._validate_private_key_for_signature(private_key)
         message = message.encode()
         sk = SigningKey.from_string(curve=ecdsa.SECP256k1, string=decode_hex(priv_key)[0], hashfunc=sha256)
-        sig = sk.sign(message)
+        sig = sk.sign(message, sigencode=ecdsa.util.sigencode_der)
         return encode_hex(sig)[0].decode()
 
     @staticmethod
     def verify_message(message, signature, public_key):
         pub_key = Bip32Keys._validate_public_key_for_signature(public_key)
-        sig = Bip32Keys._validate_signature(signature)
+        sig = signature
         msg = message.encode()
         vk = VerifyingKey.from_string(string=decode_hex(pub_key)[0], curve=ecdsa.SECP256k1, hashfunc=sha256)
 
-        try:
-            vk.verify(decode_hex(sig)[0], msg)
-        except:
-            return False
+        if len(sig) == 128:
+            vk.verify(decode_hex(sig)[0], msg, sigdecode=ecdsa.util.sigdecode_string)
+        else:
+            vk.verify(decode_hex(sig)[0], msg, sigdecode=ecdsa.util.sigdecode_der)
+
         return True
 
     @staticmethod
@@ -146,14 +147,6 @@ class Bip32Keys:
         else:
             raise Exception('Unsupported public key format')
 
-    @staticmethod
-    def _validate_signature(signature):
-        if len(signature) == 128:
-            return signature
-        elif len(signature) == 140:
-            return signature[8:72] + signature[-64:]
-        else:
-            raise Exception('Unsupported signature format')
 
     """
     for asymetric encryption

@@ -58,9 +58,12 @@ class Bip32Addresses(Bip32NetworkKeys):
         return output[2:-8].decode()  # drop magic byte and checksum
 
     @staticmethod
-    def is_valid_address(address):
+    def verify_address(address):
         output = base58check.b58decode(address)
         output = encode_hex(output)[0].decode()
+        print(output)
+        if len(output) != 50:
+            raise Exception('Invalid address length exception')
 
         checksum = output[-8:]
         extended_ripemd160 = output[:-8]
@@ -68,7 +71,11 @@ class Bip32Addresses(Bip32NetworkKeys):
         output = decode_hex(extended_ripemd160)[0]
         output = sha256(sha256(output).digest()).hexdigest()[0:8]
 
-        return checksum == output
+        if checksum != output:
+            raise Exception('Invalid checksum')
+
+        return True
+
 
     @staticmethod
     def get_magic_byte(address):

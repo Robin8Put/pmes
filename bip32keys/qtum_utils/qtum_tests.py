@@ -1,5 +1,7 @@
 import unittest
 
+from ecdsa import BadSignatureError
+
 from bip32keys.bip32keys import Bip32Keys
 from qtum_utils.qtum import Qtum
 
@@ -13,6 +15,13 @@ class TestUM(unittest.TestCase):
         message = 'aaa'
         public_key = '040646d16f7bb84333446266a7237eed33866b3478caad3da040e0ca63e7b3f1c01f8c8ee50d8a57e2b9c35b48efdce495f0075560790bb8a87749b92ad8600239'
         signature = '304402201c1ee66e98a67e4da411eacc2388b4e33cfd6da37a11340119e2cb2c76064aa0022049c00a810b896445f7508d0499845eaf3b904661cd427e0a19ab54a50e9012ad'
+        self.assertTrue(Qtum.verify_message(message, signature, public_key))
+
+    def test_der(self):
+        message = 'aaa'
+        signature = '3045022016cdbe36a5653336ff74a28cde1092c76886306b0fb9a86bbcd3b8ec15679a5602210091393fb0d4c43a461ff522ebfd8f22ef8ad412f51f29602ba7ca339c37880772'
+        public_key = '0406838688de86e85a2a10f1c0986eeef3dadd7e8cf7bd8491dc9557132f75b655c9eb00d5fed251c7def677e1b67c49f5d4cff690282fcbd9fe97be29f4fef843'
+
         self.assertTrue(Qtum.verify_message(message, signature, public_key))
 
     def test_valid_signature2(self):
@@ -37,13 +46,16 @@ class TestUM(unittest.TestCase):
         message = 'CORRUPTED'
         public_key = '040646d16f7bb84333446266a7237eed33866b3478caad3da040e0ca63e7b3f1c01f8c8ee50d8a57e2b9c35b48efdce495f0075560790bb8a87749b92ad8600239'
         signature = '304402201c1ee66e98a67e4da411eacc2388b4e33cfd6da37a11340119e2cb2c76064aa0022049c00a810b896445f7508d0499845eaf3b904661cd427e0a19ab54a50e9012ad'
-        self.assertFalse(Qtum.verify_message(message, signature, public_key))
+        with self.assertRaises(BadSignatureError):
+            Qtum.verify_message(message, signature, public_key)
+
 
     def test_invalid_signature(self):
         message = 'aaa'
         public_key = '040646d16f7bb84333446266a7237eed33866b3478caad3da040e0ca63e7b3f1c01f8c8ee50d8a57e2b9c35b48efdce495f0075560790bb8a87749b92ad8600239'
         signature = '304402201c1ee66e98a67e4da4'+'CORRUPTED'+'8b4e33cfd6da37a11340119e2cb2c76064aa0022049c00a810b896445f7508d0499845eaf3b904661cd427e0a19ab54a50e9012ad'
-        self.assertFalse(Qtum.verify_message(message, signature, public_key))
+        with self.assertRaises(Exception):
+            Qtum.verify_message(message, signature, public_key)
 
     def test_sig_formats(self):
         message = 'aaa'
@@ -80,7 +92,8 @@ class TestUM(unittest.TestCase):
 
         signature = Qtum.sign_message(message, private_key)
         message = 'corrupted'
-        self.assertFalse(Qtum.verify_message(message, signature, public_key))
+        with self.assertRaises(BadSignatureError):
+            Qtum.verify_message(message, signature, public_key)
 
     def test_addresses(self):
         entropy = "3123213213213123312c3kjifj3"
@@ -143,16 +156,22 @@ class TestUM(unittest.TestCase):
         wif = 'cQZmGLJZAMpNY36YFKbH6gygW2eBDULpokkeTYdPg41fo4BqycEc'
         q = Qtum({'wif': wif}, mainnet=False)
 
-        self.assertTrue(Qtum.is_valid_address(q.get_qtum_address()))
+        self.assertTrue(Qtum.verify_address(q.get_qtum_address()))
 
     def test_valid_predefined_address(self):
-        self.assertTrue(Qtum.is_valid_address('qZiXFyqVf9vxf6iu47AdfU1FVaHyULUP7e'))
+        self.assertTrue(Qtum.verify_address('qZiXFyqVf9vxf6iu47AdfU1FVaHyULUP7e'))
 
     def test_invalid_address(self):
-        self.assertFalse(Qtum.is_valid_address('qAiXFyqVf9vxf6iu47AdfU1FVaHyULUP7e'))
+        with self.assertRaises(Exception):
+            self.assertFalse(Qtum.verify_address('qAiXFyqVf9vxf6iu47AdfU1FVaHyULUP7e'))
 
     def test_valid_qtum_address(self):
-        self.assertTrue(Qtum.is_valid_qtum_address('qZiXFyqVf9vxf6iu47AdfU1FVaHyULUP7e', mainnet=False))
+        self.assertTrue(Qtum.verify_qtum_address('qZiXFyqVf9vxf6iu47AdfU1FVaHyULUP7e', mainnet=False))
+
+    # valid checksum but invalid length
+    def test_tricky_qtum_address(self):
+        with self.assertRaises(Exception):
+            self.assertFalse(Qtum.verify_address('6JnZeT4rMWNrapEKqCLjNGFJRfKyALEm5'))
 
     def test_shared_key(self):
         keys = Bip32Keys({'entropy': '3123213213213123312c3kjifj3'})

@@ -1,3 +1,6 @@
+import string
+from random import choice
+
 from bip32keys.bip32addresses import Bip32Addresses
 
 
@@ -25,8 +28,8 @@ class Qtum(Bip32Addresses):
             return '78'
 
     @staticmethod
-    def is_valid_qtum_address(address, mainnet=True):
-        return Qtum.is_valid_address(address) and int(Qtum._get_magic_byte(mainnet), 16) == Qtum.get_magic_byte(address)
+    def verify_qtum_address(address, mainnet=True):
+        return Qtum.verify_address(address) and int(Qtum._get_magic_byte(mainnet), 16) == Qtum.get_magic_byte(address)
 
 
 def test_address():
@@ -50,7 +53,20 @@ def test_signature():
     signature = Qtum.sign_message(message, private_key)
     print(Qtum.verify_message(message, signature, public_key))
 
+def generate_token(length=16, chars=string.ascii_letters + string.punctuation + string.digits):
+    return "".join(choice(chars) for x in range(0, length))
 
 if __name__ == '__main__':
-    test_address()
-    test_signature()
+    # test_address()
+    # test_signature()
+    q = Qtum('fdssfdsdffdsddsfdsdddsfdsffffffffffffdsfddsfdsfsddffdsd')
+    # while not q.get_hex_address().endswith('00'):
+    #     q = Qtum(generate_token())
+    print(q.get_hex_address())
+    print(q.get_qtum_address())
+    print(q.get_private_key())
+    print(q.hex_to_qtum_address('35bbf645d16ae00a90e28c8e2fce6371a57910', True))
+    print(q.get_magic_byte('6JnZeT4rMWNrapEKqCLjNGFJRfKyALEm5'))
+    # print(q.is_valid_qtum_address('6JnZeT4rMWNrapEKqCLjNGFJRfKyALEm5'))
+    print(q.sign_msg('hello'))
+    print(q.get_hex_address())
