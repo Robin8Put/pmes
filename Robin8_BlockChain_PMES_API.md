@@ -99,7 +99,7 @@ The following is a description of the API-methods:
 
 ```bash
     {
-        "address": [string],     # user's wallet address
+        "address": [string],        # user's wallet address
         "public_key": [string],
         "email": [string],
         "phone": [string],
@@ -108,8 +108,8 @@ The following is a description of the API-methods:
         "level": [integer],         # user account level (2 - when balance is zero (by default), 3 - when balance is not null)
         "news_count": [integer],    # number of news about offers to buy content (0 by default)
         "id": [integer],            # user's identifier
-        "href": [string],       # link to user account
-        "balance": [integer],   # user balance (0 by default) * 10^8
+        "href": [string],           # link to user account
+        "balance": [integer],       # user balance (0 by default) * 10^8
     }
 ```
 
@@ -146,7 +146,7 @@ The following is a description of the API-methods:
 
 ```bash
     {
-        "address": [string],    # user's wallet address
+        "address": [string],        # user's wallet address
         "public_key": [string], 
         "email": [string], 
         "phone": [string], 
@@ -156,7 +156,7 @@ The following is a description of the API-methods:
         "level": [integer],         # user account level (2 - when balance is zero (by default), 3 - when balance is not null)
         "news_count": [integer],    # number of news about offers to buy content (0 by default
         "id": [integer],            # user's identifier
-        "balance": [integer],   # user balance (0 by default) * 10^8
+        "balance": [integer],       # user balance (0 by default) * 10^8
     }
 ```
 
