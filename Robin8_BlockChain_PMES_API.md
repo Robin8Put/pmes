@@ -6,6 +6,8 @@ The API uses the REST API standard.
 
 The host is here: http://pdms.robin8.io.
 
+`balance`, `price`, `buyer_price` and `seller_price` represented as `real_entity * 10^8`. Where `real_entity` could be `float`.
+
 The API-methods:
 
 - [Create new account](#create-new-account)
@@ -13,6 +15,8 @@ The API-methods:
 - [Get account data](#get-account-data)
 
 - [Get all news for the account](#get-all-news-for-the-account)
+
+- [Increment balance](#increment-balance)
 
 - [Post content to the blockchain](#post-content-to-the-blockchain)
 
@@ -84,29 +88,9 @@ The following is a description of the API-methods:
 
     If such account already exists user receives a `Unique violation error`.
 
-    After successful account creation user receives the response that will contain next user's data:
+    `balance` represented as `real_user_balance * 10^8`. Where `real_user_balance` could be `float`.
 
-    `public_key` 
-
-    `email` 
-
-    `device_id`
-
-    `news_count` - number of news about offers to buy content (0 by default)
-
-    `href` - link to user account
-
-    `balance` - user balance (0 by default)
-
-    `address` - user identifier (public key in hash format)
-
-    System data:
-
-    `id`
-
-    `count`
-
-    `level`
+    After successful account creation user receives the response with following structure:
 
 ```bash
     {
@@ -114,12 +98,12 @@ The following is a description of the API-methods:
         "email": [string],
         "phone": [string],
         "device_id": [string],
-        "count": [int],
-        "level": [int], 
+        "count": [int],         # number of wallets
+        "level": [int],         # user account level (2 - when balance is zero (by default), 3 - when balance is not null)
         "news_count": [int],    # number of news about offers to buy content (0 by default)
-        "id": [int],
+        "id": [int],            # user's identifier
         "href": [string],       # link to user account
-        "balance": [float],     # user balance (0 by default)
+        "balance": [integer],   # user balance (0 by default)
         "address": [string]     # user identifier (public key in hash format)
     }
 ```
@@ -155,8 +139,10 @@ The following is a description of the API-methods:
 
 ```bash
     {
+        "address": [string],    # user's wallet address
         "public_key": [string], 
         "email": [string], 
+        "phone": [string], 
         "device_id": [string], 
         "phone": [string], 
         "count": [int], 
@@ -216,6 +202,54 @@ The following is a description of the API-methods:
 * **Description**
 
     News about actions with user content.
+
+
+## Increment balance
+
+**temporary function**
+
+* **URL:** `/api/accounts/[user_id]/balance`
+
+* **Method:** `POST`
+
+* **URL params**
+
+    `[json]`
+
+```bash
+    {
+        "amount": [int]
+    }
+```
+
+* **Body params**
+
+    None
+
+* **Sample response**
+
+    `[json]`
+
+    When user send offer to buy content `event_type` is 'made offer'.
+
+    `access_string` is equal to `buyer_pubkey` now.
+
+```bash
+    [
+        {
+            'event_type': [string], 
+            'buyer_addr': [string], 
+            'cid': [int], 
+            'access_string': [string], 
+            'buyer_pubkey': [string], 
+            'account_id': [integer]
+        }
+    ]
+```
+
+* **Description**
+
+    Increment user's balance with test coins.
 
 
 ## Post content to the blockchain
