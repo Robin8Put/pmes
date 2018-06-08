@@ -16,11 +16,9 @@ API-methods:
 
 - [Post content to the blockchain](#post-content-to-the-blockchain)
 
-- [Get description of content by cid](#get-description-of-content-by-cid)
+- [Get content from the blockchain by cid](#get-content-from-the-blockchain-by-cid)
 
 - [Set description of content for cid](#set-description-of-content-for-cid)
-
-- [Get content price](#get-content-price)
 
 - [Set content price](#set-content-price)
 
@@ -277,9 +275,9 @@ The following is a description of the API-methods:
     Post data to blockchain via transaction. When transaction will be approved (around 5-10 minutes) user can receive cid (Content-ID).
 
 
-## Get description of content by cid
+## Get content from the blockchain by cid
 
-* **URL:** `/api/blockchain/[cid]/description`
+* **URL:** `/api/blockchain/[cid]/content`
 
 * **Method:** `GET`
 
@@ -296,14 +294,20 @@ The following is a description of the API-methods:
     `[json]`
 
 ```bash
-    {
-        "description": "Test description1"
+    {   
+        'account_id': [int],
+        'cid': [int],
+        'content': [string],
+        'description': [string],
+        'owner': [string],
+        'price': [int],
+        'txid': [string]
     }
 ```
 
 * **Description**
 
-    Return content description from blockchain
+    Return content from the blockchain by content id
 
 
 ## Set description of content for cid
@@ -348,31 +352,6 @@ The following is a description of the API-methods:
         'addr': [string]
     }
 ``` 
-
-
-## Get content price
-
-* **URL:** `/api/blockchain/[cid]/price`
-
-* **Method:** `GET`
-
-* **URL params**
-
-    `cid=[string]`
-
-* **Body params**
-
-    None
-
-* **Sample response**
-
-    `[json]`
-
-```bash
-    {
-        'price': [float]
-    }
-```
 
 
 ## Set content price
