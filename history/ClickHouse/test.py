@@ -5,36 +5,14 @@ history_host = "http://192.168.1.92:8002/api/history"
 
 client = HTTPClient(history_host)
 
-# client.request(method_name="create_table", table='new_test',
-#                fields={'id': ['int(32, signed)', 'yes'], 'field1': ['string', 'no'], 'field2': ['float(32)', 'no']})
-
-
-# client.request(method_name="integrity", table='orders', order_id=1)
-
-# client.request(method_name="insert", table="new_test1",
-#                fields={'id': '1241', 'uid': 32, 'coinid': 'QTUM', 'amount': 10.0})
-#
-client.request(method_name="refill_inc",  uid=12345, value=10, coinid="LTC")
-#
-#
-# client.request(method_name="refill_from_history", uid=1, coinid="QTUM")
-
-# client.request(method_name="select", fields="uid, amount", table="Refill", query="")
-#
-# client.request(method_name="drop", table="Refill")
-
-
 # client.request(method_name="create_table", table='Refill',
-#                     fields={'id': ['string', 'yes'], 'uid': ['int(32, signed)', 'no'],
-#                         'coinid': ['string', 'no'], 'amount': ['float(32)', 'no']})
+#                fields={'id': ['int(32, signed)', 'yes'], 'coinid': ['string', 'no'],
+#                        'amount': ['int(32, signed)', 'no'], 'uid': ['int(32, unsigned)', 'no']})
 
-# client.request(method_name="insert", table="Refill",
-#                fields={
-#                     'id': sha256(str(datetime.datetime.now()).encode()).hexdigest(),
-#                     'uid': 1,
-#                     'coinid': "QTUM",
-#                     'amount': 10.0
-#                                 })
+# client.request(method_name="insert", table="Trade",
+#                fields={'id': 1241, 'uid': 123, 'coinid': 'QTUM', 'amount': 3})
+#
+client.request(method_name="drop", table="Trade")
 
 # import re
 #
