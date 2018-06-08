@@ -4,9 +4,9 @@ This API provides access to information of Profile Management EcoSystem (PMES).
 
 The API uses the REST API standard.
 
-Now host is here: http://pdms.robin8.io.
+The host is here: http://pdms.robin8.io.
 
-API-methods:
+The API-methods:
 
 - [Create new account](#create-new-account)
 
@@ -59,9 +59,11 @@ The following is a description of the API-methods:
 
     **Optional:**
 
-    `phone`
+    `phone` and `email`
 
-    All other fields are **required**.
+    **Required:**
+
+    `device_id`
 
 ```bash
     {
@@ -80,9 +82,9 @@ The following is a description of the API-methods:
 
     `[json]`
 
-    New account data with:
+    If such account already exists user receives a `Unique violation error`.
 
-    User data:
+    After successful account creation user receives the response that will contain next user's data:
 
     `public_key` 
 
@@ -108,16 +110,17 @@ The following is a description of the API-methods:
 
 ```bash
     {
-        "public_key": [string], 
-        "email": [string], 
-        "device_id": [string], 
-        "count": [int], 
+        "public_key": [string],
+        "email": [string],
+        "phone": [string],
+        "device_id": [string],
+        "count": [int],
         "level": [int], 
-        "news_count": [int], 
-        "id": [int], 
-        "href": [string], 
-        "balance": [float], 
-        "address": [string]
+        "news_count": [int],    # number of news about offers to buy content (0 by default)
+        "id": [int],
+        "href": [string],       # link to user account
+        "balance": [float],     # user balance (0 by default)
+        "address": [string]     # user identifier (public key in hash format)
     }
 ```
 
@@ -802,3 +805,15 @@ The following is a description of the API-methods:
         ...
     ]
 ```
+
+## Error message
+
+Standard error answer from the server has next structure:
+
+```bash
+{
+    'error': [int], 
+    'reason': [string]}
+```
+
+Where `error` contains error code, while `reason` contains error description.
