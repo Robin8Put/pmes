@@ -6,7 +6,13 @@ The API uses the REST API standard.
 
 The host is here: http://pdms.robin8.io.
 
-`balance`, `price`, `buyer_price` and `seller_price` represented as `real_entity * 10^8`. Where `real_entity` could be `float`.
+`balance`, `price`, `buyer_price` and `seller_price` represented as: 
+
+```math
+    entity = real_entity * 10^8
+```
+
+Where `real_entity` could be `float`.
 
 The API-methods:
 
