@@ -139,18 +139,11 @@ function doSign() {
   var f1 = document.form1;
   var prvkey = f1.prvkey1.value;
   var msg1 = f1.msg1.value;
-
-  var sigValueHex;
-  do {
-	var sig = new KJUR.crypto.Signature({"alg": sigalg}); // needs to be initialized again
-	sig.init({d: prvkey, curve: curve});
-    sig.updateString(msg1);
-	sigValueHex = sig.sign();
-	console.log(sigValueHex[7])
-	console.log(sigValueHex[75])
-  } while (sigValueHex[7] != 0 || sigValueHex[75] != 0); // those bytes indicate length of r,s components of signature
-														// python ecdsa works only with 64-bit r,s
-														// takes 2-3 times to generate needed signature
+  var sig = new KJUR.crypto.Signature({"alg": sigalg});
+  
+  sig.init({d: prvkey, curve: curve});
+  sig.updateString(msg1);
+  sigValueHex = sig.sign();
   
   f1.sigval1.value = sigValueHex
 }

@@ -36,15 +36,16 @@ def create_account_with_valid_data():
 	print("\n[+] -- Creating seller")
 
 	#url = "http://pdms.robin8.io/api/accounts"
+
 	url = "http://pdms.robin8.io:8000/api/accounts"
 	print("Request to:   " + url)
 
 	public_key = "04e2a4a921112c9921cf9b599fba4a2257a71b6198cbdfd9ad343171b95a089ddedaf8231e842ff2be63be926ca345836a7edc3d5e098bdeb0a2ff7ddca7f156"
 	private_key = "bde5a03e2547b1fe47029ae12a2a1c678223c85fb5f2714f7605cea85ea3ebc9"
-	email = "heroyooki@gmail.com"
+	#email = "heroyooki@gmail.com"
 	device_id = "lenovo"
 	message = json.dumps({
-			"email": email,
+			#"email": email,
 			"device_id": device_id,
 			"timestamp": get_time_stamp()
 		})
@@ -516,9 +517,6 @@ if __name__ == '__main__':
 	client.pmes.balance.remove()
 	client.pmes.autoincrement.remove()
 	client.pmes.content.remove()
-	"""
-
-
 	cid = 114
 	price=4
 	inc = 20

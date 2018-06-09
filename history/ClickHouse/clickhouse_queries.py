@@ -18,26 +18,6 @@ db = Database('HistoryDB')
 client = Client('localhost', database='HistoryDB')
 
 
-def find_transaction_number():
-    """
-    Find needed transaction number for checking integrity
-    :return: id of transaction table
-    """
-
-    tables = client.execute("SHOW TABLES")
-
-    tables_list = [i[0] for i in tables]
-
-    tx_indexes = [tables_list[i] for i, item in enumerate(tables_list) if re.search(r"\btxhist\w*?\d+\b", item)]
-
-    tx_idx = [re.findall('\d+', i)[0] for i in tx_indexes]
-
-    try:
-        return max(tx_idx)
-    except ValueError:
-        return None
-
-
 def create_table(table, data):
     """
     Create table with defined name and fields
@@ -113,7 +93,15 @@ def select_from_table(fields, table, query):
     result = []
 
     for i in range(len(select_data[0])):
-        result.append(dict(list(zip(keys, select_data[0][i]))))
+        tmp = []
+
+        for j in range(len(keys)):
+            tmp.append(str(select_data[0][i][j]))
+
+        result.append(dict(list(zip(keys, tmp))))
+
+    # for i in range(len(select_data[0])):
+    #     result.append(dict(list(zip(keys, select_data[0][i]))))
 
     return result
 
