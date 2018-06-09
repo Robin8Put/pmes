@@ -1,12 +1,35 @@
 from jsonrpcclient.http_client import HTTPClient 
+from collections import OrderedDict
+import json
 
 
-client = HTTPClient("http://127.0.0.1:8001/api/storage")
+class RobustTornadoClient(HTTPClient):
+	"""Client processes refused connections and 
+		sends email if happens the one.
+	"""
+	def request(self, *args, **kwargs):
+		"""Overrided method. Returns jsonrpc response
+		or fetches exception? returns appropriate data to client
+		and response mail to administrator.
+		"""
+		try:
+			#'{"jsonrpc": "2.0", "method": "ping", "id": 1}'
+			#result = super().request(*args, **kwargs)
+			message = json.dumps(kwargs)
 
-data = {"cid":89, "buyer_addr":"66ca783b8a37ea00d872559c612b5d6b650263e5",
-		"price":890}
+			result = super().request(method_name=kwargs["method_name"],
+												message=message)
+			print(message)
+			return result
+		except ConnectionRefusedError:
+			return {"error":500, 
+					"reason": "Service connection error."}
+		except Exception as e:
+			return {"error":500, "reason": str(e)}
 
 
-a = client.request(method_name="removeoffer", **data)
 
-print(a)
+client = RobustTornadoClient("http://127.0.0.1:8004/api/balance")
+
+r = client.request(method_name="incbalance", amount=20, uid=1)
+print(r)

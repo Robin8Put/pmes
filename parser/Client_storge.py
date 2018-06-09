@@ -1,8 +1,11 @@
 import os
 import sys
+import logging
 from time import sleep
 from jsonrpcclient.http_client import HTTPClient
 from searchlogs import SearchLogs
+
+
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -22,35 +25,40 @@ class ClientStorge():
 
     def insert_offer(self, cid=None, buyer_addr=None, price=None):
         if cid and buyer_addr and price:
-            request = self.client.request(method_name="insertoffer", cid=cid, buyer_addr=buyer_addr, price=price)
+            request = self.client.request(method_name="insertoffer", 
+                                    cid=cid, buyer_addr=buyer_addr, price=price)
             return request
         else:
             return {2: "Missing parameter"}
 
     def get_offer(self, cid=None, buyer_addr=None):
         if cid and buyer_addr:
-            request = self.client.request(method_name="getoffer", cid=cid, buyer_addr=buyer_addr)
+            request = self.client.request(method_name="getoffer", 
+                                    cid=cid, buyer_addr=buyer_addr)
             return request
         else:
             return {2: "Missing parameter"}
 
     def update_offer(self, txid=None, flag=None):
         if txid:
-            request = self.client.request(method_name="updateoffer", txid=txid, flag=flag)
+            request = self.client.request(method_name="updateoffer", 
+                                                    txid=txid, flag=flag)
             return request
         else:
             return {2: "Missing parameter"}
 
-    def mailed_confirm(self, cid=None, buyer_addr=None, price=None):
-        if cid and buyer_addr and price:
-            request = self.client.request(method_name="mailedconfirm", cid=cid, buyer_addr=buyer_addr, price=price)
+    def mailed_confirm(self, cid=None, buyer_address=None, price=None):
+        if cid and buyer_address and price:
+            request = self.client.request(method_name="mailedconfirm", 
+                                        cid=cid, buyer_address=buyer_address, price=price)
             return request
         else:
             return {2: "Missing parameter"}
 
     def update_users_content(self, txid=None, cid=None):
         if cid and txid:
-            request = self.client.request(method_name="updateuserscontent", cid=cid, txid=txid)
+            request = self.client.request(method_name="updateuserscontent", 
+                                                        cid=cid, txid=txid)
             return request
         else:
             return {2: "Missing parameter"}
@@ -118,6 +126,7 @@ def main_code(from_i):
                 new_offer(from_i, from_i, obj_searchlogs, client)
                 from_i += 1
                 print(from_i)
+                #logging.debug(i)
             else:
                 sleep(1)
         except:

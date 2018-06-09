@@ -1,15 +1,15 @@
 from jsonrpcclient.tornado_client import TornadoClient
-from tornado_components.web import RobustTornadoClient
+from tornado_components.web import RobustTornadoClient, SignedTornadoClient
 import tornado.web
 import settings
 from pdms import views
 
 
 context = dict(client_storage=RobustTornadoClient(settings.storageurl), 
-               client_balance=RobustTornadoClient(settings.balanceurl),
+               client_balance=SignedTornadoClient(settings.balanceurl),
                client_email=RobustTornadoClient(settings.emailurl),
                client_bridge=RobustTornadoClient(settings.bridgeurl))
-
+              
 
 pdms_router = tornado.web.Application([
         	(settings.ENDPOINTS["blockchain"],  views.ContentHandler,     context),

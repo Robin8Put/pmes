@@ -36,10 +36,11 @@ def create_account_with_valid_data():
 	print("\n[+] -- Creating seller")
 
 	#url = "http://pdms.robin8.io/api/accounts"
-	url = "http://pdms.robin8.io/api/accounts"
+
+	url = "http://pdms.robin8.io:8000/api/accounts"
 	print("Request to:   " + url)
 
-	public_key = "04e2a4c921001b7510cf9a488fba3e6147a73a977196cbffd9ad863171b95a089ddedaf8231e842ff2be63be926ca345836a7edc3d5e098bdeb0a2ff7ddca7f156"
+	public_key = "04e2a4a921112c9921cf9b599fba4a2257a71b6198cbdfd9ad343171b95a089ddedaf8231e842ff2be63be926ca345836a7edc3d5e098bdeb0a2ff7ddca7f156"
 	private_key = "bde5a03e2547b1fe47029ae12a2a1c678223c85fb5f2714f7605cea85ea3ebc9"
 	#email = "heroyooki@gmail.com"
 	device_id = "lenovo"
@@ -160,8 +161,8 @@ def write_data_to_blockchain():
 	url = "http://127.0.0.1:8000/api/blockchain/%s/content" % public_key
 	print("Request to:   " + url)
 	message = json.dumps({
-			"cus": "русские символы",
-			#"cus": id_generator(),
+			#"cus": "cus",
+			"cus": id_generator(),
 			"description":id_generator(),
 			"price": 3,
 			"timestamp": get_time_stamp()
@@ -277,9 +278,9 @@ def create_buyer_with_valid_data():
 ##################################################################################
 						# Increment buyers balance
 def increment_balance(amount, uid):
-	url = "http://pdms.robin8.io/api/accounts/%s/balance" % uid
+	url = "http://pdms2.robin8.io/api/accounts/%s/balance" % uid
 	print(url)
-	response = requests.post(url, data={"amount":amount})
+	response = requests.post(url, data=json.dumps({"amount":amount}))
 	print(response.text)
 	print("----------------------------------------------------------------------")
 
@@ -516,16 +517,13 @@ if __name__ == '__main__':
 	client.pmes.balance.remove()
 	client.pmes.autoincrement.remove()
 	client.pmes.content.remove()
-
-
-	"""
 	cid = 114
 	price=4
 	inc = 20
 	hash_="QmbT3mX7YviGVnjyeFCy5qdpN9kRVReyGQMvF5y5FcE6gZ"
 
-	#create_account_with_valid_data()
-	#increment_balance(inc, 1)
+	create_account_with_valid_data()
+	#increment_balance(inc, 6)
 	#create_account_with_existing_data()
 	#create_account_with_invalid_data1()
 	#create_account_with_invalid_data2()
@@ -542,7 +540,7 @@ if __name__ == '__main__':
 	#increment_balance(inc, 2)
 	#make_offer_from_buyer_to_seller(cid=cid)
 	#make_offer_from_buyer_to_seller_with_price(cid=cid, price=2)
-	getaccountdata()
+	#getaccountdata()
 	#get_news_for_seller()
 	#accept_offer_from_buyer(cid,1,2)
 	#reject_offer_by_owner(cid)
