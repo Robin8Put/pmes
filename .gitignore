@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.pyc
 
 # C extensions
 *.so
@@ -9,12 +10,14 @@ __pycache__/
 # Distribution / packaging
 .Python
 env/
+venv/
 build/
 develop-eggs/
 dist/
 downloads/
 eggs/
 .eggs/
+.idea/
 lib/
 lib64/
 parts/
@@ -91,6 +94,8 @@ ENV/
 .spyderproject
 .spyproject
 
+# Logs
+*.log
 # Rope project settings
 .ropeproject
 

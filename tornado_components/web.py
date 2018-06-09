@@ -2,15 +2,17 @@ import sys
 import json
 import time
 import logging
+import os
 import datetime
 from jsonrpcclient.tornado_client import TornadoClient
 import tornado.web
 from tornado_components.timestamp import get_time_stamp
 from qtum_utils.qtum import Qtum
+from bip32keys.bip32keys import Bip32Keys
 
 
 
-class RobustTornadoClient(TornadoClient):
+class SignedTornadoClient(TornadoClient):
 	"""Client processes refused connections and 
 		sends email if happens the one.
 	"""
@@ -20,7 +22,16 @@ class RobustTornadoClient(TornadoClient):
 		and response mail to administrator.
 		"""
 		try:
-			result = await super().request(*args, **kwargs)
+			import settings
+
+			with open(os.path.join(settings.BASE_DIR, "keys.json")) as f:
+				keys = json.load(f)
+				privkey = keys["privkey"]
+
+			message = json.dumps(kwargs)
+			signature = Bip32Keys.sign_message(message, privkey)
+			result = await super().request(method_name=kwargs["method_name"],
+												message=message, signature=signature)
 			return result
 		except ConnectionRefusedError:
 			return {"error":500, 
@@ -29,7 +40,16 @@ class RobustTornadoClient(TornadoClient):
 			return {"error":500, "reason": str(e)}
 
 
-	
+class RobustTornadoClient(TornadoClient):
+	async def request(self, *args, **kwargs):
+		try:
+			result = await super().request(*args, **kwargs)
+		except ConnectionRefusedError:
+			result = {"error":500, "reason":"Service connection error"}
+		return result
+
+
+
 class ManagementSystemHandler(tornado.web.RequestHandler):
 	"""Overloaded class.
 	Contains:
@@ -47,7 +67,12 @@ class ManagementSystemHandler(tornado.web.RequestHandler):
 		Signature verifying logic.
 
 		"""
-		data = json.loads(self.request.body)
+		if self.request.body:
+			data = json.loads(self.request.body)
+			message = data.get("message")
+		elif self.request.arguments:
+			data = {i:self.get_argument(i) for i in self.request.arguments}
+			message = json.loads(data.get("message", "{}"))
 		try:
 			# Check if required fields exist
 			assert "public_key" in data.keys(), "Missed public key in parameters"
@@ -55,7 +80,6 @@ class ManagementSystemHandler(tornado.web.RequestHandler):
 			assert "signature" in data.keys(),"Missed signature in parameters"
 
 			public_key = data["public_key"]
-			message = data["message"]
 			signature = data["signature"]
 			dumped_message = json.dumps(message).replace(" ", "")
 			timestamp = data.get("timestamp", None)
@@ -87,7 +111,7 @@ class ManagementSystemHandler(tornado.web.RequestHandler):
 			if not flag:
 			    self.status(403)
 			    self.write({"error":403, 
-			    			"reason":"Forbidden. Invalid signature.---"})
+			    			"reason":"Forbidden. Invalid signature."})
 
 
 	def get(self, *args, **kwargs):
@@ -103,6 +127,10 @@ class ManagementSystemHandler(tornado.web.RequestHandler):
 		self.write({"error":405, "reason":"Method not allowed."})
 
 	def delete(self, *args, **kwargs):
+		self.set_status(405)
+		self.write({"error":405, "reason":"Method not allowed."})
+
+	def options(self):
 		self.set_status(405)
 		self.write({"error":405, "reason":"Method not allowed."})
 

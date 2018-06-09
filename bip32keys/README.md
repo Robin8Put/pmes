@@ -28,14 +28,14 @@ This utilities used for generating public / private keys / blockchain address an
         - `public_key_to_hex_address` --- convert public key to hex address
         - `hex_address_to_blockchain_address` --- convert hex address to blockchain address
         - `address_to_hex` --- convert address to hex format. Drop magic byte and checksum
-        - `is_valid_address` --- check is address valid
+        - `verify_address` --- check is address valid
         - `get_magic_byte` --- return magic byte
-- `qtum_utils` --- packet that contains utils for Qtum
+- `qtum_utils` --- packet that contains utils for Qtum based on `bip32keys`
     - `qtum` --- contain class `Qtum` which was based on the `Bip32Addresses`
         - `get_qtum_address` --- return qtum address
         - `hex_to_qtum_address` --- convert hex to qtum address
         - `public_key_to_qtum_address` --- convert public key to qtum address
-        - `is_valid_qtum_address` --- check is qtum address valid
+        - `verify_qtum_address` --- check is qtum address valid
 - `eth_utuils` --- packet that contains utils for Ethereum
     - `eth` --- contains class `Ethereum` which was based on the `Bip32Keys`
         - `__init__` --- init class
@@ -58,4 +58,12 @@ cd libs
 virtualenv --python=python3.6 venv
 source venv/bin/activate
 pip3 install -r requirements.txt
+```
+
+or install from pip:
+
+```bash
+pip install qtum-utils
+pip install bip32keys
+pip install tornado-components
 ```
