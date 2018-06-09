@@ -7,7 +7,7 @@ import logging
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
 
-
+domain = "http://pdms2.robin8.io"
 
 host = "http://127.0.0.1"
 
@@ -52,6 +52,8 @@ ENDPOINTS = {
 	"offer": r"/api/blockchain/([a-zA-Z0-9]+?)/offer",
 	# POST deal
 	"deal": r"/api/blockchain/([a-zA-Z0-9]+?)/deal",
+	# GET all content
+	"allcontent": r"/api/blockchain/content",
 
 	# json-rpc requests
 	"blockchain": r"/api/blockchain",
@@ -84,3 +86,4 @@ OFFER = "offer"
 CONTENT = "content"
 
 AVAILABLE_COIN_ID = ["BTC", "QTUM", "LTC", "ETH"]
+
