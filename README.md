@@ -21,6 +21,7 @@ This repository contains the following modules:
 3. **history** - save logs about actions and history of transactions
 5. **mail** - save and send mails
 6. **pdms** - Profile Data Management System (PDMS). Contains **qtum_bridge** that provides access to information of Robin8 Smart Contract based on Qtum BlockChain
+7. **parser** - parse blockchain, catch blockchain transactions and change account state in the server
 
 Installation and running of PMES is described [here](Installation.md).
 

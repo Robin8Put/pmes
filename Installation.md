@@ -49,6 +49,12 @@ rpcallowip=127.0.0.0/24
 logevents=1
 ```
 
+Install python3.6-dev:
+
+```bash
+sudo apt-get install python3.6-dev
+```
+
 ## Cloning sources and creating of virtual environment
 
 ```bash
@@ -142,4 +148,10 @@ python3 mail/index.py
 source venv/bin/activate
 python3 coin/one_coin.py start
 ```
+
+7. **parser** server:
+
+```bash
+source venv/bin/activate
+python3 parser/Client_storge.py
 ```
