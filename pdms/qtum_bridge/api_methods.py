@@ -24,7 +24,7 @@ decimals = 8
 
 api_pass = 'AP'
 
-billing = robin8_billing.Robin8_Billig("robin8_billing/billing")
+billing = robin8_billing.Robin8_Billig("pmes/pdms/qtum_bridge/robin8_billing/billing")
 client_storage = RobustTornadoClient(settings.storageurl)
 client_balance = SignedTornadoClient(settings.balanceurl)
 
