@@ -1,10 +1,10 @@
-# Profile Management EcoSystem installation
+# Installation and running of the Profile Management EcoSystems
 
 ## Mongo DB, IPFS and QTUM daemon installation
 
-Install Mongo DB Community Edition by next [tutorial](https://docs.mongodb.com/manual/tutorial/install-mongodb-on-ubuntu/).
+Install the Mongo DB Community Edition by the following [tutorial](https://docs.mongodb.com/manual/tutorial/install-mongodb-on-ubuntu/).
 
-For installing [IPFS](https://ipfs.io/docs/getting-started/) use next commands:
+For installing the [IPFS](https://ipfs.io/docs/getting-started/) use the following commands:
 
 ```bash
 sudo apt-get update
@@ -14,28 +14,28 @@ tar xvfz go-ipfs_v0.4.10_linux-386.tar.gz
 sudo mv go-ipfs/ipfs /usr/local/bin/ipfs
 ```
 
-**Install [QTUM](https://github.com/qtumproject/qtum/wiki/How-to-Stake-QTUM-using-a-Linux-Virtual-Private-Server-(VPS))**
+**Install the [QTUM](https://github.com/qtumproject/qtum/wiki/How-to-Stake-QTUM-using-a-Linux-Virtual-Private-Server-(VPS))**
 
-Download and add the Qtum signing key to your linux install:
+Download and add the Qtum signing key to your Linux operation system:
 
 ```bah
 sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys BF5B197D
 ```
 
-Adding repository to your APT sources. **NOTE**: Please remember to change "xenial" for your Ubuntu version codename
+Add a repository to your APT sources. **NOTE**: Please remember to change "xenial" Ubuntu version codename for your personal Ubuntu version codename.
 
 ```bash
 sudo su
 echo "deb http://repo.qtum.info/apt/ubuntu/ xenial main" >> /etc/apt/sources.list
 ```
 
-Refresh APT sources and install Qtum:
+Refresh APT sources and install the Qtum:
 
 ```bash
 sudo apt update && sudo apt install qtum
 ```
 
-Here is the example of `qtum.conf` from `~/qtum/` folder:
+Here is the example of `qtum.conf` from a `~/qtum/` folder:
 
 ```bash
 server=1
@@ -49,19 +49,19 @@ rpcallowip=127.0.0.0/24
 logevents=1
 ```
 
-Install python3.6-dev:
+Install a python3.6-dev:
 
 ```bash
 sudo apt-get install python3.6-dev
 ```
 
-## Cloning sources and creating of virtual environment
+## Clone sources from the GitHub and create a virtual environment
 
 ```bash
 git clone https://github.com/Robin8Put/pmes.git
 ```
 
-Create virtualenv and install needed libraries from the `requirements.txt`:
+Create the virtual environment and install needed libraries from a `requirements.txt`:
 
 ```bash
 cd pmes
@@ -74,19 +74,19 @@ Add [bip32keys](bip32keys/bip32keys), [qtum_utils](bip32keys/qtum_utils) and [to
 
 # Running servers
 
-Run Mongo DB:
+Run a Mongo DB server:
 
 ```bash
 sudo service mongod start
 ```
 
-Initializing IPFS daemon:
+Initialize an IPFS daemon:
 
 ```bash
 ipfs daemon
 ```
 
-To execute the QTUM daemon:
+Execute a QTUM daemon:
 
 ```bash
 # prefered way to run qtum daemon
@@ -101,40 +101,39 @@ qtum-cli listunspent
 ps -ax | grep qtumd
 ```
 
-PMES works with six modules: AMS, balance, pdms, qtum_bridge, email and coin.
+The PMES works with eight modules: AMS, storage, balance, PDMS, qtum_bridge, email, coin and parser.
 
+Therefore, for running PMES you should run the following servers:
 
-Therefore, for running application you should run  servers:
-
-1. **ams and pdms** server:
+1. run **AMS and PDMS** servers:
 
 ```bash
 source venv/bin/activate
 python3 main.py
 ```
 
-2. **storage** server for AMS:
+2. run the **storage** server for the AMS module:
 
 ```bash
 source venv/bin/activate
 python3 ams/storage/main.py
 ```
 
-3. **balance** server:
+3. run the **balance** server:
 
 ```bash
 source venv/bin/activate
 python3 balance/main.py
 ```
 
-4. **qtum_bridge** server:
+4. run the **qtum_bridge** server:
 
 ```bash
 source venv/bin/activate
 python3 pdms/qtum_bridge/main.py
 ```
 
-5. **email** server:
+5. run the **email** server:
 
 ```bash
 source venv/bin/activate
@@ -142,14 +141,14 @@ python3 mail/email_new.py start
 python3 mail/index.py
 ```
 
-6. **coin** server:
+6. run the **coin** server:
 
 ```bash
 source venv/bin/activate
 python3 coin/one_coin.py start
 ```
 
-7. **parser** server:
+7. run the **parser** server:
 
 ```bash
 source venv/bin/activate

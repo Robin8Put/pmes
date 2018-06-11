@@ -1,17 +1,18 @@
-# Robin8 BlockChain Profile Management EcoSystem 
-
-This API provides access to information of Profile Management EcoSystem (PMES).
+# Profile Management EcoSystem API
 
 The API uses the REST API standard.
 
-The host is here: http://pdms.robin8.io.
+The host you could find here: http://pdms.robin8.io.
 
-`amount`, `balance`, `offer_price`, `price`, `buyer_price` and `seller_price` represented as `x * 10^8`. Where `x` could be `float`.
+Commonly integer numbers storing in the blockchains.
+If you want to store float number in the blockchain, you should multiply it on some constant (for instance, `10^8` for QTUM).
+Therefore, variables `amount`, `balance`, `offer_price`, `price`, `buyer_price` and `seller_price` represented as `x * 10^8`. Where `x` could be `float`.
 
-`timestamp` has following format `%Y%m%d%H%M`. For instance, `201806081300` means 2018 June 8 13:00.
+Variable `timestamp` has the following format `%Y%m%d%H%M`. For instance, timestamp `201806081300` means 2018 June 8 13:00.
 
-For checking status of transaction in the QTUM blockchain you could use the site https://testnet.qtum.org.
-When the status of transaction changes from `Unconfirmed` to `Success` this means that your data was written to the blockchain.
+For checking status of the transaction in the QTUM blockchain use the following site https://testnet.qtum.org.
+
+Your data is written to the blockchain when the status of the transaction changes from `Unconfirmed` to `Success`.
 
 The API-methods:
 
@@ -31,23 +32,25 @@ The API-methods:
 
 - [Set content price](#set-content-price)
 
-- [Make offer for buying the content](#make-offer-for-buying-the-content)
+- [Make an offer to buy the content](#make-an-offer-to-buy-the-content)
 
-- [Make offer for buying the content with proposed price](#make-offer-for-buying-the-content-with-proposed-price)
+- [Make an offer to buy the content with a proposition of different price](#make-an-offer-to-buy-the-content-with-a-proposition-of-different-price)
 
-- [Accept offer](#accept-offer)
+- [Accept the offer to buy content](#accept-the-offer-to-buy-content)
 
-- [Reject offer from buyer](#reject-offer-from-buyer)
+- [Reject the offer to buy content from the buyer side](#reject-the-offer-to-buy-content-from-the-buyer-side)
 
-- [Reject offer from owner](#reject-offer-from-owner)
+- [Reject the offer to buy content from the content owner side](#reject-the-offer-to-buy-content-from-the-content-owner-side)
 
-- [Get all content](#get-all-content)
+- [Get all PMES contents from the blockchain](#get-all-pmes-contents-from-the-blockchain)
 
-- [Get all content which post user](#get-all-content-which-post-user)
+- [Get all content which posted user](#get-all-content-which-posted-user)
 
 - [Get all offers which made user](#get-all-offers-which-made-user)
 
-- [Get all offers received for content by cid](#get-all-offers-received-for-content-by-cid)
+- [Get all offers to buy content for cid](#get-all-offers-to-buy-content-for-cid)
+
+- [## Standardization of an error messages](#standardization-of-an-error-messages)
 
 The following is a description of the API-methods:
 
@@ -189,14 +192,14 @@ The following is a description of the API-methods:
 
     `[json]`
 
-    When user send offer to buy content `event_type` is 'made offer'.
+    When the user sends an offer to buy content `event_type` is 'made offer'.
 
     `buyer_price` and `seller_price` represented as `real_price * 10^8`. Where `real_price` could be `float`.
 
 ```bash
     [
         {
-            "event_type": [string],     # 
+            "event_type": [string],     # type of news
             "access_string": [string],  # now it is user's public key
             "cid": [integer],           # content identifier 
             "buyer_address": [string],  # buyer address
@@ -306,7 +309,7 @@ The following is a description of the API-methods:
 
 * **Description**
 
-    Post data to blockchain via transaction. When transaction will be approved (around 5-10 minutes) user could see posted content in the result of following command [Get all content which post user](#get-all-content-which-post-user).
+    Post data to blockchain via transaction. When transaction will be approved (around 5-10 minutes) user could see posted content in the result of following command [Get all content which posted user](#get-all-content-which-posted-user).
 
 
 ## Get content from the blockchain by cid
@@ -437,7 +440,7 @@ The following is a description of the API-methods:
 ```
 
 
-## Make offer for buying the content
+## Make an offer to buy the content
 
 * **URL:** `/api/blockchain/[public_key]/offer`
 
@@ -483,7 +486,7 @@ The following is a description of the API-methods:
     }
 ```
 
-## Make offer for buying the content with proposed price
+## Make an offer to buy the content with a proposition of different price
 
 * **URL:** `/api/blockchain/[public_key]/offer`
 
@@ -533,7 +536,7 @@ The following is a description of the API-methods:
 ```
 
 
-## Accept offer
+## Accept the offer to buy content
 
 * **URL:** `/api/blockchain/[public_key]/deal`
 
@@ -581,12 +584,8 @@ The following is a description of the API-methods:
     }
 ```
 
-* **Description**
 
-    Accept offer to buy content
-
-
-## Reject offer from buyer
+## Reject the offer to buy content from the buyer side
 
 * **URL:** `/api/blockchain/[public_key]/offer`
 
@@ -632,12 +631,8 @@ The following is a description of the API-methods:
     }
 ```
 
-* **Description**
 
-    Reject offer to buy content from buyer
-
-
-## Reject offer from owner
+## Reject the offer to buy content from the content owner side
 
 * **URL:** `/api/blockchain/[public_key]/offer`
 
@@ -683,12 +678,8 @@ The following is a description of the API-methods:
     }
 ```
 
-* **Description**
 
-    Reject offer to buy content from content owner
-
-
-## Get all content
+## Get all PMES contents from the blockchain
 
 * **URL:** `/api/blockchain/content`
 
@@ -721,12 +712,8 @@ The following is a description of the API-methods:
     ]
 ```
 
-* **Description**
 
-    Get all content that present in the blockchain
-
-
-## Get all content which post user
+## Get all content which posted user
 
 * **URL:** `/api/accounts/[public_key]/contents`
 
@@ -813,10 +800,10 @@ The following is a description of the API-methods:
 
 * **Description**
 
-    Get all offers which made user to buy access or rights of contents
+    Get all offers which made the user for buying access or rights of contents
 
 
-## Get all offers received for content by cid
+## Get all offers to buy content for cid
 
 * **URL:** `/api/accounts/[public_key]/input-offers`
 
@@ -860,9 +847,9 @@ The following is a description of the API-methods:
     ]
 ```
 
-## Error message standardization
+## Standardization of an error messages 
 
-Standard error answer from the server has next structure:
+A standard error answer from the server has the following structure:
 
 ```bash
 {
@@ -870,4 +857,4 @@ Standard error answer from the server has next structure:
     "reason": [string]}
 ```
 
-Where `error` contains error code, while `reason` contains error description.
+Where `error` contains an error code, while `reason` contains error description.
