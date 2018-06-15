@@ -65,8 +65,10 @@ class Balance(object):
             "coinid": coinid,
             "amount": 0,
             "uid": uid,
+            "uncorfimed":0,
+            "deposit":0
         }
-        res = await balances.insert_one(new_balance)
+        await balances.insert_one(new_balance)
         return {"created":"ok"}
         
 
@@ -200,8 +202,64 @@ class Balance(object):
             return {"error":404,
                     "reason":"Current address does not exist"}
 
-        digit = int(balance["amount"]) 
-        return {balance["address"]:digit}
+        return {"address":balance["address"], "amount":balance["amount"], 
+                "deposit":balance["deposit"], "uncorfimed":balance["uncorfimed"]}
+
+    @verify 
+    async def depositbalance(self, *args, **kwargs):
+        """ Freeze part of balance"""
+        logging.debug("[+] -- Deposit balance debugging")
+        message = json.loads(kwargs.get("message", "{}"))
+        logging.debug(message)
+
+        uid = int(message.get("uid", 0))
+        amount = int(message.get("amount", 0))
+
+        client = MotorClient()
+        db = client[settings.DBNAME]
+        balances = db[settings.BALANCE]
+
+        balance = await balances.find_one({"uid":uid})
+        if not balance:
+            return {"error":404, "reason":"Current user was not found"}     
+
+        updated_amount = await balances.find_one_and_update({"uid":balance["uid"]}, 
+                                                            {"$inc":{"amount": -amount}})
+        logging.debug(updated_amount)
+        updated_deposit = await balances.find_one_and_update({"uid":balance["uid"]}, 
+                                                            {"$inc":{"deposit": amount}})
+        logging.debug(updated_deposit)
+
+        updated = await balances.find_one({"uid":balance["uid"]})
+
+        return {i:updated[i] for i in updated if i != "_id"}
+
+
+    @verify 
+    async def undepositbalance(self, *args, **kwargs):
+        """ Freeze part of balance"""
+        logging.debug("[+] -- Undeposit balance debugging")
+        message = json.loads(kwargs.get("message", "{}"))
+        logging.debug(message)
+        uid = int(message.get("uid", 0))
+        amount = int(message.get("amount", 0))
+
+        client = MotorClient()
+        db = client[settings.DBNAME]
+        balances = db[settings.BALANCE]
+
+        balance = await balances.find_one({"uid":uid})
+        if not balance:
+            return {"error":404, "reason":"Current user was not found"}     
+
+        await balances.find_one_and_update({"uid":balance["uid"]}, {"$inc":{"amount": amount}})
+        await balances.find_one_and_update({"uid":balance["uid"]}, {"$inc":{"deposit":-amount}})
+
+        updated = await balances.find_one({"uid":balance["uid"]})
+
+        return {i:updated[i] for i in updated if i != "_id"}
+
+
 
 
 balance = Balance()
@@ -225,5 +283,17 @@ async def decbalance(**params):
 async def getbalance(**params):
     result = await balance.getbalance(**params)
     return result
+
+@methods.add 
+async def depositbalance(**params):
+    result = await balance.depositbalance(**params)
+    return result
+
+@methods.add 
+async def undepositbalance(**params):
+    result = await balance.undepositbalance(**params)
+    return result
+
+
    
 

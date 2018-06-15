@@ -1,0 +1,22 @@
+{
+	"blockchain": {
+		"type": "qtum",
+		"contract_owner": "qgh88fssi4JrkH8LLvkqvC7SzGxvyApYis",
+		"contract_owner_hex": "fdc1ae05c161833cdf135863e332126e15d7568c",
+		"contract_address": "f63a5d2564a4b291078115f055eda46978cd61fb",
+        "host": "127.0.0.1",
+        "port": 8333,
+		"decimals": 8,
+		"credentials": {
+			"username": "qtumuser",
+			"password": "qtum2018"
+		}
+	},
+	"storage": {
+		"type": "ipfs",
+		"host": "localhost",
+		"port": 5001,
+		"download_time_limit": 1
+	},
+	"api_key": "AP"
+}

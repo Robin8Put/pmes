@@ -36,16 +36,15 @@ def create_account_with_valid_data():
 	print("\n[+] -- Creating seller")
 
 	#url = "http://pdms.robin8.io/api/accounts"
-
-	url = "http://pdms.robin8.io:8000/api/accounts"
+	url = "http://127.0.0.1:8000/api/accounts"
 	print("Request to:   " + url)
 
-	public_key = "04e2a4a921112c9921cf9b599fba4a2257a71b6198cbdfd9ad343171b95a089ddedaf8231e842ff2be63be926ca345836a7edc3d5e098bdeb0a2ff7ddca7f156"
+	public_key = "04e2a4c921001b7510cf9a499fba3e6147a73a977196cbffd9ad863171b95a089ddedaf8231e842ff2be63be926ca345836a7edc3d5e098bdeb0a2ff7ddca7f156"
 	private_key = "bde5a03e2547b1fe47029ae12a2a1c678223c85fb5f2714f7605cea85ea3ebc9"
-	#email = "heroyooki@gmail.com"
+	email = "heroyooki@gmail.com"
 	device_id = "lenovo"
 	message = json.dumps({
-			#"email": email,
+			"email": email,
 			"device_id": device_id,
 			"timestamp": get_time_stamp()
 		})
@@ -65,7 +64,7 @@ def getaccountdata():
 	public_key = "04e2a4c921001b7510cf9a499fba3e6147a73a977196cbffd9ad863171b95a089ddedaf8231e842ff2be63be926ca345836a7edc3d5e098bdeb0a2ff7ddca7f156"
 	print("---------------------------------------------------------------------")
 	print("\n[+] -- Receiving account data")
-	url = "http://pdms.robin8.io/api/accounts/%s" % public_key
+	url = "http://127.0.0.1:8000/api/accounts/%s" % public_key
 	print("Request to:   " + url)
 	private_key = "bde5a03e2547b1fe47029ae12a2a1c678223c85fb5f2714f7605cea85ea3ebc9"
 	message = json.dumps({
@@ -161,10 +160,10 @@ def write_data_to_blockchain():
 	url = "http://127.0.0.1:8000/api/blockchain/%s/content" % public_key
 	print("Request to:   " + url)
 	message = json.dumps({
-			#"cus": "cus",
 			"cus": id_generator(),
 			"description":id_generator(),
-			"price": 3,
+			"read_access": 100,
+			"write_access": 200,
 			"timestamp": get_time_stamp()
 		})
 	data = {
@@ -225,14 +224,15 @@ def setprice_for_content(cid, price):
 	message = json.dumps({
 			"cid":cid,
 			"price":price,
-			"timestamp": get_time_stamp()
+			"timestamp": get_time_stamp(),
+			"offer_type":1
 		})
 	data = {
 		"message": message,
 		"public_key": public_key,
 		"signature": Bip32Keys.sign_message(message, private_key)
 	}
-	request = requests.post(url, data=data)
+	request = requests.put(url, data=json.dumps(data))
 	print(request.text)
 	response = requests.get(url)
 	print("----------------------------------------------------------------------")
@@ -278,7 +278,7 @@ def create_buyer_with_valid_data():
 ##################################################################################
 						# Increment buyers balance
 def increment_balance(amount, uid):
-	url = "http://pdms2.robin8.io/api/accounts/%s/balance" % uid
+	url = "http://127.0.0.1:8000/api/accounts/%s/balance" % uid
 	print(url)
 	response = requests.post(url, data=json.dumps({"amount":amount}))
 	print(response.text)
@@ -287,7 +287,7 @@ def increment_balance(amount, uid):
 
 ##################################################################################
 						# Make offer by buyer for seller
-def make_offer_from_buyer_to_seller(cid):
+def make_offer_from_buyer_to_seller_write_access(cid):
 	print("\n[+] -- Make offer for seller")
 	public_key = "04e78671c682ad58fb746dd24275db0e9d693dea80a6471faf598e444cbfe9e88e0653c273f36b5ac474c2d7c9d5048c2395a43820a7e1b044d25d18483e36b310"
 	private_key = "1ebaa1c3b723a04cfbcdc39bebaebac23da71b5f4f95607d0793958b993d758f"
@@ -303,7 +303,59 @@ def make_offer_from_buyer_to_seller(cid):
 		"signature": Bip32Keys.sign_message(message, private_key)
 	}
 	url = "%s:%s%s" % (settings.host, settings.pmesport, 
-						"/api/blockchain/%s/offer" % public_key)
+						"/api/blockchain/%s/right-access-offer" % public_key)
+	print("Request to url: " + url)
+	request = requests.post(url, data=json.dumps(data))
+	print(request.text)
+	
+
+	print("-----------------------------------------------------------------------")
+
+##################################################################################
+						# Make offer by buyer for seller
+def make_offer_from_buyer_to_seller_write_access(cid):
+	print("\n[+] -- Make offer for seller")
+	public_key = "04e78671c682ad58fb746dd24275db0e9d693dea80a6471faf598e444cbfe9e88e0653c273f36b5ac474c2d7c9d5048c2395a43820a7e1b044d25d18483e36b310"
+	private_key = "1ebaa1c3b723a04cfbcdc39bebaebac23da71b5f4f95607d0793958b993d758f"
+	
+	message = json.dumps({
+			"cid":cid,
+			"buyer_access_string":public_key,
+			"timestamp": get_time_stamp()
+		})
+	data = {
+		"message": message,
+		"public_key": public_key,
+		"signature": Bip32Keys.sign_message(message, private_key)
+	}
+	url = "%s:%s%s" % (settings.host, settings.pmesport, 
+						"/api/blockchain/%s/write-access-offer" % public_key)
+	print("Request to url: " + url)
+	request = requests.post(url, data=json.dumps(data))
+	print(request.text)
+	
+
+	print("-----------------------------------------------------------------------")
+
+##################################################################################
+						# Make offer by buyer for seller
+def make_offer_from_buyer_to_seller_read_access(cid):
+	print("\n[+] -- Make offer for seller")
+	public_key = "04e78671c682ad58fb746dd24275db0e9d693dea80a6471faf598e444cbfe9e88e0653c273f36b5ac474c2d7c9d5048c2395a43820a7e1b044d25d18483e36b310"
+	private_key = "1ebaa1c3b723a04cfbcdc39bebaebac23da71b5f4f95607d0793958b993d758f"
+	
+	message = json.dumps({
+			"cid":cid,
+			"buyer_access_string":public_key,
+			"timestamp": get_time_stamp()
+		})
+	data = {
+		"message": message,
+		"public_key": public_key,
+		"signature": Bip32Keys.sign_message(message, private_key)
+	}
+	url = "%s:%s%s" % (settings.host, settings.pmesport, 
+						"/api/blockchain/%s/read-access-offer" % public_key)
 	print("Request to url: " + url)
 	request = requests.post(url, data=json.dumps(data))
 	print(request.text)
@@ -343,7 +395,7 @@ def make_offer_from_buyer_to_seller_with_price(cid, price):
 ###################################################################################
 						# Accept offer by seller
 
-def accept_offer_from_buyer(cid, suid, buid):
+def accept_write_offer_from_buyer(cid, suid, buid):
 	print("\n[+] -- Accepting offer from buyer")
 	public_key = "04e2a4c921001b7510cf9a499fba3e6147a73a977196cbffd9ad863171b95a089ddedaf8231e842ff2be63be926ca345836a7edc3d5e098bdeb0a2ff7ddca7f156"
 	private_key = "bde5a03e2547b1fe47029ae12a2a1c678223c85fb5f2714f7605cea85ea3ebc9"
@@ -353,7 +405,8 @@ def accept_offer_from_buyer(cid, suid, buid):
 			"cid":cid,
 			"buyer_access_string": "04e78671c682ad58fb746dd24275db0e9d693dea80a6471faf598e444cbfe9e88e0653c273f36b5ac474c2d7c9d5048c2395a43820a7e1b044d25d18483e36b310",
 			"buyer_pubkey":"04e78671c682ad58fb746dd24275db0e9d693dea80a6471faf598e444cbfe9e88e0653c273f36b5ac474c2d7c9d5048c2395a43820a7e1b044d25d18483e36b310",
-			"timestamp": get_time_stamp()
+			"timestamp": get_time_stamp(),
+			"access_type": "write_access",
 		})
 	data = {
 		"message": message,
@@ -363,32 +416,52 @@ def accept_offer_from_buyer(cid, suid, buid):
 	url = "%s:%s%s" % (settings.host, settings.pmesport, 
 						"/api/blockchain/%s/deal" % public_key)
 	print("Request to: " + url)
-	print("\nBalances before deal.")
-	client = HTTPClient(settings.balanceurl)
-	sellerbalance = client.request(method_name="getbalance", uid=suid)
-	buyerbalance = client.request(method_name="getbalance", uid=buid)
 
-	request = requests.post(url, data=data)
+	request = requests.post(url, data=json.dumps(data))
 	print(request.text, "\n")
-	# Check balances
-	print("\nBalances after deal.")
-	sellerbalance = client.request(method_name="getbalance", uid=suid)
-	buyerbalance = client.request(method_name="getbalance", uid=buid)
-	print(sellerbalance)
-	print(buyerbalance)
+
+###################################################################################
+						# Accept offer by seller
+
+def accept_read_offer_from_buyer(cid, suid, buid):
+	print("\n[+] -- Accepting offer from buyer")
+	public_key = "04e2a4c921001b7510cf9a499fba3e6147a73a977196cbffd9ad863171b95a089ddedaf8231e842ff2be63be926ca345836a7edc3d5e098bdeb0a2ff7ddca7f156"
+	private_key = "bde5a03e2547b1fe47029ae12a2a1c678223c85fb5f2714f7605cea85ea3ebc9"
+	email = "denis@mail.ru"
+	device_id = "lenovo"
+	message = json.dumps({
+			"cid":cid,
+			"buyer_access_string": "04e78671c682ad58fb746dd24275db0e9d693dea80a6471faf598e444cbfe9e88e0653c273f36b5ac474c2d7c9d5048c2395a43820a7e1b044d25d18483e36b310",
+			"buyer_pubkey":"04e78671c682ad58fb746dd24275db0e9d693dea80a6471faf598e444cbfe9e88e0653c273f36b5ac474c2d7c9d5048c2395a43820a7e1b044d25d18483e36b310",
+			"timestamp": get_time_stamp(),
+			"access_type": "read_access",
+		})
+	data = {
+		"message": message,
+		"public_key": public_key,
+		"signature": Bip32Keys.sign_message(message, private_key)
+	}
+	url = "%s:%s%s" % (settings.host, settings.pmesport, 
+						"/api/blockchain/%s/deal" % public_key)
+	print("Request to: " + url)
+
+	request = requests.post(url, data=json.dumps(data))
+	print(request.text, "\n")
+
+
 
 
 ################################################################################
 					# Reject offer
 	
-def reject_offer_by_owner(cid):
+def reject_read_offer_by_owner(cid):
 	print("\n[+] -- Rejecting offer by seller")
 	public_key = "04e2a4c921001b7510cf9a499fba3e6147a73a977196cbffd9ad863171b95a089ddedaf8231e842ff2be63be926ca345836a7edc3d5e098bdeb0a2ff7ddca7f156"
 	private_key = "bde5a03e2547b1fe47029ae12a2a1c678223c85fb5f2714f7605cea85ea3ebc9"
 	message = json.dumps({
 		"offer_id":{
 			"cid":cid,
-			"buyer_addr":Qtum.public_key_to_hex_address("04e78671c682ad58fb746dd24275db0e9d693dea80a6471faf598e444cbfe9e88e0653c273f36b5ac474c2d7c9d5048c2395a43820a7e1b044d25d18483e36b310"),
+			"buyer_address":Qtum.public_key_to_hex_address("04e78671c682ad58fb746dd24275db0e9d693dea80a6471faf598e444cbfe9e88e0653c273f36b5ac474c2d7c9d5048c2395a43820a7e1b044d25d18483e36b310"),
 			},
 			"timestamp": get_time_stamp(),
 		})
@@ -398,9 +471,34 @@ def reject_offer_by_owner(cid):
 		"signature": Bip32Keys.sign_message(message, private_key)
 	}
 	url = "%s:%s%s" % (settings.host, settings.pmesport, 
-						"/api/blockchain/%s/offer" % public_key)
+						"/api/blockchain/%s/read-access-offer" % public_key)
 
-	request = requests.put(url, data=data)
+	request = requests.put(url, data=json.dumps(data))
+	print(request.text, "\n")
+
+################################################################################
+					# Reject offer
+	
+def reject_write_offer_by_owner(cid):
+	print("\n[+] -- Rejecting offer by seller")
+	public_key = "04e2a4c921001b7510cf9a499fba3e6147a73a977196cbffd9ad863171b95a089ddedaf8231e842ff2be63be926ca345836a7edc3d5e098bdeb0a2ff7ddca7f156"
+	private_key = "bde5a03e2547b1fe47029ae12a2a1c678223c85fb5f2714f7605cea85ea3ebc9"
+	message = json.dumps({
+		"offer_id":{
+			"cid":cid,
+			"buyer_address":Qtum.public_key_to_hex_address("04e78671c682ad58fb746dd24275db0e9d693dea80a6471faf598e444cbfe9e88e0653c273f36b5ac474c2d7c9d5048c2395a43820a7e1b044d25d18483e36b310"),
+			},
+			"timestamp": get_time_stamp(),
+		})
+	data = {
+		"message": message,
+		"public_key": public_key,
+		"signature": Bip32Keys.sign_message(message, private_key)
+	}
+	url = "%s:%s%s" % (settings.host, settings.pmesport, 
+						"/api/blockchain/%s/write-access-offer" % public_key)
+
+	request = requests.put(url, data=json.dumps(data))
 	print(request.text, "\n")
 
 
@@ -414,7 +512,7 @@ def reject_offer_by_buyer(cid):
 	message = json.dumps({
 		"offer_id":{
 			"cid":cid,
-			"buyer_addr":Qtum.public_key_to_hex_address("04e78671c682ad58fb746dd24275db0e9d693dea80a6471faf598e444cbfe9e88e0653c273f36b5ac474c2d7c9d5048c2395a43820a7e1b044d25d18483e36b310"),
+			"buyer_address":Qtum.public_key_to_hex_address("04e78671c682ad58fb746dd24275db0e9d693dea80a6471faf598e444cbfe9e88e0653c273f36b5ac474c2d7c9d5048c2395a43820a7e1b044d25d18483e36b310"),
 			},
 			"timestamp": get_time_stamp(),
 		})
@@ -424,9 +522,9 @@ def reject_offer_by_buyer(cid):
 		"signature": Bip32Keys.sign_message(message, private_key)
 	}
 	url = "%s:%s%s" % (settings.host, settings.pmesport, 
-						"/api/blockchain/%s/offer" % public_key)
+						"/api/blockchain/%s/right-access-offer" % public_key)
 
-	request = requests.put(url, data=data)
+	request = requests.put(url, data=json.dumps(data))
 	print(request.text, "\n")
 
 
@@ -517,13 +615,15 @@ if __name__ == '__main__':
 	client.pmes.balance.remove()
 	client.pmes.autoincrement.remove()
 	client.pmes.content.remove()
-	cid = 114
-	price=4
-	inc = 20
-	hash_="QmbT3mX7YviGVnjyeFCy5qdpN9kRVReyGQMvF5y5FcE6gZ"
 
-	create_account_with_valid_data()
-	#increment_balance(inc, 6)
+	"""
+	cid = 4
+	price=4
+	inc = 20000000000
+	hash_="Qmf18FVqFS4vxAt4gptsaqk5pUDg4EqwJe3efLpNNQuiJQ"
+
+	#create_account_with_valid_data()
+	#increment_balance(inc, 1)
 	#create_account_with_existing_data()
 	#create_account_with_invalid_data1()
 	#create_account_with_invalid_data2()
@@ -538,11 +638,16 @@ if __name__ == '__main__':
 	#setprice_for_content(cid=cid, price=2)
 	#create_buyer_with_valid_data()
 	#increment_balance(inc, 2)
-	#make_offer_from_buyer_to_seller(cid=cid)
-	#make_offer_from_buyer_to_seller_with_price(cid=cid, price=2)
+
+	#make_offer_from_buyer_to_seller_write_access(cid=cid)
+	#make_offer_from_buyer_to_seller_read_access(cid=cid)
+
 	#getaccountdata()
 	#get_news_for_seller()
-	#accept_offer_from_buyer(cid,1,2)
-	#reject_offer_by_owner(cid)
-	#reject_offer_by_buyer(cid)
+
+	#accept_write_offer_from_buyer(cid,1,2)
+	#accept_read_offer_from_buyer(cid,1,2)
+
+	reject_write_offer_by_owner(cid)
+	#reject_read_offer_by_owner(cid)
 	#get_all_content()

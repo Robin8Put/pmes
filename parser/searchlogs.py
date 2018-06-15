@@ -10,6 +10,10 @@ class SearchLogs():
                      ["newCID({0[0]})", ["uint32"]],
                  "3b091bceb2d651718daea90d6dae6649eba0e737349b058a29fa3547cc8ab257":
                      ["newOffer({0[0]}, {0[1]}, {0[2]})", ["address", "uint32", "string"]],
+                 "9170c205402f594bf92e77397182d7d82ef0df80da3629a76e4f0b56852644b7":
+                     ["newCID({0[0]}, {0[1]}, {0[2]}, {0[3]})", ["uint32", "string", "string", "uint"]],
+                 "38a9262fedac02428e492594acec49680f630e226196536d6996dafd344db1ea":
+                     ["newOffer({0[0]}, {0[1]}, {0[2]}, {0[3]})", ["address", "uint32", "uint", "string"]],
                  '''
                  "fac32c520b886895c8954261adf342ba9116b9745a9f95fca8d4562dcc35b246":
                      ["newAccessLevel({0[0]}, {0[1]})", ["address", "uint8"]],
@@ -21,17 +25,20 @@ class SearchLogs():
                      ["saleAccessForCID({0[0]}, {0[1]}, {0[2]})", ["address", "uint32", "string"]],
                  "a6bcc86b06e2d04b4b022e26c5ce3dd12e2aaa3e57835a3a5ab6afc2891a9928":
                      ["offerRejected({0[0]}, {0[1]})", ["address", "uint32"]],
-                 "38a9262fedac02428e492594acec49680f630e226196536d6996dafd344db1ea":
-                     ["newOffer({0[0]}, {0[1]}, {0[2]}, {0[3]})", ["address", "uint32", "uint", "string"]],
-                 "9170c205402f594bf92e77397182d7d82ef0df80da3629a76e4f0b56852644b7":
-                     ["newCID({0[0]}, {0[1]}, {0[2]}, {0[3]})", ["uint32", "string", "string", "uint"]]
+                 "d2fb49496cad2d1e30798f48842e124dad6f0c61cc6fb67c18fde37c3ce74dd4":
+                     ["newOffer({0[0]}, {0[1]}, {0[2]}, {0[3]}, {0[4]})", ["address", "uint32", "uint", "uint", "string"]],
+                 "14fdb107141cf4fd210e2acfcc2b43094b54d909b94e77b131540b93d42937ce":
+                     ["newCID({0[0]}, {0[1]}, {0[2]}, {0[3]}, {0[4]})", ["uint32", "string", "string", "uint", "uint"]],
+                 "ad88468b4fbb35e2dc97c703f980614af53cc5ee52aa3c8b39d60a685c708241":
+                     ["newReview({0[0]}, {0[1]}, {0[2]}, {0[3]})", ["address", "address", "uint32", "string"]]
+
                  }
         self.qtum = AuthServiceProxy("http://%s:%s@127.0.0.1:8333" % ("qtumuser", "qtum2018"))
         self.types = types
 
     def searchlogs(self, fromBlock, toBlock, address=None, topic=None):
         list_data = []
-        c=0
+        c = 0
         for address_block in self.qtum.searchlogs(fromBlock, toBlock, address):
             log_block = address_block["log"]
             for iter_log in log_block:
@@ -39,7 +46,7 @@ class SearchLogs():
                 topics_log_first = topics_log[0]
                 newOffer_hex = "9170c205402f594bf92e77397182d7d82ef0df80da3629a76e4f0b56852644b7"
                 if topics_log_first in self.types.keys():
-                #if topics_log_first == newOffer_hex:
+                    # if topics_log_first == newOffer_hex:
                     topics_data = iter_log["data"]
                     types_value = self.types[topics_log_first]
                     types_value_data = types_value[1]
@@ -70,7 +77,7 @@ class SearchLogs():
             for iter_log in log_block:
                 topics_log = iter_log["topics"]
                 topics_log_first = topics_log[0]
-                newOffer_hex = "dfcf2c9f1e0110c7afd2d0402d076c5ed57b29fa0450897162f7aca014bda34c"
+                #newOffer_hex = "dfcf2c9f1e0110c7afd2d0402d076c5ed57b29fa0450897162f7aca014bda34c"
                 if topics_log_first in self.types.keys():
                     # if topics_log_first == newOffer_hex:
                     topics_data = iter_log["data"]
@@ -81,8 +88,10 @@ class SearchLogs():
                     new_decode = self.change_decode(types_value_data, decoded)
                     data_new = [tranasction_hash] + new_decode
                     list_data += [data_new]
-                    #decoded_string = types_value_string.format(new_decode)
-                    #print(decoded_string)
+                    # decoded_string = types_value_string.format(new_decode)
+                    # print(decoded_string)
+                else:
+                    print(topics_log_first)
         return list_data
 
     def redact_len3(self, data):
@@ -100,7 +109,7 @@ class SearchLogs():
         return [address_type] + [int_type]
 
     def str_new(self):
-        for i in self.searchlogs(0, -1, {"addresses": ["52b81892235027453bcdbc2ec25ec7253c531efc"]}):
+        for i in self.searchlogs(0, -1, {"addresses": ["f63a5d2564a4b291078115f055eda46978cd61fb"]}):
             print(i)
 
     def change_decode(self, signatures_list_type, decode):
@@ -123,5 +132,5 @@ class SearchLogs():
 
 if __name__ == '__main__':
     obj_searchlogs = SearchLogs()
-    #searchlog = obj_searchlogs.searchlogs(0, -1, {"addresses": ["363d33ed942bd543b073101fa6e5ee00aa67cbad"]})
+    # searchlog = obj_searchlogs.searchlogs(0, -1, {"addresses": ["363d33ed942bd543b073101fa6e5ee00aa67cbad"]})
     obj_searchlogs.str_new()
