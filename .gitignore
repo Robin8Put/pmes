@@ -107,10 +107,11 @@ ENV/
 
 .idea/
 
-pmes/pdms/bridge/mock_client.py
-pmes/pdms/bridge/How_to_use_Robin8_BlockChain_Bridge.md
-pmes/pdms/bridge/smart_contracts
-pmes/pdms/bridge/robin8/contracts
+mail/client.py
+pdms/qtum_bridge/mock_client.py
+pdms/qtum_bridge/How_to_use_Robin8_BlockChain_Bridge.md
+pdms/qtum_bridge/smart_contracts
+pdms/qtum_bridge/robin8/contracts
 
 # logs
 .log

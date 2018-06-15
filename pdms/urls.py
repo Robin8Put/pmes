@@ -18,5 +18,10 @@ pdms_router = tornado.web.Application([
         	(settings.ENDPOINTS["description"], views.DescriptionHandler, context),
           (settings.ENDPOINTS["price"],       views.PriceHandler,       context),
           (settings.ENDPOINTS["deal"],        views.DealHandler,        context),
-          (settings.ENDPOINTS["offer"],       views.OfferHandler,       context)], 
-                debug=True)
+          (settings.ENDPOINTS["write-access-offer"],views.WriteAccessOfferHandler,context),
+          (settings.ENDPOINTS["read-access-offer"],views.ReadAccessOfferHandler,context),
+          (settings.ENDPOINTS["reviews"],views.ReviewsHandler,context),
+          (settings.ENDPOINTS["review"],views.ReviewHandler,context),
+          (settings.ENDPOINTS["deals"],views.DealsHandler,context)
+
+          ], debug=True)

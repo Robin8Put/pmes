@@ -15,6 +15,7 @@ logging.basicConfig(filename='bridge.log',level=logging.DEBUG,
 
 
 if __name__ == '__main__':
+	sys.path.append(os.path.abspath(__file__))
 	import settings
 	from urls import bridge_router
 	# Define port

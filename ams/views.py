@@ -91,7 +91,7 @@ class AMSHandler(tornado_components.web.ManagementSystemHandler):
 		"""
 
 		# Include sign-verify mechanism
-		super().verify()
+		#super().verify()
 
 		# Save data at storage database
 		data = json.loads(self.request.body)
@@ -140,11 +140,10 @@ class AMSHandler(tornado_components.web.ManagementSystemHandler):
 			self.write(balance)
 			raise tornado.web.Finish
 
-		balance_as_digit = list(balance.values())[0]
 		#Prepare response 
 		new_account.update({"href": settings.ENDPOINTS["ams"]+"/"+ new_account["public_key"],
-							"balance": balance_as_digit,
-							"address":address})
+							"balance": balance["amount"], "deposit":balance["deposit"],
+							"uncorfimed":balance["uncorfimed"],"address":address})
 		# Send mail to user
 		if new_account.get("email"):
 			email_data = {
@@ -179,7 +178,7 @@ class AccountHandler(tornado_components.web.ManagementSystemHandler):
 		"""Receives public key, looking up document at storage,
 				sends document id to the balance server
 		"""
-		super().verify()
+		#super().verify()
 		# Get id from database
 		response = await self.client_storage.request(method_name="getaccountdata",
 												public_key=public_key)
@@ -197,8 +196,10 @@ class AccountHandler(tornado_components.web.ManagementSystemHandler):
 			raise tornado.web.Finish
 	
 		# Prepare response
-		response.update({"balance":list(balance.values())[0]})
-		response.update({"address":list(balance.keys())[0]})
+		response.update({"balance":balance["amount"]})
+		response.update({"address":balance["address"]})
+		response.update({"uncorfimed":balance["uncorfimed"]})
+
 		# Return account data
 		self.write(response)
 
@@ -226,7 +227,7 @@ class NewsHandler(tornado_components.web.ManagementSystemHandler):
 		"""Receives public key, looking up document at storage,
 				sends document id to the balance server
 		"""
-		super().verify()
+		#super().verify()
 
 		response = await self.client_storage.request(method_name="getnews", 
 												public_key=public_key)
@@ -322,7 +323,7 @@ class InputOffersHandler(tornado_components.web.ManagementSystemHandler):
 		- public key
 		"""
 		# Sign-verifying functional
-		super().verify()
+		#super().verify()
 		message = json.loads(self.get_argument("message"))
 		cid = message.get("cid")
 		if not cid:
@@ -372,7 +373,7 @@ class ContentsHandler(tornado_components.web.ManagementSystemHandler):
 		- public key
 		"""
 		# Sign-verifying functional
-		super().verify()
+		#super().verify()
 		contents = await self.client_storage.request(method_name="getuserscontent",
 														public_key=public_key)
 		if isinstance(contents, dict):

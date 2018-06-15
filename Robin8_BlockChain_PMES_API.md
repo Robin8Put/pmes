@@ -50,7 +50,7 @@ The API-methods:
 
 - [Get all offers to buy content for cid](#get-all-offers-to-buy-content-for-cid)
 
-- [## Standardization of an error messages](#standardization-of-an-error-messages)
+- [Standardization of an error messages](#standardization-of-an-error-messages)
 
 The following is a description of the API-methods:
 

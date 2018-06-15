@@ -3,6 +3,9 @@ from collections import OrderedDict
 import json
 
 
+
+
+
 class RobustTornadoClient(HTTPClient):
 	"""Client processes refused connections and 
 		sends email if happens the one.
@@ -15,6 +18,7 @@ class RobustTornadoClient(HTTPClient):
 		try:
 			#'{"jsonrpc": "2.0", "method": "ping", "id": 1}'
 			#result = super().request(*args, **kwargs)
+
 			message = json.dumps(kwargs)
 
 			result = super().request(method_name=kwargs["method_name"],
