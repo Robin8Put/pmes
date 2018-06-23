@@ -86,24 +86,23 @@ class ContentHandler(tornado_components.web.ManagementSystemHandler):
 			- public_key
 
 		"""
-		logging.debug("[+] -- Post content to blockchain")
 		#super().verify()
 		# Check if public_key exists
 		account = await self.client_storage.request(method_name="getaccountdata", 
 											public_key=public_key)
-
 		if "error" in account.keys():
 			self.set_status(account["error"])
 			self.write(account)
 			raise tornado.web.Finish
 
 		# Get message from request 
-		data = json.loads(self.request.body)
-		if not data:
-			self.set_status(403)
-			self.write({"error":403, "reason":"Forbidden"})
+		try:
+			data = json.loads(self.request.body)
+		except:
+			self.set_status(400)
+			self.write({"error":400, "reason":"Unexpected data format. JSON required"})
 			raise tornado.web.Finish
-		logging.debug(data)
+			
 		# Overload data dictionary
 		if isinstance(data["message"], str):
 			message = json.loads(data["message"])
@@ -113,6 +112,7 @@ class ContentHandler(tornado_components.web.ManagementSystemHandler):
 		description = message.get("description", None)
 		read_access = message.get("read_access", 0)
 		write_access = message.get("write_access", 0)
+
 	
 		# Send requests to bridge
 		owneraddr = Qtum.public_key_to_hex_address(public_key)
@@ -129,8 +129,14 @@ class ContentHandler(tornado_components.web.ManagementSystemHandler):
 			self.write(response)
 			raise tornado.web.Finish
 		# Set fee
+		logging.debug("[+] -- Fee debugging")
 		fee = await billing.upload_content_fee(cus=cus, owneraddr=owneraddr,
 															description=description)
+		logging.debug(fee)
+		if "error" in fee.keys():
+			self.set_status(fee["error"])
+			self.write(fee)
+			raise tornado.web.Finish
 
 		# Write content to database
 		contentdata = {"txid":response["result"]["txid"], "account_id":account["id"],
@@ -171,13 +177,18 @@ class DescriptionHandler(tornado_components.web.ManagementSystemHandler):
 		"""Set description for content
 		"""
 		#super().verify()
-		body = json.loads(self.request.body)
+		try:
+			body = json.loads(self.request.body)
+		except:
+			self.set_status(400)
+			self.write({"error":400, "reason":"Unexpected data format. JSON required"})
+			raise tornado.web.Finish
+			
 		public_key = body.get("public_key", None)
 		if isinstance(body["message"], str):
 			message = json.loads(body["message"])
 		elif isinstance(body["message"], dict):
 			message = body["message"]
-		cid = message.get("cid")
 		descr = message.get("description")
 		if not all([public_key, cid, descr]):
 			self.set_status(400)
@@ -188,20 +199,22 @@ class DescriptionHandler(tornado_components.web.ManagementSystemHandler):
 		response = await self.client_bridge.request(method_name="ownerbycid", cid=cid)
 		if isinstance(response, dict):
 			if "error" in response.keys():
-				error_code = response["code"]
+				error_code = response["error"]
 				self.set_status(error_code)
 				self.write({"error":error_code, "reason":response["error"]})
 				raise tornado.web.Finish
 
 		# Check if content owner has current public key 
-		if not response == Qtum.public_key_to_hex_address(public_key):
+		if response != Qtum.public_key_to_hex_address(public_key):
 			self.set_status(403)
 			self.write({"error":403, "reason":"Owner does not match."})
 			raise tornado.web.Finish
 
 		# Set fee
-		#fee = billing.update_description_fee(owneraddr=Qtum.public_key_to_hex_address(public_key),
-		#													cid=cid, description=descr)
+		fee = await billing.update_description_fee(owneraddr=Qtum.public_key_to_hex_address(public_key),
+															cid=cid, description=descr)
+
+
 		# Set description for content
 		request = await self.client_bridge.request(method_name="setdescrforcid", 
 						cid=cid, descr=descr, owneraddr=response)
@@ -209,6 +222,15 @@ class DescriptionHandler(tornado_components.web.ManagementSystemHandler):
 			self.set_status(request["error"])
 			self.write(request)
 			raise tornado.web.Finish
+
+		# Update description in database
+		updated_description = await self.client_storage.request(method_name="updatedescription",
+									txid=request["result"]["txid"], cid=cid, description=descr)
+		if "error" in updated_description.keys():
+			self.set_status(updated_description["error"])
+			self.write(updated_description)
+			raise tornado.web.Finish
+
 		self.write(request)
 
 
@@ -243,21 +265,28 @@ class PriceHandler(tornado_components.web.ManagementSystemHandler):
 			- owners public key
 			- price
 		""" 
-		#super().verify()
-		body = json.loads(self.request.body)
+		super().verify()
+		logging.debug("[+] -- Set price debugging")
+		try:
+			body = json.loads(self.request.body)
+		except:
+			self.set_status(400)
+			self.write({"error":400, "reason":"Unexpected data format. JSON required"})
+			raise tornado.web.Finish
+			
 		public_key = body.get("public_key", None)
 		if isinstance(body["message"], str):
 			message = json.loads(body["message"])
 		elif isinstance(body["message"], dict):
 			message = body["message"]
-		cid = message.get("cid")
-		read_price = message.get("read_price", "")
-		write_price = message.get("write_price", "")
-		descr = message.get("description")
+		price = message.get("price")
+		access_type = message.get("access_type")
+		logging.debug(body)
+		logging.debug(message)
 		
-		if not any([read_price, write_price]):
+		if not any([price, access_type]):
 			self.set_status(400)
-			self.write({"error":400, "reason":"Missed price for content"})
+			self.write({"error":400, "reason":"Missed price and access type for content"})
 		# Check if current public key is content owner
 		owneraddr = await self.client_bridge.request(method_name="ownerbycid", cid=cid)
 		if isinstance(owneraddr, dict):
@@ -271,14 +300,27 @@ class PriceHandler(tornado_components.web.ManagementSystemHandler):
 			self.write({"error":403, "reason":"Owner does not match."})
 			raise tornado.web.Finish
 		# Make setprice request to the bridge
-		if write_price:
-			updated = await self.client_bridge.request(method_name="set_write_price", 
-																cid=cid, write_price=write_price)
-		elif read_price:
-			updated = await self.client_bridge.request(method_name="set_read_price", 
-																cid=cid, write_price=write_price)
+		if access_type == "write_price":
+			result = await self.client_bridge.request(method_name="set_write_price", 
+																cid=cid, write_price=price)
+			updated = await self.client_storage.request(method_name="setwriteprice", 
+										txid=result["result"]["txid"], cid=cid, write_price=price)
+		elif access_type == "read_price":
+			result = await self.client_bridge.request(method_name="set_read_price", 
+																cid=cid, read_price=price)
+			updated = await self.client_storage.request(method_name="setreadprice", 
+										txid=result["result"]["txid"], cid=cid, read_price=price)
+
+
+		# Fee
+		#fee = await billing.set_price_fee(cid=cid, price=price, owneraddr=owneraddr)
+		#if "error" in fee.keys():
+		#	self.set_status(fee["error"])
+		#	self.write(fee)
+		#	raise tornado.web.Finish
 
 		self.write(updated)
+
 
 	def options(self, cid):
 		self.write(json.dumps(["GET", "PUT"]))
@@ -311,20 +353,30 @@ class WriteAccessOfferHandler(tornado_components.web.ManagementSystemHandler):
 		Returns:
 			- offer parameters as dictionary
 		"""
-		#super().verify()
-		body = json.loads(self.request.body)
+		super().verify()
+		logging.debug("[+] -- Write access offer debugging ")
+		try:
+			body = json.loads(self.request.body)
+		except:
+			self.set_status(400)
+			self.write({"error":400, "reason":"Unexpected data format. JSON required"})
+			raise tornado.web.Finish
 		if isinstance(body["message"], str):
 			message = json.loads(body["message"])
 		elif isinstance(body["message"], dict):
 			message = body["message"]
+		logging.debug(body)
+		logging.debug(message)
 		cid = message.get("cid")
-		write_price = message.get("write_price")
+		write_price = message.get("price")
+		logging.debug("\n" + str(write_price) + "\n")
 		buyer_access_string = message.get("buyer_access_string")
 		# Get cid price from bridge
 		if not write_price:
 			content = await self.client_storage.request(method_name="getsinglecontent", cid=cid)
 			write_price = content["write_access"]
-			
+		logging.debug("\n" + str(write_price) + "\n")
+
 		if not all([message, buyer_access_string, str(cid).isdigit()]):
 			self.set_status(400)
 			self.write({"error":400, "reason":"Missed required fields"})
@@ -342,6 +394,7 @@ class WriteAccessOfferHandler(tornado_components.web.ManagementSystemHandler):
 		# Check if current offer already exists
 		offer = await self.client_storage.request(method_name="getoffer",
 			cid=cid, buyer_address=Qtum.public_key_to_hex_address(public_key))
+		logging.debug(offer)
 		if "cid" in offer.keys():
 			self.set_status(403)
 			self.write({"error":403,
@@ -355,7 +408,7 @@ class WriteAccessOfferHandler(tornado_components.web.ManagementSystemHandler):
 		#Detect contents owner
 		owneraddr = await self.client_bridge.request(method_name="ownerbycid", 
 													cid=cid)
-	
+
 		if owneraddr == Qtum.public_key_to_hex_address(public_key):
 			self.set_status(400)
 			self.write({"error":400, 
@@ -363,6 +416,7 @@ class WriteAccessOfferHandler(tornado_components.web.ManagementSystemHandler):
 			raise tornado.web.Finish
 
 		# Get difference with balance and price
+
 		difference = int(balance["amount"]) - int(write_price)
 		if difference < 0:
 			# If Insufficient funds
@@ -426,9 +480,15 @@ class WriteAccessOfferHandler(tornado_components.web.ManagementSystemHandler):
 			- buyer public key
 			- buyer address
 		"""
-		#super().verify()
+		super().verify()
 		# Check if message contains required data
-		body = json.loads(self.request.body)
+		try:
+			body = json.loads(self.request.body)
+		except:
+			self.set_status(400)
+			self.write({"error":400, "reason":"Unexpected data format. JSON required"})
+			raise tornado.web.Finish
+			
 		if isinstance(body["message"], str):
 			message = json.loads(body["message"])
 		elif isinstance(body["message"], dict):
@@ -531,20 +591,30 @@ class ReadAccessOfferHandler(tornado_components.web.ManagementSystemHandler):
 		Returns:
 			- offer parameters as dictionary
 		"""
-		#super().verify()
-		body = json.loads(self.request.body)
+		super().verify()
+		logging.debug("[+] -- Read access offer debugging ")
+		try:
+			body = json.loads(self.request.body)
+		except:
+			self.set_status(400)
+			self.write({"error":400, "reason":"Unexpected data format. JSON required"})
+			raise tornado.web.Finish
+			
 		if isinstance(body["message"], str):
 			message = json.loads(body["message"])
 		elif isinstance(body["message"], dict):
 			message = body["message"]
 		cid = message.get("cid")
-		read_price = message.get("read_price")
+
+		read_price = message.get("price")
 		buyer_access_string = message.get("buyer_access_string")
 		# Get cid price from bridge
 		if not read_price:
 			content = await self.client_storage.request(method_name="getsinglecontent", cid=cid)
+			logging.debug(content)
 			read_price = content["read_access"]
-			
+		logging.debug("\n" + str(read_price) + "\n")
+
 		if not all([message, buyer_access_string, str(cid).isdigit()]):
 			self.set_status(400)
 			self.write({"error":400, "reason":"Missed required fields"})
@@ -579,7 +649,7 @@ class ReadAccessOfferHandler(tornado_components.web.ManagementSystemHandler):
 		if owneraddr == Qtum.public_key_to_hex_address(public_key):
 			self.set_status(400)
 			self.write({"error":400, 
-						"reason":"Content belongs to current user"})
+						"reason":"Current content was purchased already."})
 			raise tornado.web.Finish
 
 		# Get difference with balance and price
@@ -647,9 +717,15 @@ class ReadAccessOfferHandler(tornado_components.web.ManagementSystemHandler):
 			- buyer public key
 			- buyer address
 		"""
-		#super().verify()
+		super().verify()
 		# Check if message contains required data
-		body = json.loads(self.request.body)
+		try:
+			body = json.loads(self.request.body)
+		except:
+			self.set_status(400)
+			self.write({"error":400, "reason":"Unexpected data format. JSON required"})
+			raise tornado.web.Finish
+			
 		if isinstance(body["message"], str):
 			message = json.loads(body["message"])
 		elif isinstance(body["message"], dict):
@@ -753,10 +829,16 @@ class DealHandler(tornado_components.web.ManagementSystemHandler):
 			- buyer public key
 			- seller public key
 		"""
-		#super().verify()
+		super().verify()
 		# Check if message contains required data
 		logging.debug("[+] -- DealHandler")
-		body = json.loads(self.request.body)
+		try:
+			body = json.loads(self.request.body)
+		except:
+			self.set_status(400)
+			self.write({"error":400, "reason":"Unexpected data format. JSON required"})
+			raise tornado.web.Finish
+			
 		if isinstance(body["message"], str):
 			message = json.loads(body["message"])
 		elif isinstance(body["message"], dict):
@@ -766,7 +848,7 @@ class DealHandler(tornado_components.web.ManagementSystemHandler):
 		buyer_access_string = message.get("buyer_access_string")
 		seller_access_string = message.get("seller_access_string")
 		access_type = message.get("access_type")
-		logging.debug(body)
+		logging.debug("\n --Body " + json.dumps(body) + "\n")
 		# check passes data
 		if not all([buyer_access_string, cid, buyer_pubkey]):
 			self.set_status(400)
@@ -776,6 +858,7 @@ class DealHandler(tornado_components.web.ManagementSystemHandler):
 		# Check if accounts exists
 		seller_account = await self.client_storage.request(method_name="getaccountdata", 
 										public_key=public_key)
+
 		try:
 			error_code = seller_account["error"]
 		except:
@@ -784,6 +867,7 @@ class DealHandler(tornado_components.web.ManagementSystemHandler):
 			self.set_status(error_code)
 			self.write(seller_account)
 			raise tornado.web.Finish
+		logging.debug("\n --Seller account " + json.dumps(seller_account) + "\n")
 		buyer_account = await self.client_storage.request(method_name="getaccountdata", 
 										public_key=buyer_pubkey)
 		try:
@@ -794,6 +878,7 @@ class DealHandler(tornado_components.web.ManagementSystemHandler):
 			self.set_status(error_code)
 			self.write(buyer_account)
 			raise tornado.web.Finish
+		logging.debug("\n --Buyer account " + json.dumps(buyer_account) + "\n")
 
 		# Check if content belongs to current account
 		owneraddr = await self.client_bridge.request(method_name="ownerbycid", cid=cid)
@@ -802,7 +887,7 @@ class DealHandler(tornado_components.web.ManagementSystemHandler):
 			self.set_status(403)
 			self.write({"error":403, "reason":"Forbidden."})
 			raise tornado.web.Finish
-
+		logging.debug(" -- Owner does match")
 		# Check if current offer exists
 		offer = await self.client_storage.request(method_name="getoffer",
 			cid=cid, buyer_address=Qtum.public_key_to_hex_address(buyer_pubkey))
@@ -810,6 +895,7 @@ class DealHandler(tornado_components.web.ManagementSystemHandler):
 			self.set_status(offer["error"])
 			self.write(offer)
 			raise tornado.web.Finish
+		logging.debug("\n --Offer " + json.dumps(offer) + "\n")
 
 		#buyer_access_string = Qtum.to_compressed_public_key(buyer_access_string)
 
@@ -820,12 +906,18 @@ class DealHandler(tornado_components.web.ManagementSystemHandler):
 			self.set_status(balance["error"])
 			self.write(balance)
 			raise tornado.web.Finish 
+		logging.debug("\n --Balance " + json.dumps(balance) + "\n")
+
 
 		# Get difference with balance and price
 		price = int(offer["price"])
-		difference = int(balance["deposit"]) - price
-		if difference >= 0:
+		logging.debug("\n --Price " + str(price) + "\n")
 
+		difference = int(balance["deposit"]) - price
+		logging.debug("\n --Difference " + str(difference) + "\n")
+
+		if difference >= 0:
+			logging.debug(" -- Difference is > 0")
 			# Write access string to database
 			setaccessdata = {
 				"cid":cid,
@@ -841,10 +933,14 @@ class DealHandler(tornado_components.web.ManagementSystemHandler):
 				"buyer_address":Qtum.public_key_to_hex_address(buyer_pubkey),
 				"access_string":buyer_access_string
 			}
-			logging.debug("[+] -- Sell data")
-			logging.debug(selldata)
 			sell = await self.client_bridge.request(method_name="sellcontent", 
 													**selldata)
+			# Fee
+			#fee = await billing.sell_content_fee(cid=cid, buyer_pubkey=buyer_pubkey)
+			#if "error" in fee.keys():
+			#	self.set_status(fee["error"])
+			#	self.write(fee)
+			#	raise tornado.web.Finish
 			
 			# Check if selling was successfull
 			try:
@@ -864,9 +960,6 @@ class DealHandler(tornado_components.web.ManagementSystemHandler):
 				await self.client_balance.request(method_name="incbalance", 
 									uid=seller_account["id"], amount=price)
 
-				# Remove offer from database
-				await self.client_storage.request(method_name="removeoffer",cid=cid,
-						buyer_address=Qtum.public_key_to_hex_address(buyer_pubkey))
 
 				# Change owner in database
 				if access_type == "write_access":
@@ -880,21 +973,34 @@ class DealHandler(tornado_components.web.ManagementSystemHandler):
 					}
 					await self.client_bridge.request(method_name="changeowner", 
 															**chownerdata)
-				else:
-					await self.client_storage.request(method_name="addcontentowner", cid=cid, 
-														buyer_pubkey=buyer_pubkey)
+					# Fee
+					#fee = await billing.chagne_owner_fee(cid=cid, new_owner=buyer_pubkey)
+					#if "error" in fee.keys():
+					#	self.set_status(fee["error"])
+					#	self.write(fee)
+					#	raise tornado.web.Finish
 				
 				# Write deal to database
 				deal_data = {
 					"cid":cid,
 					"access_type":access_type,
 					"buyer":buyer_pubkey,
-					"publisher":public_key,
+					"seller":public_key,
 					"price":price
 				}
-				await self.client_storage.request(method_name="writedeal", **deal_data)
-				
-				self.write({"result":"ok"})
+				deal = await self.client_storage.request(method_name="writedeal", **deal_data)
+				logging.debug("\n --Deal " + json.dumps(deal) + "\n")
+
+				if "error" in deal.keys():
+					self.set_status(deal["error"])
+					self.write(deal)
+					raise tornado.web.Finish
+
+				# Remove offer from database
+				await self.client_storage.request(method_name="removeoffer",cid=cid,
+						buyer_address=Qtum.public_key_to_hex_address(buyer_pubkey))
+
+				self.write(deal)
 		else:
 			# If Insufficient funds
 			self.set_status(402)
@@ -955,13 +1061,17 @@ class ReviewHandler(tornado_components.web.ManagementSystemHandler):
 	async def post(self, public_key):
 		"""Writes contents review
 		"""
-		logging.debug("[+] -- ReviewHandler")
-		body = json.loads(self.request.body)
+		try:
+			body = json.loads(self.request.body)
+		except:
+			self.set_status(400)
+			self.write({"error":400, "reason":"Unexpected data format. JSON required"})
+			raise tornado.web.Finish
+			
 		if isinstance(body["message"], str):
 			message = json.loads(body["message"])
 		elif isinstance(body["message"], dict):
 			message = body["message"]
-		logging.debug("\n" + json.dumps(body) + "\n")
 
 		cid = message.get("cid")
 		review = message.get("review")
@@ -976,9 +1086,8 @@ class ReviewHandler(tornado_components.web.ManagementSystemHandler):
 										stars=rating, review=review)
 		logging.debug(bridge_review)
 
-		review = await self.client_storage.request(method_name="setreview", cid=cid,
-											rating=rating, review=review, public_key=public_key)
-		logging.debug(review)
+		review = await self.client_storage.request(method_name="setreview", cid=cid, rating=rating, 
+							txid=bridge_review["result"]["txid"], review=review, public_key=public_key)
 
 		if "error" in review.keys():
 			self.set_status(review["error"])
@@ -1006,11 +1115,13 @@ class DealsHandler(tornado_components.web.ManagementSystemHandler):
 		self.client_email = client_email
 
 	async def get(self, public_key):
-		deal1 = {"cid":1, "offer_type":"write_access", 
-				"user": "public_key", "owner":"public_key", "price": 10}
-		deal2 = {"cid":2, "offer_type":"write_access", 
-				"user": "public_key", "owner":"public_key", "price": 10}
-		self.write(json.dumps([deal1, deal2]))
+		deals = await self.client_storage.request(method_name="getdeals", buyer=public_key)
+		if isinstance(deals, dict):
+			self.set_status(deals["error"])
+			self.write(deals)
+			raise tornado.web.Finish
+
+		self.write(json.dumps(deals))
 
 	def options(self, public_key):
 		self.write(json.dumps(["GET"]))

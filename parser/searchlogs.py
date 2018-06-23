@@ -1,6 +1,16 @@
-from Qtum_SC import Qtum_SC
 from bitcoinrpc.authproxy import AuthServiceProxy
 from time import sleep
+from eth_abi import encode_abi, decode_abi
+import codecs
+
+
+addresses = "f63a5d2564a4b291078115f055eda46978cd61fb"
+newCID_topic = "14fdb107141cf4fd210e2acfcc2b43094b54d909b94e77b131540b93d42937ce"
+newOffer_topic = "d2fb49496cad2d1e30798f48842e124dad6f0c61cc6fb67c18fde37c3ce74dd4"
+newReview_topic = "ad88468b4fbb35e2dc97c703f980614af53cc5ee52aa3c8b39d60a685c708241"
+newDescription_topic = "fe9eb9cd9b5753fcdcf3067265314dc0f583418b7cd1dd02715cb67fb8f345da"
+newReadPrice_topic = "864b804af68a0b62c6f4dce8f89ee048a5c7b9de0c3a43945125c09c77c345e7"
+newWritePrice_topic = "00e21ebe5c654b3675c182486b9a43fd2114dd0239b4236812bdf5cf15d4c2d0"
 
 
 class SearchLogs():
@@ -30,11 +40,23 @@ class SearchLogs():
                  "14fdb107141cf4fd210e2acfcc2b43094b54d909b94e77b131540b93d42937ce":
                      ["newCID({0[0]}, {0[1]}, {0[2]}, {0[3]}, {0[4]})", ["uint32", "string", "string", "uint", "uint"]],
                  "ad88468b4fbb35e2dc97c703f980614af53cc5ee52aa3c8b39d60a685c708241":
-                     ["newReview({0[0]}, {0[1]}, {0[2]}, {0[3]})", ["address", "address", "uint32", "string"]]
+                     ["newReview({0[0]}, {0[1]}, {0[2]}, {0[3]})", ["address", "address", "uint32", "string"]],
+                 "864b804af68a0b62c6f4dce8f89ee048a5c7b9de0c3a43945125c09c77c345e7":
+                     ["newReadPrice({0[0]}, {0[1]}, {0[2]})", ["address", "uint32", "uint"]],
+                 "00e21ebe5c654b3675c182486b9a43fd2114dd0239b4236812bdf5cf15d4c2d0":
+                     ["newWritePrice({0[0]}, {0[1]}, {0[2]})", ["address", "uint32", "uint"]],
 
                  }
         self.qtum = AuthServiceProxy("http://%s:%s@127.0.0.1:8333" % ("qtumuser", "qtum2018"))
         self.types = types
+
+    @staticmethod
+    def abi_to_params(abi, output_types):
+        decode_hex = codecs.getdecoder("hex_codec")
+        encode_hex = codecs.getencoder("hex_codec")
+
+        data = decode_hex(abi)[0]
+        return decode_abi(output_types, data)
 
     def searchlogs(self, fromBlock, toBlock, address=None, topic=None):
         list_data = []
@@ -51,7 +73,7 @@ class SearchLogs():
                     types_value = self.types[topics_log_first]
                     types_value_data = types_value[1]
                     types_value_string = types_value[0]
-                    decoded = Qtum_SC.abi_to_params(topics_data, types_value_data)
+                    decoded = self.abi_to_params(topics_data, types_value_data)
                     '''
                     if len(decoded) == 3:
                         decoded = self.redact_len3(decoded)
@@ -77,14 +99,13 @@ class SearchLogs():
             for iter_log in log_block:
                 topics_log = iter_log["topics"]
                 topics_log_first = topics_log[0]
-                #newOffer_hex = "dfcf2c9f1e0110c7afd2d0402d076c5ed57b29fa0450897162f7aca014bda34c"
                 if topics_log_first in self.types.keys():
                     # if topics_log_first == newOffer_hex:
                     topics_data = iter_log["data"]
                     types_value = self.types[topics_log_first]
                     types_value_data = types_value[1]
                     types_value_string = types_value[0]
-                    decoded = Qtum_SC.abi_to_params(topics_data, types_value_data)
+                    decoded = self.abi_to_params(topics_data, types_value_data)
                     new_decode = self.change_decode(types_value_data, decoded)
                     data_new = [tranasction_hash] + new_decode
                     list_data += [data_new]
@@ -133,4 +154,5 @@ class SearchLogs():
 if __name__ == '__main__':
     obj_searchlogs = SearchLogs()
     # searchlog = obj_searchlogs.searchlogs(0, -1, {"addresses": ["363d33ed942bd543b073101fa6e5ee00aa67cbad"]})
-    obj_searchlogs.str_new()
+    #obj_searchlogs.str_new()
+    print(obj_searchlogs.storge(0, 160000, {"addresses": [addresses]}, {"topics": [newWritePrice_topic]}))

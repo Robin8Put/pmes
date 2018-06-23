@@ -2,11 +2,11 @@ from bip32keys.bip32keys import Bip32Keys, decode_hex, encode_hex
 import sha3
 
 
-class Ethereum(Bip32Keys):
+class R8_Ethereum(Bip32Keys):
 
     def __init__(self, params):
         super().__init__(params)
-        self.address = Ethereum.public_key_to_ethereum_address(self.get_uncompressed_public_key())
+        self.address = R8_Ethereum.public_key_to_ethereum_address(self.get_uncompressed_public_key())
 
     def get_address(self):
         return self.address
@@ -20,7 +20,11 @@ class Ethereum(Bip32Keys):
         hash = k.hexdigest()
         return hash[24:]
 
+    @staticmethod
+    def public_key_to_checksum_address(public_key):
+        return web3.utils.toChecksumAddress(R8_Ethereum.public_key_to_ethereum_address(public_key))
+
 
 if __name__ == '__main__':
-    eth = Ethereum({'private_key': '8fd5de0f76ed11e9faafc27e031e31debc360241817b12faf18e708edf1de0df'})
+    eth = R8_Ethereum({'private_key': '8fd5de0f76ed11e9faafc27e031e31debc360241817b12faf18e708edf1de0df'})
     print(eth.get_address())

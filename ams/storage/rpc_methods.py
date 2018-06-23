@@ -11,8 +11,10 @@ import logging
 from qtum_utils.qtum import Qtum
 
 
-client_bridge = TornadoClient(settings.bridgeurl)
+client_bridge = SignedTornadoClient(settings.bridgeurl)
 client_email = TornadoClient(settings.emailurl)
+
+
 
 
 
@@ -152,6 +154,7 @@ class StorageTable(tornado_components.mongo.Table):
 			- dict with result
 		"""
 		logging.debug("[+] -- Insert news debugging")
+		logging.debug("\n" + json.dumps(params) + "\n")
 		if not params:
 			return {"error":400, "reason":"Missed required fields"}
 		event_type = params.get("event_type", None)
@@ -160,17 +163,16 @@ class StorageTable(tornado_components.mongo.Table):
 		buyer_pubkey = params.get("buyer_pubkey", None)
 		buyer_address = params.get("buyer_address", None)
 		owneraddr = params.get("owneraddr", None)
-		offer_price = params.get("offer_price", None)
-		offer_type = params.get("offer_type")
+		price = params.get("price", None)
+		offer_type = int(params.get("offer_type", -1))
 
-		if not all([event_type, cid, access_string, offer_price, 
+		if not all([event_type, cid, access_string, price, 
 					buyer_pubkey, buyer_address, owneraddr]):
 			return {"error":400, "reason":"Missed required fields"}			
 
 		# Get address of content owner and check if it exists
 		#client_bridge = TornadoClient(settings.bridgeurl)
-		wallet = await client_bridge.request(method_name="ownerbycid",cid=cid)
-		logging.debug(wallet)
+		#wallet = await client_bridge.request(method_name="ownerbycid",cid=cid)
 
 		#Get account by wallet
 		wallet_collection = self.database[settings.WALLET]
@@ -195,31 +197,31 @@ class StorageTable(tornado_components.mongo.Table):
 		# Update news amount at accounts collection
 		content_collection = self.database[settings.CONTENT]
 		content = await content_collection.find_one({"cid":int(cid)})
-		 
-		try:
-			row = {"offer_type": offer_type, 
-					"buyer_address":buyer_address,
-					"cid":cid,
-					"access_string":access_string,
-					"buyer_pubkey": buyer_pubkey,
-					"seller_price": content["price"],
-					"buyer_price": offer_price,
-					"account_id": seller_account["id"]}
-		except Exception as e:
-			result = {"error":400, "reason":"Missed required fields.",
-							"except": str(e)}
-		else:
-			# Update counter inside accounts table
-			await accounts.find_one_and_update(
-							{"id": seller_account["id"]},
-							{"$inc": {"news_count": 1}})
-			# Insert data to news table
-			await news_collection.insert_one(row)
-			logging.debug(row)
-			new = await news_collection.find_one({"cid":row["cid"]})
-			logging.debug(new)
 
-			result = {"result":"ok"}
+		identify = {0: "read_access", 1: "write_access"}
+
+		
+		row = {"offer_type": identify[offer_type], 
+				"buyer_address":buyer_address,
+				"cid":cid,
+				"access_string":access_string,
+				"buyer_pubkey": buyer_pubkey,
+				"seller_price": content[identify[offer_type]],
+				"buyer_price": price,
+				"account_id": seller_account["id"]}
+
+		logging.debug("\n" + json.dumps(row) + "\n")
+
+		
+		# Update counter inside accounts table
+		await accounts.find_one_and_update(
+						{"id": seller_account["id"]},
+						{"$inc": {"news_count": 1}})
+		# Insert data to news table
+		await news_collection.insert_one(row)
+		new = await news_collection.find_one({"cid":row["cid"]})
+
+		result = {"result":"ok"}
 		return result
 
 
@@ -241,6 +243,9 @@ class StorageTable(tornado_components.mongo.Table):
 		txid = params.get("txid")
 		owner_pubkey = params.get("owner_pubkey")
 		owner_addr = params.get("owner_addr")
+		point = params.get("point")
+
+
 		# Check if required fileds 
 		if not all([cid, buyer_address, txid, owner_pubkey, owner_addr]):
 			return {"error":400, "reason":"Missed required fields"}
@@ -283,8 +288,10 @@ class StorageTable(tornado_components.mongo.Table):
 			- cid
 			- buyer address
 		"""
+		logging.debug("[+] -- Get offer debugging")
 		if not params:
 			return {"error":400, "reason":"Missed required fields"}
+		logging.debug(params)
 		# Check if required fields exists
 		cid = int(params.get("cid", 0))
 		#logging.debug(cid)
@@ -303,7 +310,7 @@ class StorageTable(tornado_components.mongo.Table):
 		offer_collection = self.database[settings.OFFER]
 		offer = await offer_collection.find_one(
 							{"account_id":int(wallet["account_id"]),
-							"cid":int(cid), "confirmed": {"$ne": None}})
+							"cid":int(cid)})
 		logging.debug(offer)
 		# If current offer exists avoid creating a new one
 		if not offer:
@@ -337,36 +344,27 @@ class StorageTable(tornado_components.mongo.Table):
 		if cid:
 			cid = int(cid)
 			async for document in offer_collection.find({
-										"cid":cid,
-										"offer_type":{"$ne":None}}):
+										"cid":cid}):
 				buyer = await self.collection.find_one({"id":document["account_id"]})
-				cus = await content_collection.find_one({"cid":cid})
-				document["seller_write_price"] = cus["write_price"]
-				document["seller_read_price"] = cus["read_price"]
+				cus = await content_collection.find_one({"cid":int(cid)})
 				document["public_key"] = buyer["public_key"]
-				document["offer_type"] = self.ident_offers[document["offer_type"]]
 				del document["owner_pubkey"]
 				del document["owner_addr"]
 				document["buyer_address"] = Qtum.public_key_to_hex_address(document["public_key"])
 				offers.append(document)
 		else:
 			async for document in offer_collection.find({
-										"account_id":account["id"],
-										"offer_type":{"$ne":None}}):
-				content = await content_collection.find_one({"cid":document["cid"]})
+										"account_id":account["id"]}):
+				content = await content_collection.find_one({"cid":int(document["cid"])})
 				try:
-					document["seller_write_price"] = cus["write_price"]
-					document["seller_read_price"] = cus["read_price"]
 					document["description"] = content["description"]
-					document["offer_type"] = self.ident_offers[document["offer_type"]]
 				except:
 					continue
 				offers.append(document)
 
 		# Return list with offers
 		return [{i:doc[i] for i in doc if i != "_id" and i != "txid"
-							and i != "account_id" 
-							and i != "confirmed"} for doc in list(offers)]
+							and i != "account_id"} for doc in list(offers)]
 
 
 	async def remove_offer(self, **params):
@@ -413,6 +411,9 @@ class StorageTable(tornado_components.mongo.Table):
 	
 		txid = params.get("txid")
 		confirmed = params.get("confirmed")
+		point = params.get("point")
+
+
 		# Check if required fileds 
 		if not all([txid, confirmed]):
 			return {"error":400, "reason":"Missed required fields"}
@@ -449,6 +450,10 @@ class StorageTable(tornado_components.mongo.Table):
 		cid = params.get("cid")
 		buyer_address = params.get("buyer_address")
 		price = params.get("price")
+		offer_type = params.get("offer_type")
+		point = params.get("point")
+
+
 		# Check if required fileds 
 		if not all([cid, buyer_address, price]):
 			return {"error":400, "reason":"Missed required fields"}
@@ -456,6 +461,18 @@ class StorageTable(tornado_components.mongo.Table):
 
 		# Get content owner address
 		owneraddr = await client_bridge.request(method_name="ownerbycid", cid=cid)
+
+		# Get content
+		#content_collection = self.database[settings.CONTENT]
+		#content = await content_collection.find_one({"cid":int(cid)})
+		# Get account
+		#accounts_collection = self.database[settings.ACCOUNTS]
+		#seller_account = await accounts_collection.find_one(
+		#							{"id":content["account_id"]})
+		# Get owneraddr with content and account
+		#wallet_collection = self.database[settings.WALLET]
+		#owneraddr = await wallet_collection.find_one({"account_id": seller_account["id"]})
+
 		# Send appropriate mail to seller
 		wallets = self.database[settings.WALLET]
 		seller = await wallets.find_one({"wallet":owneraddr})
@@ -467,17 +484,17 @@ class StorageTable(tornado_components.mongo.Table):
 		if not seller_account:
 			return {"error":404, "error":"Not found current seller account"}
 
-		emaildata = {
-			"to": seller_account["email"],
-			"subject": "Robin8 support",
- 			"optional": "You`ve got a new offer from %s" % seller_account["public_key"]
- 	
-		}
-		await client_email.request(method_name="sendmail", **emaildata)
+		if seller_account.get("email"):
+			emaildata = {
+				"to": seller_account["email"],
+				"subject": "Robin8 support",
+	 			"optional": "You`ve got a new offer from %s" % seller_account["public_key"]
+	 	
+			}
+			await client_email.request(method_name="sendmail", **emaildata)
 
 		# Leave news for seller
 		buyer = await wallets.find_one({"wallet":buyer_address})
-		logging.debug(buyer)
 		try:
 			buyer_pubkey = await accounts.find_one({"id":buyer["account_id"]})
 		except TypeError:
@@ -490,10 +507,10 @@ class StorageTable(tornado_components.mongo.Table):
 			"buyer_pubkey":buyer_pubkey["public_key"],
 			"buyer_address":buyer_address,
 			"owneraddr":owneraddr,
-			"offer_price": price
+			"price": price,
+			"offer_type": offer_type
 		}
 		news = await self.insert_news(**newsdata)
-		logging.debug(news)
 		return {"result":"ok"}
 
 
@@ -514,8 +531,7 @@ class StorageTable(tornado_components.mongo.Table):
 		content_collection = self.database[settings.CONTENT]
 		#contents = await content_collection.find({"account_id":account["id"]})
 		contents = []
-		async for document in content_collection.find({"account_id":account["id"], 
-														"cid":{"$ne":None}}):
+		async for document in content_collection.find({"account_id":account["id"]}):
 			contents.append(document)
 
 		result = [{i:doc[i] for i in doc if i != "_id" and i != "account_id"
@@ -555,6 +571,7 @@ class StorageTable(tornado_components.mongo.Table):
 
 		content_collection = self.database[settings.CONTENT]
 		await content_collection.insert_one({
+								"confirmed": None,
 								"account_id": account_id, 
 								"description":description,
 								"read_access":read_access, 
@@ -582,19 +599,41 @@ class StorageTable(tornado_components.mongo.Table):
 		"""
 		if not params:
 			return {"error":400, "reason":"Missed required fields"}
+		logging.debug("[+] -- Update users content")
+		logging.debug(params)
 
 		txid = params.get("txid")
 		cid = params.get("cid")
+		description = params.get("description")
+		write_price = params.get("write_price")
+		read_price = params.get("read_price")
+		confirmed = params.get("confirmed")
 
-		if not all([txid, cid]):
-			return {"error":400, "reason":"Missed required fields"}
+
 
 		content_collection = self.database[settings.CONTENT]
-	
-		await content_collection.find_one_and_update(
-								{"txid":params["txid"]}, 
-									{"$set":{"cid":cid}})
- 
+
+		if cid:	
+			await content_collection.find_one_and_update(
+									{"txid":params["txid"]}, 
+										{"$set":{"cid":cid}})
+		if description:
+			await content_collection.find_one_and_update(
+						{"txid":params["txid"]}, 
+							{"$set":{"description":description}})
+		if write_price:
+			await content_collection.find_one_and_update(
+									{"txid":params["txid"]}, 
+										{"$set":{"write_price":write_price}})
+		if read_price:
+			await content_collection.find_one_and_update(
+									{"txid":params["txid"]}, 
+										{"$set":{"read_price":read_price}})
+		if confirmed:
+			await content_collection.find_one_and_update(
+									{"txid":params["txid"]}, 
+										{"$set":{"confirmed":confirmed}})
+
 		updated = await content_collection.find_one({
 										"txid":txid
 								})
@@ -610,7 +649,6 @@ class StorageTable(tornado_components.mongo.Table):
 	async def set_access_string(self, **params):
 		"""
 		"""
-		logging.debug("[+] -- Set access string")
 		cid = int(params.get("cid", "0"))
 		seller_access_string = params.get("seller_access_string")
 		seller_pubkey = params.get("seller_pubkey")
@@ -637,12 +675,17 @@ class StorageTable(tornado_components.mongo.Table):
 	async def get_all_content(self):
 		"""Retrieving all content
 		"""
+		logging.debug("[+] -- Get all content debugging")
 		content_collection = self.database[settings.CONTENT]
 		contents = []
-		async for document in content_collection.find({"cid":{"$ne":None}}):
-			owner = await self.collection.find_one({"id":document["account_id"]})
-			document["owner"] = owner["public_key"]
-			contents.append(document)
+
+		async for document in content_collection.find():
+			try:
+				owner = await self.collection.find_one({"id":int(document["account_id"])})
+				document["owner"] = owner["public_key"]
+				contents.append(document)
+			except:
+				continue
 		result = [{i:doc[i] for i in doc if i != "_id" and i != "txid"
 							and i != "account_id" and i != "address" and i != "public_key"} 
 														for doc in contents]
@@ -668,19 +711,25 @@ class StorageTable(tornado_components.mongo.Table):
 	async def change_content_owner(self, **params):
 		"""Updates account id
 		"""
+		logging.debug("[+] -- Change content owner debugging")
 		if not params:
 			return {"error":400, "reason":"Missed required fields"}
+		logging.debug(params)
 
 		cid = params.get("cid", 0)
+		logging.debug(cid)
 		buyer_pubkey = params.get("buyer_pubkey")
+		logging.debug(buyer_pubkey)
 		if not all([cid, buyer_pubkey]):
 			return {"error":400, "reason":"Missed required fields"}
 
 		buyer = await self.collection.find_one({"public_key":buyer_pubkey})
+		logging.debug(buyer)
 		content_collection = self.database[settings.CONTENT]
 		await content_collection.find_one_and_update({"cid": int(cid)},
 											{"$set":{"account_id":buyer["id"]}})
 		result = await content_collection.find_one({"cid":int(cid)})
+		logging.debug(result)
 		if result:
 			return {i:result[i] for i in result if i != "_id"}
 		else:
@@ -766,29 +815,186 @@ class StorageTable(tornado_components.mongo.Table):
 		return {"result":"ok"}
 
 
-	async def write_deal(self, **params):
+	async def update_review(self, **params):
+		"""Receives offer data if exists
 
+		Accepts:
+			- cid
+			- buyer address
+		"""
+		if not params:
+			return {"error":400, "reason":"Missed required fields"}
+		# Check if required fields exists
+	
+		txid = params.get("txid")
+		confirmed = params.get("confirmed")
+		point = params.get("point")
+
+		# Check if required fileds 
+		if not all([txid, confirmed]):
+			return {"error":400, "reason":"Missed required fields"}
+
+		# Try to find offer with account id and cid
+		review = await self.collection.find_one(
+									{"txid":txid})
+		if not review:
+			return {"error":404, 
+					"reason":"Review with txid %s not found" % txid }
+		# Update offer
+		await self.collection.find_one_and_update(
+							{"txid":txid}, {"$set":{"confirmed":confirmed}})
+		# Get updated offer
+		updated = await self.collection.find_one({"txid":txid})
+
+		return {i:updated[i] for i in updated if i != "_id"}
+
+
+
+	async def write_deal(self, **params):
 		if not params:
 			return {"error":400, "reason":"Missed required fields"}
 
 		cid = int(params.get("cid", 0))
+
 		access_type = params.get("access_type")
+
 		buyer = params.get("buyer")
-		publisher = params.get("publisher")
+
+		seller = params.get("seller")
+
 		price = params.get("price")
 
-		if not all([cid, access_type, buyer, publisher, price]):
+
+		if not all([cid, access_type, buyer, seller, price]):
 			return {"error":400, "reason":"Missed required fields"}
 
 		await self.collection.insert_one({
 				"cid":cid,
 				"access_type": access_type,
 				"buyer":buyer,
-				"publisher":publisher,
+				"seller":seller,
 				"price":price
 			})
+		result = await self.collection.find_one({"cid":cid, "buyer":buyer})
 
-		return {"result":"ok"}
+		return {i:result[i] for i in result if i != "_id"}
+
+
+	async def get_deals(self, **params):
+		"""
+		"""
+		if not params:
+			return {"error":400, "reason":"Missed required fields"}
+
+		buyer = params.get("buyer")
+
+		if not buyer:
+			return {"error":400, "reason":"Missed public key"}
+
+		deals = []
+		async for document in self.collection.find({"buyer":buyer}):
+			deals.append({i:document[i] for i in document if i != "_id"})
+
+		return deals
+
+
+	async def update_description(self, **params):
+
+		if not params:
+			return {"error":400, "reason":"Missed required fields"}
+		# Check if required fields exists
+	
+		cid = params.get("cid")
+		description = params.get("description")
+		txid = params.get("txid")
+
+		# Check if required fileds 
+		if not all([cid, description, txid]):
+			return {"error":400, "reason":"Missed required fields"}
+
+		# Try to find offer with account id and cid
+		content = await self.collection.find_one({"cid":int(cid)})
+		if not content:
+			return {"error":404, 
+					"reason":"Content with cid %s not found" % cid }
+		# Update offer
+		await self.collection.find_one_and_update(
+							{"cid":int(cid)}, {"$set":{"description":description}})
+		await self.collection.find_one_and_update(
+							{"cid":int(cid)}, {"$set":{"confirmed":None}})
+		await self.collection.find_one_and_update(
+							{"cid":int(cid)}, {"$set":{"txid":txid}})
+		# Get updated offer
+		updated = await self.collection.find_one({"cid":int(cid)})
+
+		return {i:updated[i] for i in updated if i != "_id"}
+
+
+	async def set_write_price(self, **params):
+
+		if not params:
+			return {"error":400, "reason":"Missed required fields"}
+		# Check if required fields exists
+	
+		cid = params.get("cid")
+		price = params.get("write_price")
+		txid = params.get("txid")
+
+
+		# Check if required fileds 
+		if not all([cid, price, txid]):
+			return {"error":400, "reason":"Missed required fields"}
+
+		# Try to find offer with account id and cid
+		content = await self.collection.find_one({"cid":int(cid)})
+		if not content:
+			return {"error":404, 
+					"reason":"Content with cid %s not found" % cid }
+		# Update offer
+		await self.collection.find_one_and_update(
+							{"cid":int(cid)}, {"$set":{"write_access":price}})
+		await self.collection.find_one_and_update(
+							{"cid":int(cid)}, {"$set":{"confirmed":None}})
+		await self.collection.find_one_and_update(
+							{"cid":int(cid)}, {"$set":{"txid":txid}})
+		# Get updated offer
+		updated = await self.collection.find_one({"cid":int(cid)})
+
+		return {i:updated[i] for i in updated if i != "_id"}
+
+
+	async def set_read_price(self, **params):
+
+		if not params:
+			return {"error":400, "reason":"Missed required fields"}
+		# Check if required fields exists
+	
+		cid = params.get("cid")
+		price = params.get("read_price")
+		txid = params.get("txid")
+
+		# Check if required fileds 
+		if not all([cid, price, txid]):
+			return {"error":400, "reason":"Missed required fields"}
+
+		# Try to find offer with account id and cid
+		content = await self.collection.find_one({"cid":int(cid)})
+		if not content:
+			return {"error":404, 
+					"reason":"Content with cid %s not found" % cid }
+		# Update offer
+		await self.collection.find_one_and_update(
+							{"cid":int(cid)}, {"$set":{"read_access":price}})
+		await self.collection.find_one_and_update(
+							{"cid":int(cid)}, {"$set":{"confirmed":None}})
+		await self.collection.find_one_and_update(
+							{"cid":int(cid)}, {"$set":{"txid":txid}})
+		# Get updated offer
+		updated = await self.collection.find_one({"cid":int(cid)})
+
+		return {i:updated[i] for i in updated if i != "_id"}
+
+
 
 
 table = StorageTable(dbname=settings.DBNAME, collection=settings.ACCOUNTS)
@@ -932,7 +1138,37 @@ async def setreview(**params):
 	return result
 
 @methods.add 
+async def updatereview(**params):
+	table = StorageTable(dbname=settings.DBNAME, collection=settings.REVIEW)
+	result = await table.update_review(**params)
+	return result
+
+@methods.add 
 async def writedeal(**params):
 	table = StorageTable(dbname=settings.DBNAME, collection=settings.DEAL)
 	result = await table.write_deal(**params)
+	return result
+
+@methods.add 
+async def getdeals(**params):
+	table = StorageTable(dbname=settings.DBNAME, collection=settings.DEAL)
+	result = await table.get_deals(**params)
+	return result
+
+@methods.add 
+async def updatedescription(**params):
+	table = StorageTable(dbname=settings.DBNAME, collection=settings.CONTENT)
+	result = await table.update_description(**params)
+	return result
+
+@methods.add 
+async def setwriteprice(**params):
+	table = StorageTable(dbname=settings.DBNAME, collection=settings.CONTENT)
+	result = await table.set_write_price(**params)
+	return result
+
+@methods.add 
+async def setreadprice(**params):
+	table = StorageTable(dbname=settings.DBNAME, collection=settings.CONTENT)
+	result = await table.set_read_price(**params)
 	return result

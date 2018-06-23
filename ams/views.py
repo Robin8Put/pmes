@@ -46,8 +46,14 @@ class BalanceHandler(tornado.web.RequestHandler):
 
 
 	async def post(self, uid):
-		body = json.loads(self.request.body)
-		amount = body.get("amount")
+		try:
+			data = json.loads(self.request.body)
+		except:
+			self.set_status(400)
+			self.write({"error":400, "reason":"Unexpected data format. JSON required"})
+			raise tornado.web.Finish
+			
+		amount = data.get("amount")
 		balance = await self.client_balance.request(method_name="incbalance",
 												uid=uid, amount=amount)
 		if "error" in balance.keys():
@@ -91,10 +97,16 @@ class AMSHandler(tornado_components.web.ManagementSystemHandler):
 		"""
 
 		# Include sign-verify mechanism
-		#super().verify()
+		super().verify()
 
 		# Save data at storage database
-		data = json.loads(self.request.body)
+		try:
+			data = json.loads(self.request.body)
+		except:
+			self.set_status(400)
+			self.write({"error":400, "reason":"Unexpected data format. JSON required"})
+			raise tornado.web.Finish
+
 		new_account = await self.client_storage.request(method_name="createaccount",
 															**data)
 		if "error" in new_account.keys():
@@ -178,7 +190,7 @@ class AccountHandler(tornado_components.web.ManagementSystemHandler):
 		"""Receives public key, looking up document at storage,
 				sends document id to the balance server
 		"""
-		#super().verify()
+		super().verify()
 		# Get id from database
 		response = await self.client_storage.request(method_name="getaccountdata",
 												public_key=public_key)
@@ -198,6 +210,7 @@ class AccountHandler(tornado_components.web.ManagementSystemHandler):
 		# Prepare response
 		response.update({"balance":balance["amount"]})
 		response.update({"address":balance["address"]})
+		response.update({"deposit":balance["deposit"]})
 		response.update({"uncorfimed":balance["uncorfimed"]})
 
 		# Return account data
@@ -283,6 +296,8 @@ class OutputOffersHandler(tornado_components.web.ManagementSystemHandler):
 		if "error" in account.keys():
 			self.set_status(account["error"])
 			self.write(account)
+			raise tornado.web.Finish
+
 
 		offers = await self.client_storage.request(method_name="getoffers", 
 												public_key=public_key)
@@ -323,18 +338,22 @@ class InputOffersHandler(tornado_components.web.ManagementSystemHandler):
 		- public key
 		"""
 		# Sign-verifying functional
-		#super().verify()
+		super().verify()
 		message = json.loads(self.get_argument("message"))
 		cid = message.get("cid")
 		if not cid:
 			self.set_status(400)
 			self.write({"error":400, "reason":"Missed required fields."})
+			raise tornado.web.Finish
+
 
 		account = await self.client_storage.request(method_name="getaccountdata",
 												public_key=public_key)
 		if "error" in account.keys():
 			self.set_status(account["error"])
 			self.write(account)
+			raise tornado.web.Finish
+
 
 		offers = await self.client_storage.request(method_name="getoffers", 
 												public_key=public_key, cid=cid)
@@ -373,7 +392,7 @@ class ContentsHandler(tornado_components.web.ManagementSystemHandler):
 		- public key
 		"""
 		# Sign-verifying functional
-		#super().verify()
+		super().verify()
 		contents = await self.client_storage.request(method_name="getuserscontent",
 														public_key=public_key)
 		if isinstance(contents, dict):

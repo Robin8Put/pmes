@@ -214,7 +214,7 @@ def get_data_from_blockchain(hash_):
 
 ##################################################################################
 						# Set price for content
-def setprice_for_content(cid, price):
+def set_write_price_for_content(cid, price, access_type):
 	print("\n[+] -- Setting price for content")
 	public_key = "04e2a4c921001b7510cf9a499fba3e6147a73a977196cbffd9ad863171b95a089ddedaf8231e842ff2be63be926ca345836a7edc3d5e098bdeb0a2ff7ddca7f156"
 	private_key = "bde5a03e2547b1fe47029ae12a2a1c678223c85fb5f2714f7605cea85ea3ebc9"
@@ -222,10 +222,9 @@ def setprice_for_content(cid, price):
 						"/api/blockchain/%s/price" % cid)
 	print("Request to:   " + url)
 	message = json.dumps({
-			"cid":cid,
 			"price":price,
 			"timestamp": get_time_stamp(),
-			"offer_type":1
+			"access_type": access_type
 		})
 	data = {
 		"message": message,
@@ -237,10 +236,52 @@ def setprice_for_content(cid, price):
 	response = requests.get(url)
 	print("----------------------------------------------------------------------")
 
+##################################################################################
+						# Set price for content
+def set_read_price_for_content(cid, price, access_type):
+	print("\n[+] -- Setting price for content")
+	public_key = "04e2a4c921001b7510cf9a499fba3e6147a73a977196cbffd9ad863171b95a089ddedaf8231e842ff2be63be926ca345836a7edc3d5e098bdeb0a2ff7ddca7f156"
+	private_key = "bde5a03e2547b1fe47029ae12a2a1c678223c85fb5f2714f7605cea85ea3ebc9"
+	url = "%s:%s%s" % (settings.host, settings.pmesport, 
+						"/api/blockchain/%s/price" % cid)
+	print("Request to:   " + url)
+	message = json.dumps({
+			"cid":cid,
+			"price":price,
+			"timestamp": get_time_stamp(),
+			"access_type":access_type
+		})
+	data = {
+		"message": message,
+		"public_key": public_key,
+		"signature": Bip32Keys.sign_message(message, private_key)
+	}
+	request = requests.put(url, data=json.dumps(data))
+	print(request.text)
+	response = requests.get(url)
+	print("----------------------------------------------------------------------")
+
+
 #################################################################################
 						# Set description for content
-
-
+def setdescription_for_content(cid, descr):
+	print("\n[+] -- Setting description for content")
+	public_key = "04e2a4c921001b7510cf9a499fba3e6147a73a977196cbffd9ad863171b95a089ddedaf8231e842ff2be63be926ca345836a7edc3d5e098bdeb0a2ff7ddca7f156"
+	private_key = "1ebaa1c3b723a04cfbcdc39bebaebac23da71b5f4f95607d0793958b993d758f"
+	url = "%s:%s%s" % (settings.host, settings.pmesport, 
+						"/api/blockchain/%s/description" % cid)
+	print("Request to:   " + url)
+	message = json.dumps({
+			"description":descr,
+			"timestamp": get_time_stamp()
+		})
+	data = {
+		"message": message,
+		"public_key": public_key,
+		"signature": Bip32Keys.sign_message(message, private_key)
+	}
+	request = requests.put(url, data=json.dumps(data))
+	print(request.text)
 
 
 ##################################################################################
@@ -574,9 +615,17 @@ def get_cids_offers(cid):
 
 	private_key = "bde5a03e2547b1fe47029ae12a2a1c678223c85fb5f2714f7605cea85ea3ebc9"
 	#email = "heroyooki@gmail.com"
+	message = json.dumps({
+		"cid":cid,
+		"timestamp": get_time_stamp()
+	})
+	data = {
+		"message": message,
+		"public_key": public_key,
+		"signature": Bip32Keys.sign_message(message, private_key)
+	}
 
-
-	request = requests.get(url, params={"cid":cid})
+	request = requests.get(url, params=data)
 	print(request.text)
 	print("-------------------------------------------------------------------")
 
@@ -598,12 +647,77 @@ def get_output_offers():
 	print(request.text)
 	print("-------------------------------------------------------------------")
 
+#################################################################################
+							# Get user deals
+def get_buyers_deals():
+	print("---------------------------------------------------------------------")
+	print("\n[+] -- Getting deals")
+	public_key = "04e78671c682ad58fb746dd24275db0e9d693dea80a6471faf598e444cbfe9e88e0653c273f36b5ac474c2d7c9d5048c2395a43820a7e1b044d25d18483e36b310"
+
+	#url = "http://pdms.robin8.io/api/accounts"
+	url = "http://127.0.0.1:8000/api/blockchain/%s/deals" % public_key
+	print("Request to:   " + url)
+
+	#email = "heroyooki@gmail.com"
+
+
+	request = requests.get(url)
+	print(request.text)
+	print("-------------------------------------------------------------------")
+
+#################################################################################
+							# Get reviews
+def get_cids_reviews(cid):
+	print("---------------------------------------------------------------------")
+	print("\n[+] -- Getting reviews")
+	public_key = "04e78671c682ad58fb746dd24275db0e9d693dea80a6471faf598e444cbfe9e88e0653c273f36b5ac474c2d7c9d5048c2395a43820a7e1b044d25d18483e36b310"
+
+	#url = "http://pdms.robin8.io/api/accounts"
+	url = "http://127.0.0.1:8000/api/blockchain/%s/reviews" % cid
+	print("Request to:   " + url)
+
+	#email = "heroyooki@gmail.com"
+
+
+	request = requests.get(url)
+	print(request.text)
+	print("-------------------------------------------------------------------")
+
+#################################################################################
+							# Post review
+def set_review(cid):
+	print("---------------------------------------------------------------------")
+	print("\n[+] -- Posting review")
+	public_key = "04e78671c682ad58fb746dd24275db0e9d693dea80a6471faf598e444cbfe9e88e0653c273f36b5ac474c2d7c9d5048c2395a43820a7e1b044d25d18483e36b310"
+	private_key = "1ebaa1c3b723a04cfbcdc39bebaebac23da71b5f4f95607d0793958b993d758f"
+
+	#url = "http://pdms.robin8.io/api/accounts"
+	url = "http://127.0.0.1:8000/api/blockchain/%s/review" % public_key
+	print("Request to:   " + url)
+
+	message = json.dumps({
+		"review": "my review",
+		"rating": 5,
+		"cid":cid,
+		"timestamp": get_time_stamp()
+	})
+	data = {
+		"message": message,
+		"public_key": public_key,
+		"signature": Bip32Keys.sign_message(message, private_key)
+	}
+
+
+	request = requests.post(url, data=json.dumps(data))
+	print(request.text)
+	print("-------------------------------------------------------------------")
 
 
 
 "---------------------------------------------------------------------------------"
 if __name__ == '__main__':
 	from test_news import *
+	"""
 	"""
 	#
 	# Create testing balance table
@@ -615,28 +729,29 @@ if __name__ == '__main__':
 	client.pmes.balance.remove()
 	client.pmes.autoincrement.remove()
 	client.pmes.content.remove()
+	client.pmes.deal.remove()
+	client.pmes.review.remove()
 
-	"""
-	cid = 4
+
+	cid = 45
 	price=4
-	inc = 20000000000
-	hash_="Qmf18FVqFS4vxAt4gptsaqk5pUDg4EqwJe3efLpNNQuiJQ"
+	inc = 100  * pow(10,8)
 
 	#create_account_with_valid_data()
+
 	#increment_balance(inc, 1)
-	#create_account_with_existing_data()
-	#create_account_with_invalid_data1()
-	#create_account_with_invalid_data2()
+
 	#write_data_to_blockchain()
-	#write_invalid_data_to_blockchain()
-	#get_data_from_blockchain(hash_=hash_)
+
 	#get_users_contents()
+
 	#get_cids_offers(cid=cid)
+
 	#get_output_offers()
 
 
-	#setprice_for_content(cid=cid, price=2)
 	#create_buyer_with_valid_data()
+
 	#increment_balance(inc, 2)
 
 	#make_offer_from_buyer_to_seller_write_access(cid=cid)
@@ -648,6 +763,19 @@ if __name__ == '__main__':
 	#accept_write_offer_from_buyer(cid,1,2)
 	#accept_read_offer_from_buyer(cid,1,2)
 
-	reject_write_offer_by_owner(cid)
+	#reject_write_offer_by_owner(cid)
 	#reject_read_offer_by_owner(cid)
+	
+	#get_buyers_deals()
+
 	#get_all_content()
+
+	#get_cids_reviews(cid=cid)
+
+	#set_review(cid=cid)
+
+	#setdescription_for_content(cid=cid, descr="234876585765")
+
+	#set_write_price_for_content(cid=cid, price=13, access_type="write_price")
+
+	#set_read_price_for_content(cid=cid, price=13, access_type="read_price")
