@@ -6,6 +6,7 @@ from R8Storage.storage import R8Storage
 from robin8.robin8_sc import Robin8_SC
 from r8balance import R8Balance
 from hashlib import sha256
+from qtum_utils.qtum import Qtum
 from robin8_billing import robin8_billing
 import logging
 import json
@@ -33,12 +34,12 @@ def verify(func):
             keys = json.load(f)
 
         pubkey = keys["pubkey"]
-
         message = kwargs.get("message")
         signature = kwargs.get("signature")
+        logging.debug(signature)
         try:
             flag = Qtum.verify_message(message, signature, pubkey)
-        except:
+        except Exception as e:
             flag = None
         if not flag:
             result =  {"error":403, "reason":"Invalid signature"}
@@ -79,22 +80,24 @@ def verify_secret(*params, secret):
 class Bridge(object):
 
 
-    #@verify
+    @verify
     async def test(*args, **kwargs):
         return 'It works'
 
-    #@verify
+    @verify
     async def post_test(*args, **kwargs):
-        return 'test_param is %s' % kwargs["test"]
+        message = json.loads(kwargs.get("message"))
+
+        return 'test_param is %s' % message["test"]
 
 
-    #@verify
+    @verify
     async def lastblockid(*args, **kwarg):
         res = get_blockchain_handler().get_last_block_id()
         return res
 
 
-    #@verify
+    @verify
     async def balance(*args, **kwargs):
         blockchain_handler = get_blockchain_handler()
         unspent = blockchain_handler.get_unspent()
@@ -117,9 +120,11 @@ class Bridge(object):
         return encoded_arr
 
 
-    #verify
+    @verify
     async def storagecat(*args, **kwargs):
-        hash = kwargs.get("hash")
+        message = json.loads(kwargs.get("message"))
+
+        hash = message.get("hash")
         storage_handler = get_storage_handler()
         try:
             data = storage_handler.download_content(hash).decode()
@@ -132,9 +137,11 @@ class Bridge(object):
         return data
 
 
-    #verify
+    @verify
     async def getcid(*args, **kwargs):
-        hash = kwargs.get("hash")
+        message = json.loads(kwargs.get("message"))
+
+        hash = message.get("hash")
         r8_sc = Robin8_SC(contract_address)
         cid = r8_sc.getCID(hash)[0]
         if cid == 0:
@@ -143,9 +150,11 @@ class Bridge(object):
         return str(cid)
 
 
-
+    @verify
     async def readbycid(*args, **kwargs):
-        cid = kwargs.get("cid")
+        message = json.loads(kwargs.get("message"))
+
+        cid = int(message.get("cid"))
         robin8 = Robin8_SC(contract_address)
         cus = robin8.getCUS(cid)[0].decode()
 
@@ -156,8 +165,11 @@ class Bridge(object):
         return cus
 
 
+    @verify
     async def ownerbycid(*args, **kwargs):
-        cid = int(kwargs.get("cid", 0))
+        message = json.loads(kwargs.get("message"))
+
+        cid = int(message.get("cid", 0))
         r8_sc = Robin8_SC(contract_address)
 
         owner_hex_addr = r8_sc.getOwner(cid)[0]
@@ -172,9 +184,11 @@ class Bridge(object):
 
         return owner_hex_addr
 
-
+    @verify
     async def descrbycid(*args, **kwargs):
-        cid = kwargs.get("cid")
+        message = json.loads(kwargs.get("message"))
+
+        cid = int(message.get("cid"))
         r8_sc = Robin8_SC(contract_address)
 
         descr = r8_sc.CIDtoDescription(cid)[0].decode()
@@ -186,14 +200,14 @@ class Bridge(object):
 
         return descr
 
-
+    @verify
     async def makecid(*args, **kwargs):
-
-        cus = kwargs.get("cus")
-        owneraddr = kwargs.get("owneraddr")
-        description = kwargs.get("description")
-        read_price = int(kwargs.get("read_price", 0))
-        write_price = int(kwargs.get("write_price", 0))
+        message = json.loads(kwargs.get("message"))
+        cus = message.get("cus")
+        owneraddr = message.get("owneraddr")
+        description = message.get("description")
+        read_price = int(message.get("read_price", 0))
+        write_price = int(message.get("write_price", 0))
 
         addr = contract_owner
 
@@ -215,10 +229,12 @@ class Bridge(object):
                 'descr_hash': descr_hash}
 
 
+    @verify
     async def setdescrforcid(*args, **kwargs):
+        message = json.loads(kwargs.get("message"))
 
-        cid = kwargs.get("cid")
-        descr = kwargs.get("descr")
+        cid = int(message.get("cid"))
+        descr = message.get("descr")
 
         addr = contract_owner
 
@@ -232,10 +248,11 @@ class Bridge(object):
 
         return {'result': result, 'cid': str(cid), 'descr': descr, 'addr': addr, 'descr_hash': descr_hash}
 
-
+    @verify
     async def last_access_string(*args, **kwargs):
+        message = json.loads(kwargs.get("message"))
 
-        cid = kwargs.get("cid")
+        cid = int(message.get("cid"))
 
         r8_sc = Robin8_SC(contract_address)
         r8_sc.set_send_params({'sender': contract_owner})
@@ -244,12 +261,13 @@ class Bridge(object):
 
         return result
 
-
+    @verify
     async def changeowner(*args, **kwargs):
+        message = json.loads(kwargs.get("message"))
 
-        cid = kwargs.get("cid")
-        new_owner = kwargs.get("new_owner")
-        access_string = kwargs.get("access_string")
+        cid = int(message.get("cid"))
+        new_owner = message.get("new_owner")
+        access_string = message.get("access_string")
 
         addr = contract_owner_hex
         r8_sc = Robin8_SC(contract_address)
@@ -264,12 +282,13 @@ class Bridge(object):
         return {'result': result, 'cid': str(cid), 'new_owner': new_owner,
                 'access_string': access_string, 'prev_owner': prev_owner, 'contract_owner_hex': addr}
 
-
+    @verify
     async def sellcontent(*args, **kwargs):
+        message = json.loads(kwargs.get("message"))
 
-        cid = kwargs.get("cid")
-        buyer_address = kwargs.get("buyer_address")
-        access_string = kwargs.get("access_string")
+        cid = int(message.get("cid"))
+        buyer_address = message.get("buyer_address")
+        access_string = message.get("access_string")
 
         addr = contract_owner
         r8_sc = Robin8_SC(contract_address)
@@ -284,11 +303,12 @@ class Bridge(object):
         return {'result': result, 'cid': str(cid), 'buyer_address': buyer_address,
                 'access_string': access_string, 'content_owner': content_owner_addr, 'contract_owner_hex': addr}
 
-
+    @verify
     async def set_read_price(*args, **kwargs):
+        message = json.loads(kwargs.get("message"))
 
-        cid = kwargs.get("cid")
-        price = kwargs.get("read_price")
+        cid = int(message.get("cid"))
+        price = int(message.get("read_price"))
 
         r8_sc = Robin8_SC(contract_address)
         r8_sc.set_send_params({'sender': contract_owner})
@@ -297,10 +317,13 @@ class Bridge(object):
 
         return {'result': result, 'cid': str(cid), 'price': price}
 
-    async def set_write_price(*args, **kwargs):
 
-        cid = kwargs.get("cid")
-        price = kwargs.get("write_price")
+    @verify
+    async def set_write_price(*args, **kwargs):
+        message = json.loads(kwargs.get("message"))
+
+        cid = int(message.get("cid"))
+        price = int(message.get("write_price"))
 
         r8_sc = Robin8_SC(contract_address)
         r8_sc.set_send_params({'sender': contract_owner})
@@ -310,50 +333,54 @@ class Bridge(object):
         return {'result': result, 'cid': str(cid), 'price': price}
 
 
+    @verify
     async def get_read_price(*args, **kwargs):
+        message = json.loads(kwargs.get("message"))
 
-        cid = kwargs.get("cid")
+        cid = int(message.get("cid"))
 
         r8_sc = Robin8_SC(contract_address)
 
         return r8_sc.getReadPrice(cid)[0]
 
-    async def get_write_price(*args, **kwargs):
 
-        cid = kwargs.get("cid")
+    @verify
+    async def get_write_price(*args, **kwargs):
+        message = json.loads(kwargs.get("message"))
+
+        cid = int(message.get("cid"))
 
         r8_sc = Robin8_SC(contract_address)
 
         return r8_sc.getWritePrice(cid)[0]
 
 
+    @verify
     async def make_offer(*args, **kwargs):
-        logging.debug("[+] -- Make offer debugging")
-        logging.debug(kwargs)
-        cid = kwargs.get("cid")
-        logging.debug(cid)
-        buyer_address = kwargs.get("buyer_address")
-        logging.debug(buyer_address)
-        offer_type = kwargs.get("offer_type")
-        logging.debug(offer_type)
-        price = kwargs.get("read_price") or kwargs.get("write_price")
-        logging.debug(price)
-        buyer_access_string = kwargs.get("buyer_access_string")
-        logging.debug(buyer_access_string)
+        message = json.loads(kwargs.get("message"))
+
+        cid = int(message.get("cid"))
+        buyer_address = message.get("buyer_address")
+        offer_type = message.get("offer_type")
+        price = message.get("read_price") or message.get("write_price")
+        buyer_access_string = message.get("buyer_access_string")
+        price = int(price)
 
         r8_sc = Robin8_SC(contract_address)
         r8_sc.set_send_params({'sender': contract_owner})
 
-        result = r8_sc.makeOffer(cid, buyer_address, int(offer_type), price, buyer_access_string)
+        result = r8_sc.makeOffer(int(cid), buyer_address, int(offer_type), int(price), buyer_access_string)
 
         return {'result': result, 'cid': str(cid), 'offer_price': price,
                 'buyer_address': buyer_address, 'buyer_access_string': buyer_access_string, 'offer_type': offer_type}
 
 
+    @verify
     async def reject_offer(*args, **kwargs):
+        message = json.loads(kwargs.get("message"))
 
-        cid = kwargs.get("cid")
-        buyer_address = kwargs.get("buyer_address")
+        cid = int(message.get("cid"))
+        buyer_address = message.get("buyer_address")
 
         r8_sc = Robin8_SC(contract_address)
         r8_sc.set_send_params({'sender': contract_owner})
@@ -362,12 +389,14 @@ class Bridge(object):
 
         return {'result': result, 'cid': str(cid), 'buyer_address': buyer_address}
 
-    async def add_review(*args, **kwargs):
 
-        cid = kwargs.get("cid")
-        buyer_address = kwargs.get("buyer_address")
-        stars = kwargs.get("stars")
-        review = kwargs.get("review")
+    @verify
+    async def add_review(*args, **kwargs):
+        message = json.loads(kwargs.get("message"))
+        cid = int(message.get("cid"))
+        buyer_address = message.get("buyer_address")
+        stars = message.get("stars")
+        review = message.get("review")
 
         r8_sc = Robin8_SC(contract_address)
         r8_sc.set_send_params({'sender': contract_owner})
@@ -453,7 +482,7 @@ async def set_read_price(*args, **kwargs):
 
 @methods.add
 async def set_write_price(*args, **kwargs):
-    result = await bridge.set_read_price(*args, **kwargs)
+    result = await bridge.set_write_price(*args, **kwargs)
     return result
 
 @methods.add

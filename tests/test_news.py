@@ -33,7 +33,9 @@ def send_news_to_seller(cid):
 		"access_string":access_string,
 		"buyer_pubkey":public_key,
 		"owneraddr":owneraddr,
-		"buyer_addr":"addr"
+		"buyer_address":"addr",
+		"price":100,
+		"offer_type":"write_access"
 	}
 	client = HTTPClient(settings.storageurl)
 	response = client.request(method_name="setnews", **data)

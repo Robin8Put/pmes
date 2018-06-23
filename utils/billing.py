@@ -46,7 +46,7 @@ async def upload_content_fee(*args, **kwargs):
 	if "error" in decbalance.keys():
 		return decbalance
 	else:
-		return True
+		return {"result":"ok"}
 
 
 async def update_description_fee(*args, **kwargs):
@@ -90,8 +90,8 @@ async def change_owner_fee(*args, **kwargs):
 	if not all([cid, new_owner]):
 		return {"error":400, "reason":"Missed required fields"}
 
-	user = await client_storage.request(method_name="getaccountbywallet",
-	    				                            wallet=new_owner)
+	user = await client_storage.request(method_name="getaccountdata",
+	    				                            public_key=new_owner)
 	if "error" in user.keys():
 		return user
 
@@ -117,13 +117,13 @@ async def sell_content_fee(*args, **kwargs):
 	"""
 	"""
 	cid = kwargs.get("cid")
-	buyer_address = kwargs.get("buyer_address")
+	buyer_pubkey = kwargs.get("buyer_pubkey")
 
 	if not all([cid, buyer_address]):
 		return {"error":400, "reason":"Missed required fields"}
 
-	user = await client_storage.request(method_name="getaccountbywallet",
-	                        wallet=buyer_address)
+	user = await client_storage.request(method_name="getaccountdata",
+	                        					public_key=buyer_pubkey)
 	if "error" in user.keys():
 		return user
 

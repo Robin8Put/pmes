@@ -64,8 +64,8 @@ ENDPOINTS = {
 	"price": r"/api/blockchain/([0-9]+)/price",
 
 	# json-rpc requests
-	"blockchain": r"/api/blockchain",
-	"allcontent": r"/api/blockchain/content", 
+	#"blockchain": r"/api/blockchain",
+	#"allcontent": r"/api/blockchain/content", 
 	"history": r"/api/history",
 	"balance": r"/api/balance",
 	"bridge": r"/api/bridge",
@@ -90,6 +90,9 @@ ACCOUNTS = "accounts"
 NEWS = "news"
 WALLET = "wallet"
 BALANCE = "balance"
+
+QTUM = "qtum"
+ETH = "eth"
 OFFER = "offer"
 CONTENT = "content"
 REVIEW = "review"
