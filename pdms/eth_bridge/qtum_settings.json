@@ -1,0 +1,23 @@
+{
+	"blockchain": {
+		"type": "qtum",
+		"contract_owner": "qgh88fssi4JrkH8LLvkqvC7SzGxvyApYis",
+        "private_key": "",
+		"contract_owner_hex": "fdc1ae05c161833cdf135863e332126e15d7568c",
+		"contract_address": "0563b9dbfd8c911aa5fce005d7869698a3bd97a0",
+		"http_provider": "http://qtumuser:qtum2018@127.0.0.1:8333",
+		"ipc_path": "",
+		"decimals": 8,
+        "abi_file_path": "pmes.abi"
+	},
+	"storage": {
+		"type": "ipfs",
+		"host": "localhost",
+		"port": 5001,
+		"download_time_limit": 1
+	},
+	"billing": {
+		"gasLimit": 500000,
+		"gasPrice": 490000000000
+	}
+}

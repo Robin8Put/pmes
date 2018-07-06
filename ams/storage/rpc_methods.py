@@ -1,41 +1,78 @@
+# Buily-ins
+import logging
 import json
+import os
+# Third-party
 from jsonrpcserver.aio import methods
 from jsonrpcclient.tornado_client import TornadoClient
-from tornado_components.web import SignedTornadoClient
-import pymongo
 from motor.motor_tornado import MotorClient
 from pymongo import MongoClient
-import tornado_components.mongo
+import pymongo
+# Local packages
 import settings
-import logging
-from qtum_utils.qtum import Qtum
+from utils.tornado_components import mongo
+from utils.qtum_utils.qtum import Qtum
+from utils.tornado_components.web import SignedTornadoClient, RobustTornadoClient
+from utils.bip32keys.r8_ethereum.r8_eth import R8_Ethereum
 
 
 client_bridge = SignedTornadoClient(settings.bridgeurl)
-client_email = TornadoClient(settings.emailurl)
+client_email = RobustTornadoClient(settings.emailurl)
+
+client = MotorClient()
+
+ident_offers = {0: "read_access", 1: "write_access"}
+
+validator = {
+		"QTUM": lambda x: Qtum.public_key_to_hex_address(x),
+		"ETH": lambda x: R8_Ethereum.public_key_to_checksum_address(x)
+}
+
+coin_ids = settings.AVAILABLE_COIN_ID + ["PUT"]
+
+def verify(func):
+
+	async def wrapper(*args, **kwargs):
+		import settings
+		# Keys.json is file with public and private keys at projects directory
+		with open(os.path.join(settings.BASE_DIR, "keys.json")) as f:
+			keys = json.load(f)
+
+		pubkey = keys["pubkey"]
+
+		message = kwargs.get("message")
+		signature = kwargs.get("signature")
+		try:
+			flag = Qtum.verify_message(message, signature, pubkey)
+		except:
+			flag = None
+		if not flag:
+			result =  {"error":403, "reason":"Invalid signature"}
+		else:
+			result = await func(*args, **kwargs)
+			return result
+		return wrapper
 
 
-
-
-
-class StorageTable(tornado_components.mongo.Table):
-	"""Added method for retrieving last rows.
-	"""
-
+class StorageTable(mongo.Table):
+	
+	#@verify
 	async def create_account(self, **params):
 		"""Describes, validates data.
-		Calls create account method.
 		"""
 		model = {
 		"unique": ["email", "public_key"],
 		"required": ("public_key", "device_id"),
-		"default": {"count":1, "level":2, "news_count":0, "email":None},
+		"default": {"count":len(settings.AVAILABLE_COIN_ID), 
+					"level":2, 
+					"news_count":0, 
+					"email":None},
 		"optional": ("phone",)}
-		message = params.get("message", "{}")
-		if isinstance(message, dict):
-			data = {**params, **message}
-		elif isinstance(message, str):
-			data = {**json.loads(message), **params}
+
+		message = json.loads(params.get("message", "{}"))
+	
+		data = {**message.get("message"), "public_key":message["public_key"]}
+
 		# check if all required
 		required = all([True if i in data.keys() else False for i in model["required"]])
 
@@ -45,13 +82,12 @@ class StorageTable(tornado_components.mongo.Table):
 
 		# Unique constraint
 		get_account = await self.collection.find_one({"public_key":data.get("public_key")})
-		#get_account = await client.request(method_name="getaccountdata",
-		#							public_key=data["public_key"])
 
 		# Try get account with current public key
 		if get_account:
 			return {"error": 400,
 					"reason": "Unique violation error"}
+
 		# Reload data.
 		row = {i:data[i] for i in data 
 				if i in model["required"] or i in model["optional"]}
@@ -60,59 +96,51 @@ class StorageTable(tornado_components.mongo.Table):
 			row["email"] = data.get("email")
 		row.update({"id":await self.autoincrement()})
 		await self.collection.insert_one(row)
-		response = await self.collection.find_one({"public_key":row["public_key"]})
-		return response
+		account = await self.collection.find_one({"public_key":row["public_key"]})
 
+		logging.debug("[+] -- Creating new wallet ")
+		# Create wallets
+		validator = {
+			"QTUM": lambda x: Qtum.public_key_to_hex_address(x),
+			"ETH": lambda x: R8_Ethereum.public_key_to_checksum_address(x),
+			"PUT": lambda x: Qtum.public_key_to_hex_address(x),
 
-	async def insert_wallet(self, **params):
-		"""Inserts wallet to database (related to account)
-
-		Accepts:
-			- public_key
-			- wallet
-		Returns:
-			- new row as dict
-		"""
-		if not params:
-			return {"error":400, "reason":"Missed required fields"}
-
-		if not all([params.get("public_key"), params.get("wallet")]):
-			return {"error":400, "reason":"Missed required fields"}
-		accounts = self.database[settings.ACCOUNTS]
-		account = await accounts.find_one({"public_key": params["public_key"]})
-
-		# Set database connection
-		
-		wallet_collection = self.database[settings.WALLET]
-
-		data = {
-			"account_id": account["id"],
-			"wallet": params["wallet"]
 		}
-		# Create row
-		await wallet_collection.insert_one(data)
-		# Get just created wallet
-		row = await wallet_collection.find_one({"wallet":params["wallet"]})
 
-		return row
+		for coinid in settings.AVAILABLE_COIN_ID:
+			database = client[coinid]
+			wallet_collection = database[settings.WALLET]
+			await wallet_collection.insert_one({
+					"account_id": account["id"],
+					"wallet": validator[coinid](account["public_key"]) 
+				})
+			wallet = await wallet_collection.find_one({
+					"account_id": account["id"],
+					"wallet": validator[coinid](account["public_key"]) 
+				})
+
+		return account
 
 
-
+	#@verify
 	async def find_recent_news(self, **params):
 		"""Looking up recent news for account.
-
 		Accepts:
 			- public_key
 		Returns:
 			- list with dicts or empty
 		"""
 		# Check if params is not empty
+		if params.get("message"):
+			params = json.loads(params.get("message", "{}"))
 		if not params:
 			return {"error":400, "reason":"Missed required fields"}
+
 		# Check if required parameter does exist
 		public_key = params.get("public_key", None)
 		if not public_key:
 			return {"error":400, "reason":"Missed required fields"}
+
 		# Check if current public_key does exist in database
 		account = await self.collection.find_one({"public_key": public_key})
 		if not account:
@@ -120,405 +148,389 @@ class StorageTable(tornado_components.mongo.Table):
 
 		
 		# Connect to news collection
-		client = MongoClient()
 		news_db = client[settings.DBNAME]
 		news_collection = news_db[settings.NEWS]
 		
-		# Get last "news_count" news from database
-		#news = news_collection.find({"account_id":account["id"]}
-		#						).sort([("$natural", -1)]).limit(
-		#								account["news_count"])
-		news = news_collection.find({"account_id":account["id"]}
-								).sort([("$natural", -1)])
+		news = []
+
+		async for document in news_collection.find(
+			{"account_id":account["id"]}).sort([("$natural", -1)]):
+			news.append({i:document[i] for i in document if i != "_id"})
 		
-		# remove from result "_id" field	
-		result = [{i:j[i] for i in j if i != "_id"} for j in news]
 		
 		# Set news amount to zero.
-		await self.collection.find_one_and_update(
+		accounts_collection = news_db[settings.ACCOUNTS]
+		await accounts_collection.find_one_and_update(
 						{"public_key": params["public_key"]},
 						{"$set": {"news_count": 0}})
-		return result
+		return news
 
 
 
 	async def insert_news(self, **params):
 		"""Inserts news for account
-
 		Accepts:
 			- event_type
 			- cid
 			- access_string (of buyer)
 			- buyer_pubkey
+			- buyer address
+			- owner address
+			- price
+			- offer type
+			- coin ID
 		Returns:
 			- dict with result
 		"""
-		logging.debug("[+] -- Insert news debugging")
-		logging.debug("\n" + json.dumps(params) + "\n")
+		if params.get("message"):
+			params = json.loads(params.get("message", "{}"))
+		
 		if not params:
 			return {"error":400, "reason":"Missed required fields"}
-		event_type = params.get("event_type", None)
-		cid = params.get("cid", None)
-		access_string = params.get("access_string", None)
-		buyer_pubkey = params.get("buyer_pubkey", None)
-		buyer_address = params.get("buyer_address", None)
-		owneraddr = params.get("owneraddr", None)
-		price = params.get("price", None)
+		event_type = params.get("event_type")
+		cid = params.get("cid")
+
+		access_string = params.get("access_string")
+
+		buyer_pubkey = params.get("buyer_pubkey")
+
+		buyer_address = params.get("buyer_address")
+
+		owneraddr = params.get("owneraddr")
+
+		price = params.get("price")
+
 		offer_type = int(params.get("offer_type", -1))
 
-		if not all([event_type, cid, access_string, price, 
-					buyer_pubkey, buyer_address, owneraddr]):
-			return {"error":400, "reason":"Missed required fields"}			
+		coinid = params.get("coinid").upper()
 
 		# Get address of content owner and check if it exists
-		#client_bridge = TornadoClient(settings.bridgeurl)
-		#wallet = await client_bridge.request(method_name="ownerbycid",cid=cid)
+		if coinid in settings.AVAILABLE_COIN_ID:
+			client_bridge = SignedTornadoClient(settings.bridges[coinid])
+		else:
+			return {"error":400, "reason": "Invalid coin ID"}
 
-		#Get account by wallet
-		wallet_collection = self.database[settings.WALLET]
-		wallet = await wallet_collection.find_one({"wallet": owneraddr})
-		if not wallet:
-			return {"error":404,"reason":"Content owner not found"}
+		owneraddr = await client_bridge.request(method_name="ownerbycid",cid=cid)
 
-		# Check if seller account exists
-		accounts = self.database[settings.ACCOUNTS]
-		seller_account = await accounts.find_one({"id":wallet["account_id"]})
-		if not seller_account:
-			return {"error":404, "reason":"Seller not found"}
+		# Get sellers account
+		seller = await getaccountbywallet(wallet=owneraddr)
+		if "error" in seller.keys():
+			return seller
 
-		# Check if current public_key does exist in database
-		buyeraccount = await accounts.find_one({"public_key": buyer_pubkey})
-		if not buyeraccount:
-			return {"error":404,"reason":"Buyer not found"}
-		
 		# Connect to news table 
 		news_collection = self.database[settings.NEWS]
-		# Insert news to news collection
-		# Update news amount at accounts collection
-		content_collection = self.database[settings.CONTENT]
-		content = await content_collection.find_one({"cid":int(cid)})
 
-		identify = {0: "read_access", 1: "write_access"}
+		# Get sellers price
+		client_bridge.endpoint = settings.bridges[coinid]
+		if offer_type == 1:
+			seller_price = await client_bridge.request(method_name="get_write_price", cid=cid)
+		elif offer_type == 0:
+			seller_price = await client_bridge.request(method_name="get_read_price", cid=cid)
 
 		
-		row = {"offer_type": identify[offer_type], 
+		row = {"offer_type": ident_offers[offer_type], 
 				"buyer_address":buyer_address,
 				"cid":cid,
 				"access_string":access_string,
 				"buyer_pubkey": buyer_pubkey,
-				"seller_price": content[identify[offer_type]],
+				"seller_price": seller_price,
 				"buyer_price": price,
-				"account_id": seller_account["id"]}
-
-		logging.debug("\n" + json.dumps(row) + "\n")
-
+				"account_id": seller["id"],
+				"event_type": event_type,
+				"coinid":coinid}
 		
 		# Update counter inside accounts table
-		await accounts.find_one_and_update(
-						{"id": seller_account["id"]},
+		database = client[settings.DBNAME]
+		collection = database[settings.ACCOUNTS]
+		await collection.find_one_and_update(
+						{"id": int(seller["id"])},
 						{"$inc": {"news_count": 1}})
+		await collection.find_one({"id":int(seller["id"])})
+		
 		# Insert data to news table
 		await news_collection.insert_one(row)
-		new = await news_collection.find_one({"cid":row["cid"]})
 
-		result = {"result":"ok"}
-		return result
+		return {"result":"ok"}
 
 
+	#@verify
 	async def insert_offer(self, **params):
 		"""Inserts new offer to database (related to buyers account)
-
 		Accepts:
 			- cid
 			- buyer address
 			- price
+			- access type
+			- transaction id
+			- owner public key
+			- owner address
+			- coin ID
 		"""
+		if params.get("message"):
+			params = json.loads(params.get("message", "{}"))
+		
 		if not params:
 			return {"error":400, "reason":"Missed required fields"}
+
 		# Check if required fields exists
 		cid = int(params.get("cid", 0))
-		buyer_address = params.get("buyer_address")
-		price = params.get("price")
-		access_type = params.get("access_type")
 		txid = params.get("txid")
-		owner_pubkey = params.get("owner_pubkey")
-		owner_addr = params.get("owner_addr")
-		point = params.get("point")
+		coinid = params.get("coinid")
+		public_key = params.get("public_key")
 
+		database = client[coinid]
+		offer_collection = database[settings.OFFER]
+		await offer_collection.insert_one({"cid":cid, "txid":txid, 
+											"confirmed":None, "coinid":coinid, 
+											"public_key":public_key})
 
-		# Check if required fileds 
-		if not all([cid, buyer_address, txid, owner_pubkey, owner_addr]):
-			return {"error":400, "reason":"Missed required fields"}
-		# Get buyer address row from database
-		wallet_collection = self.database[settings.WALLET]
-		wallet = await wallet_collection.find_one({"wallet":buyer_address})
-		if not wallet:
-			return {"error":404, "reason":"Buyer address not found"}
-		# Try to find offer with account id and cid
-		offer_collection = self.database[settings.OFFER]
-		offer = await offer_collection.find_one(
-							{"account_id":wallet["account_id"],
-							"cid":cid})
-		# If current offer exists avoid creating a new one
-		if offer:
-			return {"error":403, "reason": "Current offer already exists"}
-		# Else write a new offer to database
-		data = {"account_id":wallet["account_id"], 
-				"owner_pubkey":owner_pubkey,
-				"cid":cid, 
-				"access_type":access_type,
-				"txid":txid, 
-				"owner_addr":owner_addr,
-				"price":price,
-				"confirmed": None}
-
-		await offer_collection.insert_one(data)
-		new_offer = await offer_collection.find_one({
-						"account_id":wallet["account_id"],
-						"cid":cid})
-		return {i:new_offer[i] for i in new_offer if i != "_id"}
+		return {"result":"ok"}
 	
 
-	ident_offers = {0: "read_access", 1: "write_access"}
 
+
+	#@verify
 	async def get_offer(self, **params):
 		"""Receives offer data if exists
-
 		Accepts:
 			- cid
 			- buyer address
+			- coin ID
 		"""
-		logging.debug("[+] -- Get offer debugging")
+		if params.get("message"):
+			params = json.loads(params.get("message", "{}"))
+		
 		if not params:
 			return {"error":400, "reason":"Missed required fields"}
-		logging.debug(params)
+
 		# Check if required fields exists
 		cid = int(params.get("cid", 0))
-		#logging.debug(cid)
+		coinid = params.get("coinid")
 		buyer_address = params.get("buyer_address")
-		#logging.debug(buyer_address)
+		
 		# Check if required fileds 
-		if not all([cid, buyer_address]):
+		if not all([cid, buyer_address, coinid]):
 			return {"error":400, "reason":"Missed required fields"}
+		
 		# Get buyer address row from database
-		wallet_collection = self.database[settings.WALLET]
+		database = client[coinid]
+		wallet_collection = database[settings.WALLET]
 		wallet = await wallet_collection.find_one({"wallet":buyer_address})
-		#logging.debug(wallet)
 		if not wallet:
 			return {"error":404, "reason":"Buyer address not found"}
-				# Try to find offer with account id and cid
-		offer_collection = self.database[settings.OFFER]
+		
+		# Try to find offer with account id and cid
+		offer_collection = database[settings.OFFER]
 		offer = await offer_collection.find_one(
 							{"account_id":int(wallet["account_id"]),
 							"cid":int(cid)})
-		logging.debug(offer)
+
 		# If current offer exists avoid creating a new one
 		if not offer:
 			return {"error":404, "reason": "Current offer not found"}
 		else:
+			offer["coinid"] = coinid
 			return {i:offer[i] for i in offer if i != "_id"}
 
 
+	#@verify
 	async def get_offers(self, **params):
-		"""Receives all users offers
-
-		Accetpts:
+		"""Receives all users input (by cid) or output offers 
+		Accepts:
 		- public key
+		- cid (optional)
+		- coinid (optional)
 		"""
-		logging.debug("[+] -- Get offers debugging")
+		if params.get("message"):
+			params = json.loads(params.get("message", "{}"))
+		
 		if not params:
 			return {"error":400, "reason":"Missed required fields"}
+
 		cid = params.get("cid")
 		public_key = params.get("public_key")
-	
-		# Try to get an account
-		account = await self.collection.find_one({"public_key":public_key})
-		logging.debug(account)
-		# If does not exist - exit
-		if not account:
-			return {"error":404, "reason":"Account was not found"}
-		# Get all offers
-		content_collection = self.database[settings.CONTENT]
-		offer_collection = self.database[settings.OFFER]
+		coinid = params.get("coinid")
+
 		offers = []
-		if cid:
+
+		# Get all input offers by cid
+		if cid and coinid:
 			cid = int(cid)
-			async for document in offer_collection.find({
-										"cid":cid}):
-				buyer = await self.collection.find_one({"id":document["account_id"]})
-				cus = await content_collection.find_one({"cid":int(cid)})
-				document["public_key"] = buyer["public_key"]
-				del document["owner_pubkey"]
-				del document["owner_addr"]
-				document["buyer_address"] = Qtum.public_key_to_hex_address(document["public_key"])
-				offers.append(document)
-		else:
-			async for document in offer_collection.find({
-										"account_id":account["id"]}):
-				content = await content_collection.find_one({"cid":int(document["cid"])})
-				try:
-					document["description"] = content["description"]
-				except:
-					continue
-				offers.append(document)
+			database = client[coinid]
+			offer_collection = database[settings.OFFER]
+			content_collection = database[settings.CONTENT]
+
+			async for document in offer_collection.find({"cid":cid, "confirmed":None}):
+				offers.append({i:document[i] for i in document if i == "confirmed"})
+
+		# Get all output users offers
+		elif not cid:
+			database = client[coinid]
+			offer_collection = database[settings.OFFER]
+			async for document in offer_collection.find({"public_key":public_key, 
+																"confirmed":None}):
+				offers.append({i:document[i] for i in document if i == "confirmed"})
+
 
 		# Return list with offers
-		return [{i:doc[i] for i in doc if i != "_id" and i != "txid"
-							and i != "account_id"} for doc in list(offers)]
+		return offers
 
 
+	#@verify
 	async def remove_offer(self, **params):
-		"""Receives offer data if exists
-
+		"""Receives offfer after have deal
 		Accepts:
 			- cid
 			- buyer address
+			- coin ID
 		"""
+		if params.get("message"):
+			params = json.loads(params.get("message", "{}"))
+		
 		if not params:
 			return {"error":400, "reason":"Missed required fields"}
+
 		# Check if required fields exists
 		cid = int(params.get("cid", 0))
 		buyer_address = params.get("buyer_address")
+		coinid = params.get("coinid")
+	
 		# Check if required fileds 
 		if not all([cid, buyer_address]):
 			return {"error":400, "reason":"Missed required fields"}
-		# Get buyer address row from database
-		wallet_collection = self.database[settings.WALLET]
-		wallet = await wallet_collection.find_one({"wallet":buyer_address})
-		if not wallet:
-			return {"error":404, "reason":"Buyer address not found"}
-				# Try to find offer with account id and cid
-		offer_collection = self.database[settings.OFFER]
-		removed = await offer_collection.find_one(
-							{"account_id":wallet["account_id"],
-							"cid":cid})
+		
+		# Try to find offer with account id and cid	
+		offer = await self.get_offer(cid=cid, buyer_address=buyer_address, coinid=coinid)
+		if "error" in offer.keys():
+			return offer
+
+		# Remove offer
+		database = client[coinid]
+		offer_collection = database[settings.OFFER]
 		await offer_collection.delete_one(
-							{"account_id":wallet["account_id"],
+							{"account_id":offer["account_id"],
 							"cid":cid})
-		return {i:removed[i] for i in removed if i != "_id"}
+		return {"result": "ok"}
 
 
 	async def update_offer(self, **params):
-		"""Receives offer data if exists
-
+		"""Updates offer after transaction confirmation
 		Accepts:
-			- cid
-			- buyer address
+			- transaction id
+			- coinid
+			- confirmed (boolean flag)
 		"""
+		if params.get("message"):
+			params = json.loads(params.get("message", "{}"))
+		
 		if not params:
 			return {"error":400, "reason":"Missed required fields"}
+
 		# Check if required fields exists
-	
 		txid = params.get("txid")
-		confirmed = params.get("confirmed")
-		point = params.get("point")
+		coinid = params.get("coinid").upper()
 
-
-		# Check if required fileds 
-		if not all([txid, confirmed]):
-			return {"error":400, "reason":"Missed required fields"}
 
 		# Try to find offer with account id and cid
-		offer_db = self.database[settings.OFFER]
-		offer = await offer_db.find_one(
-							{"txid":txid})
+		database = client[coinid]
+		offer_db = database[settings.OFFER]
+		offer = await offer_db.find_one({"txid":txid})
 		if not offer:
 			return {"error":404, 
 					"reason":"Offer with txid %s not found" % txid }
+
 		# Update offer
 		await offer_db.find_one_and_update(
-							{"txid":txid}, {"$set":{"confirmed":confirmed}})
+							{"txid":txid}, {"$set":{"confirmed":1}})
+
 		# Get updated offer
 		updated = await offer_db.find_one({"txid":txid})
 
 		return {i:updated[i] for i in updated if i != "_id"}
 
 
-	async def mailed_confirm(self, **params):
-		"""Receives offer data if exists
 
+	async def mailed_confirm(self, **params):
+		"""Sends mail to user after offer receiveing
 		Accepts:
 			- cid
 			- buyer address
+			- price
+			- offer_type
+			- point
+			- coinid
 		"""
-		logging.debug("[+] -- Writing news debugging")
+		logging.debug("[+] -- Mailed confirm")
 		if not params:
 			return {"error":400, "reason":"Missed required fields"}
+
 		# Check if required fields exists
-		logging.debug("[+] -- get params")
-		logging.debug(params)
 		cid = params.get("cid")
 		buyer_address = params.get("buyer_address")
 		price = params.get("price")
 		offer_type = params.get("offer_type")
-		point = params.get("point")
-
-
+		coinid = params.get("coinid").upper()
+		logging.debug(params)
 		# Check if required fileds 
 		if not all([cid, buyer_address, price]):
 			return {"error":400, "reason":"Missed required fields"}
 
 
+
+
 		# Get content owner address
-		owneraddr = await client_bridge.request(method_name="ownerbycid", cid=cid)
+		#if coinid in settings.AVAILABLE_COIN_ID:
+		#	client_bridge.endpoint = settings.bridges[coinid]
+		#else:
+		#	return {"error":400, "reason":"Invalid coin ID"}
+		#owneraddr = await client_bridge.request(method_name="ownerbycid", cid=cid)
 
-		# Get content
-		#content_collection = self.database[settings.CONTENT]
-		#content = await content_collection.find_one({"cid":int(cid)})
-		# Get account
-		#accounts_collection = self.database[settings.ACCOUNTS]
-		#seller_account = await accounts_collection.find_one(
-		#							{"id":content["account_id"]})
-		# Get owneraddr with content and account
-		#wallet_collection = self.database[settings.WALLET]
-		#owneraddr = await wallet_collection.find_one({"account_id": seller_account["id"]})
 
-		# Send appropriate mail to seller
-		wallets = self.database[settings.WALLET]
-		seller = await wallets.find_one({"wallet":owneraddr})
-		if not seller:
-			return {"error":404,"error":"Not found current seller address"}
-		accounts = self.database[settings.ACCOUNTS]
-		seller_account = await accounts.find_one(
-								{"id":seller["account_id"]})
-		if not seller_account:
-			return {"error":404, "error":"Not found current seller account"}
+		# Send appropriate mail to seller if exists
+		#seller = await getaccountbywallet(wallet=owneraddr)
+		#logging.debug(seller)
+		#if "error" in seller.keys():
+		#	return seller
+		#if seller.get("email"):
+		#	emaildata = {
+		#		"to": seller["email"],
+		#		"subject": "Robin8 support",
+	 	#		"optional": "You`ve got a new offer from %s" % seller["public_key"]
+	 	#
+		#	}
+		#	await client_email.request(method_name="sendmail", **emaildata)
 
-		if seller_account.get("email"):
-			emaildata = {
-				"to": seller_account["email"],
-				"subject": "Robin8 support",
-	 			"optional": "You`ve got a new offer from %s" % seller_account["public_key"]
-	 	
-			}
-			await client_email.request(method_name="sendmail", **emaildata)
-
-		# Leave news for seller
-		buyer = await wallets.find_one({"wallet":buyer_address})
-		try:
-			buyer_pubkey = await accounts.find_one({"id":buyer["account_id"]})
-		except TypeError:
-			return {"error":404, "reason":"Current buyer not found"}  
 		# Send news for seller
+		buyer = await getaccountbywallet(wallet=buyer_address) 
+		logging.debug(buyer)
+		if "error" in buyer.keys():
+			buyer["public_key"] = None
+
 		newsdata = {
 			"event_type":"made offer",
 			"cid": cid,
-			"access_string":buyer_pubkey["public_key"],
-			"buyer_pubkey":buyer_pubkey["public_key"],
+			"access_string":buyer["public_key"],
+			"buyer_pubkey":buyer["public_key"],
 			"buyer_address":buyer_address,
-			"owneraddr":owneraddr,
+			#"owneraddr":owneraddr,
 			"price": price,
-			"offer_type": offer_type
+			"offer_type": offer_type,
+			"coinid":coinid
 		}
 		news = await self.insert_news(**newsdata)
 		return {"result":"ok"}
 
 
+	#@verify
 	async def get_contents(self, **params):
 		"""Retrieves all users content
 		Accepts:
 		-public key
 		"""
+		logging.debug("[+] -- Get contents")
+		if params.get("message"):
+			params = json.loads(params.get("message", "{}"))
+
 		if not params or not params.get("public_key"):
 			return {"error":400, "reason":"Missed required fields"}
 
@@ -526,19 +538,20 @@ class StorageTable(tornado_components.mongo.Table):
 		account = await self.collection.find_one({"public_key":params["public_key"]})
 		# Return error if does not exist the one
 		if not account:
-			return {"error":404, "reason":"Account was not found"}
+			return {"error":404, "reason":"Get contents. Not found account"}
 
-		content_collection = self.database[settings.CONTENT]
-		#contents = await content_collection.find({"account_id":account["id"]})
-		contents = []
-		async for document in content_collection.find({"account_id":account["id"]}):
-			contents.append(document)
+		contents = {i:[] for i in settings.AVAILABLE_COIN_ID}
+		for coinid in settings.AVAILABLE_COIN_ID:
+			logging.debug(coinid)
+			database = client[coinid]
+			content_collection = database[settings.CONTENT]
+			async for document in content_collection.find({"owner":account["public_key"]}):
+				contents[coinid].append((document["cid"], document["txid"]))
 
-		result = [{i:doc[i] for i in doc if i != "_id" and i != "account_id"
-				and i != "address" and i != "public_key" and i != "txid"} for doc in contents]
-		return result
+		return contents
 
 
+	#@verify
 	async def set_contents(self, **params):
 		"""Writes users content to database
 		Writes users content to database
@@ -549,112 +562,101 @@ class StorageTable(tornado_components.mongo.Table):
 		- price
 		- address
 		"""
+		if params.get("message"):
+			params = json.loads(params.get("message", "{}"))
+		
 		if not params:
 			return {"error":400, "reason":"Missed required fields"}
 
 		txid = params.get("txid")
-		account_id = params.get("account_id")
-		read_access = int(params.get("read_access", 0))
-		write_access = int(params.get("write_access", 0))
-		description = params.get("description")
-		content = params.get("content")
-		seller_pubkey = params.get("seller_pubkey")
-		seller_access_string = params.get("seller_access_string")
+		public_key = params.get("public_key")
+		_hash = params.get("hash")
+		coinid = params.get("coinid")
+		access = params.get("access")
+		cid = params.get("cid")
 
-		if not all([content, account_id, txid]):
-			return {"error":400, "reason":"Missed required fields"}
 		# Try to get account
-		account = await self.collection.find_one({"id":account_id})
+		account = await self.collection.find_one({"public_key":public_key})
 		# Return error if does not exist the one
 		if not account:
 			return {"error":404, "reason":"Account was not found"}
 
-		content_collection = self.database[settings.CONTENT]
+		client = MotorClient()
+		database = client[coinid]
+		content_collection = database[access]
 		await content_collection.insert_one({
-								"confirmed": None,
-								"account_id": account_id, 
-								"description":description,
-								"read_access":read_access, 
-								"write_access":write_access, 
-								"content":content, 
-								"cid":None,
+								"owner": public_key,
+								"cid":cid,
 								"txid": txid, 
-								"seller_pubkey":seller_pubkey,
-								"seller_access_string":seller_access_string
+								"hash": _hash
 						})
-		success = await content_collection.find_one({"account_id":account["id"],
-													"content":content})
+		success = await content_collection.find_one({"txid":txid})
 		if not success:
 			return {"error":500, "reason":"Error while writing content to database"}
 
 		else:
 			return {"result":"ok"}
 
-
+	#@verify
 	async def update_contents(self, **params):
 		"""Updates users content row
 		Accepts:
 		- txid
 		- cid
+		- description
+		- write_price
+		- read_price
+		- confirmed
+		- coinid
 		"""
+		if params.get("message"):
+			params = json.loads(params.get("message", "{}"))
+
 		if not params:
 			return {"error":400, "reason":"Missed required fields"}
-		logging.debug("[+] -- Update users content")
-		logging.debug(params)
 
 		txid = params.get("txid")
-		cid = params.get("cid")
-		description = params.get("description")
-		write_price = params.get("write_price")
-		read_price = params.get("read_price")
-		confirmed = params.get("confirmed")
 
+		coinid = params.get("coinid").upper()
 
+		client = MotorClient()
+		database = client[coinid]
+		content_collection = database[settings.CONTENT]
 
-		content_collection = self.database[settings.CONTENT]
+		content = await content_collection.find_one({"txid":txid})
 
-		if cid:	
-			await content_collection.find_one_and_update(
-									{"txid":params["txid"]}, 
-										{"$set":{"cid":cid}})
-		if description:
-			await content_collection.find_one_and_update(
-						{"txid":params["txid"]}, 
-							{"$set":{"description":description}})
-		if write_price:
-			await content_collection.find_one_and_update(
-									{"txid":params["txid"]}, 
-										{"$set":{"write_price":write_price}})
-		if read_price:
-			await content_collection.find_one_and_update(
-									{"txid":params["txid"]}, 
-										{"$set":{"read_price":read_price}})
-		if confirmed:
-			await content_collection.find_one_and_update(
-									{"txid":params["txid"]}, 
-										{"$set":{"confirmed":confirmed}})
-
-		updated = await content_collection.find_one({
-										"txid":txid
-								})
-
-		if not updated:
+		if not content:
 			return {"error":404, 
-					"reason":"Content not found"}
-		else:
-			return {i:updated[i] for i in updated if i != "_id"}
+					"reason":"Update content. Content with txid %s not found" % txid}
+
+		if content.get("hash"):
+			client = SignedTornadoClient(settings.bridges[coinid])
+			cid = await client.request(method_name="getcid", hash=content["hash"])
+
+			await content_collection.find_one_and_update({"txid":txid}, {"$set":{"cid":int(cid)}})
+			await content_collection.find_one_and_update({"txid":txid}, {"$set":{"hash":None}})
 
 
+		updated = await content_collection.find_one({"txid":txid})
 
+		return {i:updated[i] for i in updated if i != "_id"}
+
+
+	#@verify
 	async def set_access_string(self, **params):
+		"""Writes content access string to database 
 		"""
-		"""
+		if params.get("message"):
+			params = json.loads(params.get("message", "{}"))
+
 		cid = int(params.get("cid", "0"))
 		seller_access_string = params.get("seller_access_string")
 		seller_pubkey = params.get("seller_pubkey")
-		logging.debug(params)
-		content = await self.collection.find_one({"cid":cid})
-		logging.debug(content)
+		coinid = params.get("coinid")
+
+		database = client[coinid]
+		collection = database[settings.CONTENT]
+		content = await collection.find_one({"cid":cid})
 
 		if not content:
 			return {"error":404, "reason":"Content not found"}
@@ -662,227 +664,360 @@ class StorageTable(tornado_components.mongo.Table):
 		if not all([cid, seller_access_string, seller_pubkey]):
 			return {"error":400, "reason":"Missed required fields"}
 
-		await self.collection.find_one_and_update({"cid":cid},
+		await collection.find_one_and_update({"cid":cid},
 						{"$set":{"seller_access_string":seller_access_string}})
 
-		await self.collection.find_one_and_update({"cid":cid},
+		await collection.find_one_and_update({"cid":cid},
 						{"$set":{"seller_pubkey":seller_pubkey}})
-		content = await self.collection.find_one({"cid":cid})
-		logging.debug(content)
+
+		content = await collection.find_one({"cid":cid})
 		return {i:content[i] for i in content if i != "_id"}
 
 
-	async def get_all_content(self):
-		"""Retrieving all content
-		"""
-		logging.debug("[+] -- Get all content debugging")
-		content_collection = self.database[settings.CONTENT]
-		contents = []
 
-		async for document in content_collection.find():
-			try:
-				owner = await self.collection.find_one({"id":int(document["account_id"])})
-				document["owner"] = owner["public_key"]
-				contents.append(document)
-			except:
-				continue
-		result = [{i:doc[i] for i in doc if i != "_id" and i != "txid"
-							and i != "account_id" and i != "address" and i != "public_key"} 
-														for doc in contents]
-		return result
-
-
-	async def get_single_content(self, cid):
-		"""Receives single content by content id
-		"""
-		if not str(cid).isdigit():
-			return {"error": 400, "reason": "Not valid parameter"}
-
-		content = await self.collection.find_one({"cid":int(cid)})
-
-		if not content:
-			return {"error":404, "reason":"Content was not found"}
-		accounts_collection = self.database[settings.ACCOUNTS]
-		account = await accounts_collection.find_one({"id":content["account_id"]})
-		content["owner"] = account["public_key"]
-		return {i:content[i] for i in content if i != "_id"}
-
-
-	async def change_content_owner(self, **params):
-		"""Updates account id
-		"""
-		logging.debug("[+] -- Change content owner debugging")
-		if not params:
-			return {"error":400, "reason":"Missed required fields"}
-		logging.debug(params)
-
-		cid = params.get("cid", 0)
-		logging.debug(cid)
-		buyer_pubkey = params.get("buyer_pubkey")
-		logging.debug(buyer_pubkey)
-		if not all([cid, buyer_pubkey]):
-			return {"error":400, "reason":"Missed required fields"}
-
-		buyer = await self.collection.find_one({"public_key":buyer_pubkey})
-		logging.debug(buyer)
-		content_collection = self.database[settings.CONTENT]
-		await content_collection.find_one_and_update({"cid": int(cid)},
-											{"$set":{"account_id":buyer["id"]}})
-		result = await content_collection.find_one({"cid":int(cid)})
-		logging.debug(result)
-		if result:
-			return {i:result[i] for i in result if i != "_id"}
-		else:
-			return {"error":500, "reason":"Error while changing owner in database"}
-
-
-	async def add_content_owner(self, **params):
-		"""Updates account id
-		"""
-		if not params:
-			return {"error":400, "reason":"Missed required fields"}
-
-		cid = params.get("cid", 0)
-		buyer_pubkey = params.get("buyer_pubkey")
-		if not all([cid, buyer_pubkey]):
-			return {"error":400, "reason":"Missed required fields"}
-
-		buyer = await self.collection.find_one({"public_key":buyer_pubkey})
-		content_collection = self.database[settings.CONTENT]
-		await content_collection.find_one_and_update({"cid": int(cid)},
-											{"$set":{"account_id":buyer["id"]}})
-		result = await content_collection.find_one({"cid":int(cid)})
-		if result:
-			return {i:result[i] for i in result if i != "_id"}
-		else:
-			return {"error":500, "reason":"Error while changing owner in database"}
-
-
+	#@verify
 	async def get_reviews(self, **params):
 		"""Receives all reviews by cid
+		Accepts:
+		- cid
+		- coinid
 		"""
+		if params.get("message"):
+			params = json.loads(params.get("message", "{}"))
+		
 		if not params:
 			return {"error":400, "reason":"Missed required fields"}
 
 		cid = params.get("cid", 0)
-		if not cid:
+		coinid = params.get("coinid")
+		if not cid and not coinid:
 			return {"error":400, "reason":"Missed cid"}
 
 		reviews = []
-		async for document in self.collection.find({"cid":int(cid)}):
-			#if document["confirmed"]:
-			reviews.append({i:document[i] for i in document if i != "_id"})
-			#else:
-			#	continue
+		database = client[coinid]
+		collection = database[settings.REVIEW]
+		async for document in collection.find({"confirmed":None, "cid":int(cid)}):
+			reviews.append({i:document[i] for i in document if i == "confirmed"})
 
 		return reviews
 
 
+	#@verify
 	async def set_review(self, **params):
 		"""Writes review for content
+		Accepts:
+		- cid
+		- review
+		- public_key
+		- rating
+		- txid
+		- coinid
 		"""
+		if params.get("message"):
+			params = json.loads(params.get("message", "{}"))
+		
 		if not params:
 			return {"error":400, "reason":"Missed required fields"}
 
 		cid = int(params.get("cid", 0))
-		review = params.get("review")
-		public_key = params.get("public_key")
-		rating = params.get("rating")
 		txid = params.get("txid")
-
-		if not all([cid, review, public_key, rating]):
-			return {"error":400, "reason":"Missed required fields"}
-		# Get account
-		accounts_collection = self.database[settings.ACCOUNTS]
-		account = accounts_collection.find_one({"public_key":public_key})
-		if not account:
-			return {"error":404, "reason":"Not found current user"}
+		coinid = params.get("coinid")
+		
 		# Get content
-		content_collection = self.database[settings.CONTENT]
-		content = content_collection.find_one({"cid":cid})
+		database = client[coinid]
+		content_collection = database[settings.CONTENT]
+		content = await content_collection.find_one({"cid":cid})
 		if not content:
 			return {"error":404, "reason":"Not found current content"}
-		"""
-		if content["seller_access_string"] and content["account_id"] == account["id"]:
-			await self.collection.insert_one({"cid":cid, "rating":rating, "confirmed":None,
-										"review":review, "public_key":public_key, "txid":txid})
-			return {"result":"ok"}
-		else:
-			return {"error":403, "reason":"Forbidden for review"}
-		"""
-		await self.collection.insert_one({"cid":cid, "rating":rating, "confirmed":None,
-							"review":review, "public_key":public_key, "txid":txid})
+
+		database = client[coinid]
+		review_collection = database[settings.REVIEW]		
+		await review_collection.insert_one({"cid":cid, "confirmed":None, 
+											"txid":txid, "coinid":coinid})
 		return {"result":"ok"}
 
 
-	async def update_review(self, **params):
-		"""Receives offer data if exists
 
+	async def update_review(self, **params):
+		"""Update review after transaction confirmation
 		Accepts:
-			- cid
-			- buyer address
+			- txid
+			- coinid
 		"""
+		if params.get("message"):
+			params = json.loads(params.get("message", "{}"))
+		
 		if not params:
 			return {"error":400, "reason":"Missed required fields"}
+		
 		# Check if required fields exists
-	
 		txid = params.get("txid")
-		confirmed = params.get("confirmed")
-		point = params.get("point")
-
-		# Check if required fileds 
-		if not all([txid, confirmed]):
-			return {"error":400, "reason":"Missed required fields"}
+		coinid = params.get("coinid").upper()
 
 		# Try to find offer with account id and cid
-		review = await self.collection.find_one(
-									{"txid":txid})
+		database = client[coinid]
+		collection = database[settings.REVIEW]
+		review = await collection.find_one({"txid":txid})
 		if not review:
 			return {"error":404, 
 					"reason":"Review with txid %s not found" % txid }
-		# Update offer
-		await self.collection.find_one_and_update(
-							{"txid":txid}, {"$set":{"confirmed":confirmed}})
+		
+		# Update review
+		await collection.find_one_and_update(
+							{"txid":txid}, {"$set":{"confirmed":1}})
+		
 		# Get updated offer
-		updated = await self.collection.find_one({"txid":txid})
+		updated = await collection.find_one({"txid":txid})
 
 		return {i:updated[i] for i in updated if i != "_id"}
 
 
 
+	#@verify
 	async def write_deal(self, **params):
+		"""Writes deal to database
+		Accepts:
+		- cid
+		- access_type
+		- buyer public key
+		- seller public key
+		- price
+		- coinid
+		"""
+		if params.get("message"):
+			params = json.loads(params.get("message", "{}"))
+		
 		if not params:
 			return {"error":400, "reason":"Missed required fields"}
 
 		cid = int(params.get("cid", 0))
-
 		access_type = params.get("access_type")
-
 		buyer = params.get("buyer")
-
 		seller = params.get("seller")
-
 		price = params.get("price")
-
+		coinid = params.get("coinid")
 
 		if not all([cid, access_type, buyer, seller, price]):
 			return {"error":400, "reason":"Missed required fields"}
 
-		await self.collection.insert_one({
+		database = client[coinid]
+		collection = database[settings.DEAL]
+		await collection.insert_one({
 				"cid":cid,
 				"access_type": access_type,
 				"buyer":buyer,
 				"seller":seller,
-				"price":price
+				"price":price,
+				"coinid":coinid
 			})
-		result = await self.collection.find_one({"cid":cid, "buyer":buyer})
+		result = await collection.find_one({"cid":cid, "buyer":buyer})
 
 		return {i:result[i] for i in result if i != "_id"}
 
 
+
+	#@verify
+	async def update_description(self, **params):
+		"""Set description to unconfirmed status
+		after updating by user.
+		Accepts:
+		- cid
+		- description
+		- transaction id
+		- coinid
+		"""
+		if params.get("message"):
+			params = json.loads(params.get("message", "{}"))
+		
+		if not params:
+			return {"error":400, "reason":"Missed required fields"}
+
+		# Check if required fields exists
+		cid = params.get("cid")
+		description = params.get("description")
+		txid = params.get("txid")
+		coinid = params.get("coinid")
+
+		# Check if required fileds 
+		if not all([cid, description, txid, coinid]):
+			return {"error":400, "reason":"Missed required fields"}
+
+		# Try to find offer with account id and cid
+		database = client[coinid]
+		collection = database[settings.CONTENT]
+		content = await collection.find_one({"cid":int(cid)})
+		if not content:
+			return {"error":404, 
+					"reason":"Content with cid %s not found" % cid }
+
+		# Update offer
+		await collection.find_one_and_update(
+							{"cid":int(cid)}, {"$set":{"description":description}})
+		await collection.find_one_and_update(
+							{"cid":int(cid)}, {"$set":{"confirmed":None}})
+		await collection.find_one_and_update(
+							{"cid":int(cid)}, {"$set":{"txid":txid}})
+
+		# Get updated offer
+		updated = await collection.find_one({"cid":int(cid)})
+
+		return {i:updated[i] for i in updated if i != "_id"}
+
+
+	#@verify
+	async def set_write_price(self, **params):
+		"""Updates write access price of content
+		Accespts:
+		- cid
+		- price
+		- txid
+		- coinid
+		"""
+		if params.get("message"):
+			params = json.loads(params.get("message", "{}"))
+		
+		if not params:
+			return {"error":400, "reason":"Missed required fields"}
+
+		# Check if required fields exists
+		cid = params.get("cid")
+		price = params.get("write_price")
+		txid = params.get("txid")
+		coinid = params.get("coinid")
+
+		# Check if required fileds 
+		if not all([cid, price, txid]):
+			return {"error":400, "reason":"Missed required fields"}
+
+		# Try to find offer with account id and cid
+		database = client[coinid]
+		collection = database[settings.CONTENT]
+
+		# Check if content exists
+		content = await collection.find_one({"cid":int(cid)})
+		if not content:
+			return {"error":404, 
+					"reason":"Content with cid %s not found" % cid }
+
+		# Update content
+		await collection.find_one_and_update(
+							{"cid":int(cid)}, {"$set":{"write_access":price}})
+		await collection.find_one_and_update(
+							{"cid":int(cid)}, {"$set":{"confirmed":None}})
+		await collection.find_one_and_update(
+							{"cid":int(cid)}, {"$set":{"txid":txid}})
+		# Get updated content
+		updated = await collection.find_one({"cid":int(cid)})
+
+		return {i:updated[i] for i in updated if i != "_id"}
+
+
+	#@verify
+	async def set_read_price(self, **params):
+		"""Updates write access price of content
+		Accespts:
+		- cid
+		- price
+		- txid
+		- coinid
+		"""
+		if params.get("message"):
+			params = json.loads(params.get("message", "{}"))
+
+		if not params:
+			return {"error":400, "reason":"Missed required fields"}
+
+		# Check if required fields exists
+		cid = params.get("cid")
+		price = params.get("read_price")
+		txid = params.get("txid")
+		coinid = params.get("coinid")
+
+		# Check if required fileds 
+		if not all([cid, price, txid]):
+			return {"error":400, "reason":"Missed required fields"}
+
+		# Try to find offer with account id and cid
+		database = client[coinid]
+		collection = database[settings.CONTENT]
+
+		# Check if content exists
+		content = await collection.find_one({"cid":int(cid)})
+		if not content:
+			return {"error":404, 
+					"reason":"Content with cid %s not found" % cid }
+		
+		# Update content
+		await collection.find_one_and_update(
+							{"cid":int(cid)}, {"$set":{"read_access":price}})
+		await collection.find_one_and_update(
+							{"cid":int(cid)}, {"$set":{"confirmed":None}})
+		await collection.find_one_and_update(
+							{"cid":int(cid)}, {"$set":{"txid":txid}})
+		
+		# Get updated content
+		updated = await collection.find_one({"cid":int(cid)})
+
+		return {i:updated[i] for i in updated if i != "_id"}
+
+
+	async def change_owner(self, **params):
+		if params.get("message"):
+			params = json.loads(params.get("message", "{}"))
+
+		if not params:
+			return {"error":400, "reason":"Missed required fields"}
+
+		coinid = params.get("coinid")
+		cid = params.get("cid")
+		public_key = params.get("public_key")
+
+		client = MotorClient()
+		database = client[coinid]
+		content_collection = database[settings.CONTENT]
+
+		content = await content_collection.find_one_and_update({"cid":int(cid)}, 
+										{"$set":{"owner":public_key}})
+
+		if not content:
+			return {"error":404, "reason":"Change owner. Content with cid %s not found" % cid}
+
+		return {i:content[i] for i in content if i != "_id"}
+
+
+	async def share_content(self, **params):
+		if params.get("message"):
+			params = json.loads(params.get("message", "{}"))
+
+		if not params:
+			return {"error":400, "reason":"Missed required fields"}
+		coinid = params.get("coinid")
+		cid = params.get("cid")
+		public_key = params.get("public_key")
+
+		client = MotorClient()
+		database = client[coinid]
+		content_collection = database[settings.DEAL]
+
+		await content_collection.insert_one({"cid":int(cid), "user":public_key})
+		content = await content_collection.find_one({"cid":int(cid), "user":public_key})
+		logging.debug(content)
+		if not content:
+			return {"error":404, 
+					"reason":"Shared content. Content with cid %s not created" % cid}
+
+		return {i:content[i] for i in content if i != "_id"}
+
+
+	#@verify
 	async def get_deals(self, **params):
+		"""Receives all users deals
+		Accepts:
+		- buyer public key
 		"""
-		"""
+		if params.get("message"):
+			params = json.loads(params.get("message", "{}"))
+		
 		if not params:
 			return {"error":400, "reason":"Missed required fields"}
 
@@ -891,108 +1026,17 @@ class StorageTable(tornado_components.mongo.Table):
 		if not buyer:
 			return {"error":400, "reason":"Missed public key"}
 
-		deals = []
-		async for document in self.collection.find({"buyer":buyer}):
-			deals.append({i:document[i] for i in document if i != "_id"})
+		deals = {i:[] for i in settings.AVAILABLE_COIN_ID}
+		client = MotorClient()
+		for coinid in settings.AVAILABLE_COIN_ID:
+			database = client[coinid]
+			collection = database[settings.DEAL]
+			async for document in collection.find({"owner":buyer}):
+				deals[coinid].append((document["cid"],document.get("txid")))
 
 		return deals
 
 
-	async def update_description(self, **params):
-
-		if not params:
-			return {"error":400, "reason":"Missed required fields"}
-		# Check if required fields exists
-	
-		cid = params.get("cid")
-		description = params.get("description")
-		txid = params.get("txid")
-
-		# Check if required fileds 
-		if not all([cid, description, txid]):
-			return {"error":400, "reason":"Missed required fields"}
-
-		# Try to find offer with account id and cid
-		content = await self.collection.find_one({"cid":int(cid)})
-		if not content:
-			return {"error":404, 
-					"reason":"Content with cid %s not found" % cid }
-		# Update offer
-		await self.collection.find_one_and_update(
-							{"cid":int(cid)}, {"$set":{"description":description}})
-		await self.collection.find_one_and_update(
-							{"cid":int(cid)}, {"$set":{"confirmed":None}})
-		await self.collection.find_one_and_update(
-							{"cid":int(cid)}, {"$set":{"txid":txid}})
-		# Get updated offer
-		updated = await self.collection.find_one({"cid":int(cid)})
-
-		return {i:updated[i] for i in updated if i != "_id"}
-
-
-	async def set_write_price(self, **params):
-
-		if not params:
-			return {"error":400, "reason":"Missed required fields"}
-		# Check if required fields exists
-	
-		cid = params.get("cid")
-		price = params.get("write_price")
-		txid = params.get("txid")
-
-
-		# Check if required fileds 
-		if not all([cid, price, txid]):
-			return {"error":400, "reason":"Missed required fields"}
-
-		# Try to find offer with account id and cid
-		content = await self.collection.find_one({"cid":int(cid)})
-		if not content:
-			return {"error":404, 
-					"reason":"Content with cid %s not found" % cid }
-		# Update offer
-		await self.collection.find_one_and_update(
-							{"cid":int(cid)}, {"$set":{"write_access":price}})
-		await self.collection.find_one_and_update(
-							{"cid":int(cid)}, {"$set":{"confirmed":None}})
-		await self.collection.find_one_and_update(
-							{"cid":int(cid)}, {"$set":{"txid":txid}})
-		# Get updated offer
-		updated = await self.collection.find_one({"cid":int(cid)})
-
-		return {i:updated[i] for i in updated if i != "_id"}
-
-
-	async def set_read_price(self, **params):
-
-		if not params:
-			return {"error":400, "reason":"Missed required fields"}
-		# Check if required fields exists
-	
-		cid = params.get("cid")
-		price = params.get("read_price")
-		txid = params.get("txid")
-
-		# Check if required fileds 
-		if not all([cid, price, txid]):
-			return {"error":400, "reason":"Missed required fields"}
-
-		# Try to find offer with account id and cid
-		content = await self.collection.find_one({"cid":int(cid)})
-		if not content:
-			return {"error":404, 
-					"reason":"Content with cid %s not found" % cid }
-		# Update offer
-		await self.collection.find_one_and_update(
-							{"cid":int(cid)}, {"$set":{"read_access":price}})
-		await self.collection.find_one_and_update(
-							{"cid":int(cid)}, {"$set":{"confirmed":None}})
-		await self.collection.find_one_and_update(
-							{"cid":int(cid)}, {"$set":{"txid":txid}})
-		# Get updated offer
-		updated = await self.collection.find_one({"cid":int(cid)})
-
-		return {i:updated[i] for i in updated if i != "_id"}
 
 
 
@@ -1008,7 +1052,12 @@ async def createaccount(**params):
 
 @methods.add
 async def getaccountdata(**params):
-	document = await table.find(**params)
+	if isinstance(params.get("message"), str):
+		params = json.loads(params.get("message", "{}"))
+	elif isinstance(params.get("message"), dict):
+		params = params.get("message")
+	data = {i:params[i] for i in params if i == "public_key" or i == "id"}
+	document = await table.find(**data)
 	return {i:document[i] for i in document if i != "_id"}
 
 
@@ -1030,20 +1079,37 @@ async def setnews(**params):
 
 @methods.add 
 async def getaccountbywallet(**params):
-	wallettable = StorageTable(dbname=settings.DBNAME, 
-							collection=settings.WALLET)
-	wallet = await wallettable.find(**params)
-	try:
-		document = await table.find(**{"id":wallet["account_id"]})
-	except:
-		document = {"public_key":None}
-	return {i:document[i] for i in document if i != "_id"}
+	"""Receives account by wallet
+	Accepts:
+	- public key hex or checksum format
+	"""
+	if params.get("message"):
+		params = json.loads(params.get("message"))
+
+	for coinid in coin_ids:
+		logging.debug("\n" + coinid + "\n")
+		database = client[coinid]
+		wallet_collection = database[settings.WALLET]
+		wallet = await wallet_collection.find_one({"wallet":params["wallet"]})
+		if not wallet:
+			continue
+		else:
+			database = client[settings.DBNAME]
+			accounts_collection = database[settings.ACCOUNTS]
+			account = await accounts_collection.find_one({"id":wallet["account_id"]})
+			if not account:
+				return {"error":404, "reason":"Account was not found"}
+			return {i:account[i] for i in account if i != "_id"}
+	else:
+		return {"error":404, "reason":"Account was not found"}
+
 
 @methods.add
 async def updatelevel(**params):
-	document = await table.find(**{"id":params["id"]})
+	message = json.loads(params.get("message"))
+	document = await table.find(**{"id":message["id"]})
 	data = {"_id":document["id"],
-			"level":params["level"]}
+			"level":message["level"]}
 	updated = await table.update(**data)
 	return {i:updated[i] for i in updated if i != "_id"}
 
@@ -1104,14 +1170,14 @@ async def updateuserscontent(**params):
 	return result
 
 @methods.add 
-async def getallcontent():
-	result = await table.get_all_content()
+async def getallcontent(**params):
+	result = await table.get_all_content(**params)
 	return result
 
 @methods.add 
-async def getsinglecontent(cid):
+async def getsinglecontent(**params):
 	table = StorageTable(dbname=settings.DBNAME, collection=settings.CONTENT)
-	result = await table.get_single_content(cid)
+	result = await table.get_single_content(**params)
 	return result
 
 @methods.add 
@@ -1171,4 +1237,14 @@ async def setwriteprice(**params):
 async def setreadprice(**params):
 	table = StorageTable(dbname=settings.DBNAME, collection=settings.CONTENT)
 	result = await table.set_read_price(**params)
+	return result
+
+@methods.add 
+async def changeowner(**params):
+	result = await table.change_owner(**params)
+	return result
+
+@methods.add 
+async def sharecontent(**params):
+	result = await table.share_content(**params)
 	return result

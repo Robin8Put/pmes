@@ -4,4 +4,4 @@ from ams.storage import views
 
 storage_router = tornado.web.Application([
         	(settings.ENDPOINTS["storage"], views.StorageHandler)
-        ], debug=True)
+        ], debug=settings.DEBUG)

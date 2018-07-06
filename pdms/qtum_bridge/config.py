@@ -1,20 +1,20 @@
 import json
 import logging
 
-with open('settings.json') as f:
+with open('qtum_settings.json') as f:
     config = json.load(f)
 
 blockchain = config['blockchain']
 
 blockchain_type = blockchain['type']
-blockchain_host = blockchain['host']
-blockchain_port = int(blockchain['port'])
 contract_owner = blockchain['contract_owner']
+private_key = blockchain['private_key']
 contract_owner_hex = blockchain['contract_owner_hex']
 contract_address = blockchain['contract_address']
+ipc_path = blockchain['ipc_path']
+http_provider = blockchain['http_provider']
 decimals = int(blockchain['decimals'])
-blockchain_username = blockchain['credentials']['username']
-blockchain_password = blockchain['credentials']['password']
+abi_file_path = blockchain['abi_file_path']
 
 storage = config['storage']
 storage_type = storage['type']
@@ -22,5 +22,8 @@ storage_host = storage['host']
 storage_port = int(storage['port'])
 storage_download_time_limit = storage['download_time_limit']
 
-api_key = config['api_key']
+gas_limit = int(config['billing']['gasLimit'])
+gas_price = int(config['billing']['gasPrice'])
 
+with open(abi_file_path, 'r') as abi_f:
+    pmes_abi = abi_f.read()

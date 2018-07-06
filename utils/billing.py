@@ -1,7 +1,8 @@
 import os
 import sys
+import logging
 
-from tornado_components.web import SignedTornadoClient, RobustTornadoClient
+from utils.tornado_components.web import SignedTornadoClient, RobustTornadoClient
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_DIR)
@@ -12,7 +13,7 @@ from pdms.qtum_bridge.robin8_billing import robin8_billing
 
 billing = robin8_billing.Robin8_Billig(settings.BILLING_FILE)
 
-client_storage = RobustTornadoClient(settings.storageurl)
+client_storage = SignedTornadoClient(settings.storageurl)
 client_balance = SignedTornadoClient(settings.balanceurl)
 
 
@@ -22,9 +23,12 @@ async def upload_content_fee(*args, **kwargs):
 	cus = kwargs.get("cus")
 	owneraddr = kwargs.get("owneraddr")
 	description = kwargs.get("description")
+	coinid = kwargs.get("coinid", "PUT")
+
 	#Check if required fields exists
 	if not all([cus, owneraddr, description]):
 		return {"error":400, "reason":"Missed required fields"}
+
 	# Get upload content fee
 	content_fee = billing.estimate_upload_fee(len(cus))
 	descr_fee = billing.estimate_set_descr_fee(len(description))
@@ -33,16 +37,22 @@ async def upload_content_fee(*args, **kwargs):
 	if "error" in user.keys():
 		return user
 	# Get users balance
-	balance = await client_balance.request(method_name="getbalance", uid=user["id"])
-	if "error" in balance.keys():
-		return balance
+	balances = await client_balance.request(method_name="getbalance", coinid=coinid, 
+																	uid=user["id"])
+	if isinstance(balances, dict):
+		if "error" in balances.keys():
+			return balance
 	# Decrement users balance
 	common_price = int(content_fee) + int(descr_fee)
+
+	for w in balances:
+		if coinid in w.values():
+			balance = w
 	diff = int(balance["amount"]) - common_price
 	if diff < 0:
 		return {"error":403, "reason": "Balance is not enough."}
 	decbalance = await client_balance.request(method_name="decbalance", uid=user["id"],
-	                        amount=common_price)
+	                        						coinid=coinid, amount=common_price)
 	if "error" in decbalance.keys():
 		return decbalance
 	else:
@@ -55,6 +65,8 @@ async def update_description_fee(*args, **kwargs):
 	cid = kwargs.get("cid")
 	description = kwargs.get("description")
 	owneraddr = kwargs.get("owneraddr")
+	coinid = kwargs.get("coinid", "PUT")
+
 
 	if not all([cid, description, owneraddr]):
 		return {"error":400, "reason":"Missed required fields"}
@@ -64,9 +76,15 @@ async def update_description_fee(*args, **kwargs):
 	if "error" in user.keys():
 		return user
 
-	balance = await client_balance.request(method_name="getbalance", uid=user["id"])
-	if "error" in balance.keys():
-		return balance
+	balances = await client_balance.request(method_name="getbalance", uid=user["id"])
+
+	if isinstance(balances, dict):
+		if "error" in balances.keys():
+			return balances
+	
+	for w in balances:
+		if coinid in w.values():
+			balance = w
 
 	fee = billing.estimate_set_descr_fee(len(description))
 
@@ -74,18 +92,23 @@ async def update_description_fee(*args, **kwargs):
 		return {"error":403, "reason":"Owner does not have enough balance."}
 
 	decbalance = await client_balance.request(method_name="decbalance", uid=user["id"],
-	    																amount=fee)
+	    													coinid=coinid, amount=fee)
 	if "error" in decbalance.keys():
 		return decbalance
 	else:
-		return True
+		return {"result":"ok"}
+		
 
 
 async def change_owner_fee(*args, **kwargs):
 	"""
 	"""
+	logging.debug("[+] -- Change owner fee. ")
 	cid = kwargs.get("cid")
 	new_owner = kwargs.get("new_owner")
+	coinid = kwargs.get("coinid", "PUT")
+
+	logging.debug(coinid)
 
 	if not all([cid, new_owner]):
 		return {"error":400, "reason":"Missed required fields"}
@@ -95,42 +118,64 @@ async def change_owner_fee(*args, **kwargs):
 	if "error" in user.keys():
 		return user
 
-	balance = await client_balance.request(method_name="getbalance",
+	balances = await client_balance.request(method_name="getbalance",
 	                                uid=user["id"])
-	if "error" in balance.keys():
-		return balance
+	logging.debug("\n\n")
+	logging.debug(balances)
+	logging.debug("\n\n")
+	
+	if isinstance(balances, dict):
+		if "error" in balances.keys():
+			return balances
+
+	for w in balances:
+		if coinid in w.values():
+			balance = w
+	logging.debug("\n\n")
+	logging.debug(balance)
+	logging.debug("\n\n")
 
 	fee = billing.estimate_change_owner_fee()
+
+	logging.debug(balance["amount"])
 
 	if int(balance["amount"]) - int(fee) < 0:
 		return {"error":403, "reason":"New owner does not have enough balance."}
 
 	decbalance = await client_balance.request(method_name="decbalance", uid=user["id"],
-										                    amount=fee)
+										                   coinid=coinid, amount=fee)
 	if "error" in decbalance.keys():
 		return decbalance
 	else:
-		return True
+		return {"result":"ok"}
+		
 
 
 async def sell_content_fee(*args, **kwargs):
 	"""
 	"""
 	cid = kwargs.get("cid")
-	buyer_pubkey = kwargs.get("buyer_pubkey")
+	new_owner = kwargs.get("new_owner")
+	coinid = kwargs.get("coinid", "PUT")
 
-	if not all([cid, buyer_address]):
+
+	if not all([cid, new_owner]):
 		return {"error":400, "reason":"Missed required fields"}
 
 	user = await client_storage.request(method_name="getaccountdata",
-	                        					public_key=buyer_pubkey)
+	                        					public_key=new_owner)
 	if "error" in user.keys():
 		return user
 
-	balance = await client_balance.request(method_name="getbalance", uid=user["id"])
+	balances = await client_balance.request(method_name="getbalance", uid=user["id"])
 
-	if "error" in balance.keys():
-		return balance
+	if isinstance(balances, dict):
+		if "error" in balances.keys():
+			return balances
+
+	for w in balances:
+		if coinid in w.values():
+			balance = w
 
 	fee = billing.estimate_sale_fee()
 
@@ -138,12 +183,12 @@ async def sell_content_fee(*args, **kwargs):
 		return {"error":403, "reason": "Balance is not enough."}
 
 	decbalance = await client_balance.request(method_name="decbalance", uid=user["id"],
-	                        amount=fee)
+	                        						coinid=coinid, amount=fee)
 
 	if "error" in decbalance.keys():
 		return decbalance
 	else:
-		return True
+		return {"result":"ok"}
 
 
 async def set_price_fee(*args, **kwargs):
@@ -152,24 +197,32 @@ async def set_price_fee(*args, **kwargs):
 	cid = kwargs.get("cid")
 	price = kwargs.get("price")
 	owneraddr = kwargs.get("owneraddr")
+	coinid = kwargs.get("coinid", "PUT")
 
 	if not all([cid, price, owneraddr]):
 		return {"error":400, "reason":"Missed required fields"}
 
-	fee = billing.estimate_set_price_fee()
 
 	user = await client_storage.request(method_name="getaccountbywallet",
 	                wallet=owneraddr)
 	if "error" in user.keys():
 		return user
 
-	balance = await client_balance.request(method_name="getbalance", uid=user["id"])
+	balances = await client_balance.request(method_name="getbalance", uid=user["id"])
 
-	if "error" in balance.keys():
-		return balance
+	if isinstance(balances, dict):
+		if "error" in balances.keys():
+			return balances
+
+	for w in balances:
+		if coinid in w.values():
+			balance = w
+
+	fee = billing.estimate_set_price_fee()
 
 	decbalance = await client_balance.request(method_name="decbalance", uid=user["id"],
-	                amount=fee)
+	                									coinid=coinid, amount=fee)
+
 
 	if "error" in decbalance.keys():
 		return decbalance
@@ -177,7 +230,7 @@ async def set_price_fee(*args, **kwargs):
 	if int(balance["amount"]) - int(fee) < 0:
 		return {"error":403, "reason": "Balance is not enough."}
 	else:
-		return True
+		return {"result":"ok"}
 
 
 
