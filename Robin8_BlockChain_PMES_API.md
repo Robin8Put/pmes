@@ -36,8 +36,7 @@ The API-methods:
 
 - [Accept buyers offer](#accept-buyers-offer)
 
-- [Reject the write access offer by either buyer or seller](
-#reject-the-write-access-offer-by-either-buer-or-seller)
+- [Reject the write access offer by either buyer or seller](#reject-the-write-access-offer-by-either-buer-or-seller)
 
 - [Reject the read access offer by either buyer or seller](#reject-the-read-access-offer-by-either-buer-or-seller)
 
@@ -55,7 +54,8 @@ The API-methods:
 
 - [Get all profiles reviews](#get-all-profiles-reviews)
 
-- [## Standardization of an error messages](#standardization-of-an-error-messages)
+- [Standardization of an error messages](#standardization-of-an-error-messages)
+
 
 The following is a description of the API-methods:
 
@@ -113,7 +113,7 @@ The following is a description of the API-methods:
         "href": [string],           # link to user account
         "level": [integer],         # user account level (2 - when balance is zero ( by default), 3 - when balance is not null)
         "public_key": [string],
-        "news_count": [integer],    # number of news about offers to buy content (0 by default)
+        "news_count": [integer],    # number of news about offers to buy profile (0 by default)
         "id": [integer],            # user's identifier
         "wallets": [string],        # list of dicts with user's wallets addresses
             "address": [string],                # wallet address
@@ -165,7 +165,7 @@ The following is a description of the API-methods:
         "href": [string],           # link to user account
         "level": [integer],         # user account level (2 - when balance is zero ( by default), 3 - when balance is not null)
         "public_key": [string],
-        "news_count": [integer],    # number of news about offers to buy content (0 by default)
+        "news_count": [integer],    # number of news about offers to buy profile (0 by default)
         "id": [integer],            # user's identifier
         "wallets": [string],        # list of dicts with user's wallets addresses
             "address": [string],                # wallet address
@@ -207,7 +207,7 @@ The following is a description of the API-methods:
 
     `[json]`
 
-    When the user sends an offer to buy content `event_type` is 'made offer'.
+    When the user sends an offer to buy profile `event_type` is 'made offer'.
 
     `buyer_price` and `seller_price` represented as `real_price * 10^8`. Where `real_price` could be `float`.
 
@@ -216,7 +216,7 @@ The following is a description of the API-methods:
         {
             "event_type": [string],     # type of news
             "access_string": [string],  # now it is user's public key
-            "cid": [integer],           # content identifier 
+            "cid": [integer],           # profile identifier 
             "buyer_address": [string],  # buyer address
             "buyer_pubkey": [string],   # buyer public key
             "buyer_price": [integer],   # proposed buyer price * 10^8
@@ -229,7 +229,7 @@ The following is a description of the API-methods:
 
 * **Description**
 
-    News about actions with user content.
+    News about actions with user profile.
 
 
 
@@ -244,9 +244,7 @@ The following is a description of the API-methods:
 
     None
 
-    `price` represented as `real_price * 10^8`. Where `real_price` (price of content) could be `float`.
-
-```
+    `price` represented as `real_price * 10^8`. Where `real_price` (price of profile) could be `float`.
 
 * **Body params**
 
@@ -257,13 +255,14 @@ The following is a description of the API-methods:
         "public_key": [string],
         "message": {
             "timestamp": [string],
-            "cus": [string],               # content encrypted with private key
-            "read_access": [integer],      # content read access price * 10^8
-            "write_access": [integer],     # content write access price * 10^8
-            "description": [string]        # content description
+            "cus": [string],               # profile encrypted with private key
+            "read_access": [integer],      # profile read access price * 10^8
+            "write_access": [integer],     # profile write access price * 10^8
+            "description": [string]        # profile description
         },
         "signature": [string]
     }
+```
 
 * **Sample response**
 
@@ -303,9 +302,9 @@ The following is a description of the API-methods:
 
 ```bash
     {   
-        "cid": [integer],                  # content identifier
+        "cid": [integer],                  # profile identifier
         "coinid": [string],                # blockchain identifier
-        "description": [string],           # content description
+        "description": [string],           # profile description
         "owner": [string],                 # owner public key
         "owneraddr": [string],             # owner address
         "read_access": [integer],          # profiles read access price * 10^8
@@ -313,14 +312,14 @@ The following is a description of the API-methods:
         "content": [string],               # profile
         "seller_access_string": [string],  # seller access string
         "seller_pubkey": [string],         # seller public key
-        "access_type": [string]            # access type of content
+        "access_type": [string]            # access type of profile
 
     }
 ```
 
 * **Description**
 
-    Return content from the blockchain by content id
+    Return profile from the blockchain by profile id
 
 
 ## Set description of profile for cid
@@ -441,10 +440,10 @@ The following is a description of the API-methods:
 
 ```bash
     {
-        "cid": [integer],                   # content identifier
+        "cid": [integer],                   # profile identifier
         "buyer_address": [string],          # buyer address
         "buyer_access_string": [string],    # now it is buyer's public key
-        "offer_price": [integer],           # price of content * 10^8
+        "offer_price": [integer],           # price of profile * 10^8
         "offer_type": [string]              # offers type (write access)
     }
 ```
@@ -484,10 +483,10 @@ The following is a description of the API-methods:
 
 ```bash
     {
-        "cid": [integer],                   # content identifier
+        "cid": [integer],                   # profile identifier
         "buyer_address": [string],          # buyer address
         "buyer_access_string": [string],    # now it is buyer's public key
-        "offer_price": [integer],           # price of content * 10^8
+        "offer_price": [integer],           # price of profile * 10^8
         "offer_type": [string]              # offers type (read access)
     }
 ```
@@ -512,7 +511,7 @@ The following is a description of the API-methods:
         "public_key": [string],
         "message": {
             "timestamp": [string],
-            "cid": [integer],                   # content identifier
+            "cid": [integer],                   # profile identifier
             "buyer_access_string": [string],    # now it is user's public key
             "buyer_pubkey": [string],           # buyer public key
             "seller_access_string": [string],
@@ -529,7 +528,7 @@ The following is a description of the API-methods:
 
 ```bash
     {
-        "cid": [integer],               # content identifier
+        "cid": [integer],               # profile identifier
         "access_string": [string],      # now it is user's public key
         "new_owner": [string],          # address of the new owner
         "prev_owner": [string]          # address of the previous owner
@@ -554,7 +553,7 @@ The following is a description of the API-methods:
 
     `[json]`
 
-    `buyer_address` is address of user who sent "make offer" request for buying content.
+    `buyer_address` is address of user who sent "make offer" request for buying profile.
 
 ```bash
     {
@@ -562,7 +561,7 @@ The following is a description of the API-methods:
         "message": {
             "timestamp": [string],
             "offer_id": {
-                "cid": [integer],           # content identifier
+                "cid": [integer],           # profile identifier
                 "buyer_address": [string]   # buyer address
             }
         },
@@ -576,7 +575,7 @@ The following is a description of the API-methods:
 
 ```bash
     {
-        "cid": [integer],           # content identifier
+        "cid": [integer],           # profile identifier
         "buyer_address": [string]   # buyer address
     }
 ```
@@ -595,7 +594,7 @@ The following is a description of the API-methods:
 
     `[json]`
 
-    `buyer_address` is address of user who sent "make offer" request for buying content.
+    `buyer_address` is address of user who sent "make offer" request for buying profile.
 
 ```bash
     {
@@ -603,7 +602,7 @@ The following is a description of the API-methods:
         "message": {
             "timestamp": [string],
             "offer_id": {
-                "cid": [integer],           # content identifier
+                "cid": [integer],           # profile identifier
                 "buyer_address": [string]   # buyer address
             }
         },
@@ -617,7 +616,7 @@ The following is a description of the API-methods:
 
 ```bash
     {
-        "cid": [integer],           # content identifier
+        "cid": [integer],           # profile identifier
         "buyer_address": [string]   # buyer address
     }
 ```
@@ -741,7 +740,7 @@ The following is a description of the API-methods:
             "buyer_address": [string],          # buyers address
             "cid": [integer],                   # profiles identifier
             "price": [integer],                 # offers price
-            "seller_access_string": [integer],  # content price * 10^8
+            "seller_access_string": [integer],  # profile price * 10^8
             "type": [string],                   # offers type
             "coinid": [string],                 # blockchain identifier
             "status": [integer],                # offer status
@@ -753,7 +752,7 @@ The following is a description of the API-methods:
 
 * **Description**
 
-    Get all offers which made the user for buying access or rights of contents
+    Get all offers which made the user for buying access or rights of profiles
 
 
 ## Get all offers by cid
@@ -795,7 +794,7 @@ The following is a description of the API-methods:
             "buyer_address": [string],          # buyers address
             "cid": [integer],                   # profiles identifier
             "price": [integer],                 # offers price
-            "seller_access_string": [integer],  # content price * 10^8
+            "seller_access_string": [integer],  # profile price * 10^8
             "type": [string],                   # offers type
             "coinid": [string],                 # blockchain identifier
             "status": [integer],                # offer status
@@ -855,6 +854,7 @@ The following is a description of the API-methods:
 
 * **Body params**
 
+```bash
         {
             "message": {
                 "cid": [integer],       # profile identifier
@@ -865,7 +865,7 @@ The following is a description of the API-methods:
             },
             "signature": [string]
         }
-    
+```
 
 * **Sample response**
 
