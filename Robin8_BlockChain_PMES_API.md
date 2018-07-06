@@ -22,35 +22,40 @@ The API-methods:
 
 - [Get all news for the account](#get-all-news-for-the-account)
 
-- [Increment balance](#increment-balance)
+- [Post profile to the blockchain](#post-profile-to-the-blockchain)
 
-- [Post content to the blockchain](#post-content-to-the-blockchain)
+- [Get profile from the blockchain by cid](#get-profile-from-the-blockchain-by-cid)
 
-- [Get content from the blockchain by cid](#get-content-from-the-blockchain-by-cid)
+- [Set description of profile for cid](#set-description-of-profile-for-cid)
 
-- [Set description of content for cid](#set-description-of-content-for-cid)
+- [Set profiles price](#set-profiles-price)
 
-- [Set content price](#set-content-price)
+- [Make a profiles write access offer for owner](#make-a-profiles-write-access-offer-for-owner)
 
-- [Make an offer to buy the content](#make-an-offer-to-buy-the-content)
+- [Make a profiles read access offer for owner](#make-a-profiles-read-access-offer-for-owner)
 
-- [Make an offer to buy the content with a proposition of different price](#make-an-offer-to-buy-the-content-with-a-proposition-of-different-price)
+- [Accept buyers offer](#accept-buyers-offer)
 
-- [Accept the offer to buy content](#accept-the-offer-to-buy-content)
+- [Reject the write access offer by either buyer or seller](#reject-the-write-access-offer-by-either-buer-or-seller)
 
-- [Reject the offer to buy content from the buyer side](#reject-the-offer-to-buy-content-from-the-buyer-side)
+- [Reject the read access offer by either buyer or seller](#reject-the-read-access-offer-by-either-buer-or-seller)
 
-- [Reject the offer to buy content from the content owner side](#reject-the-offer-to-buy-content-from-the-content-owner-side)
+- [Get all PMES profiles from the blockchain](#get-all-pmes-profiles-from-the-blockchain)
 
-- [Get all PMES contents from the blockchain](#get-all-pmes-contents-from-the-blockchain)
-
-- [Get all content which posted user](#get-all-content-which-posted-user)
+- [Get all profiles which posted user](#get-all-profiles-which-posted-user)
 
 - [Get all offers which made user](#get-all-offers-which-made-user)
 
-- [Get all offers to buy content for cid](#get-all-offers-to-buy-content-for-cid)
+- [Get all offers by cid](#get-all-offers-by-cid)
+
+- [Get all purchased read access profiles](#get-all-purchased-read-access-profiles)
+
+- [Make review for purchased profile](#make-review-for-purchased-profile)
+
+- [Get all profiles reviews](#get-all-profiles-reviews)
 
 - [Standardization of an error messages](#standardization-of-an-error-messages)
+
 
 The following is a description of the API-methods:
 
@@ -102,17 +107,22 @@ The following is a description of the API-methods:
 
 ```bash
     {
-        "address": [string],        # user's wallet address
-        "public_key": [string],
-        "email": [string],
-        "phone": [string],
-        "device_id": [string],
         "count": [integer],         # number of user's wallets
-        "level": [integer],         # user account level (2 - when balance is zero (by default), 3 - when balance is not null)
-        "news_count": [integer],    # number of news about offers to buy content (0 by default)
-        "id": [integer],            # user's identifier
+        "device_id": [string],
+        "email": [string],
         "href": [string],           # link to user account
-        "balance": [integer],       # user balance (0 by default) * 10^8
+        "level": [integer],         # user account level (2 - when balance is zero ( by default), 3 - when balance is not null)
+        "public_key": [string],
+        "news_count": [integer],    # number of news about offers to buy profile (0 by default)
+        "id": [integer],            # user's identifier
+        "wallets": [string],        # list of dicts with user's wallets addresses
+            "address": [string],                # wallet address
+            "amount": 0 [integer],              # current balance
+            "deposit": 0 [integer],             # freezed balance
+            "unconfirmed": 0 [integer],         # unconfirmed balance
+            "coinid": [string]                  # type of blockchain
+
+
     }
 ```
 
@@ -149,17 +159,22 @@ The following is a description of the API-methods:
 
 ```bash
     {
-        "address": [string],        # user's wallet address
-        "public_key": [string], 
-        "email": [string], 
-        "phone": [string], 
-        "device_id": [string], 
-        "phone": [string], 
         "count": [integer],         # number of user's wallets
-        "level": [integer],         # user account level (2 - when balance is zero (by default), 3 - when balance is not null)
-        "news_count": [integer],    # number of news about offers to buy content (0 by default
+        "device_id": [string],
+        "email": [string],
+        "href": [string],           # link to user account
+        "level": [integer],         # user account level (2 - when balance is zero ( by default), 3 - when balance is not null)
+        "public_key": [string],
+        "news_count": [integer],    # number of news about offers to buy profile (0 by default)
         "id": [integer],            # user's identifier
-        "balance": [integer],       # user balance (0 by default) * 10^8
+        "wallets": [string],        # list of dicts with user's wallets addresses
+            "address": [string],                # wallet address
+            "amount": 0 [integer],              # current balance
+            "deposit": 0 [integer],             # freezed balance
+            "unconfirmed": 0 [integer],         # unconfirmed balance
+            "coinid": [string]                  # type of blockchain
+
+
     }
 ```
 
@@ -192,7 +207,7 @@ The following is a description of the API-methods:
 
     `[json]`
 
-    When the user sends an offer to buy content `event_type` is 'made offer'.
+    When the user sends an offer to buy profile `event_type` is 'made offer'.
 
     `buyer_price` and `seller_price` represented as `real_price * 10^8`. Where `real_price` could be `float`.
 
@@ -201,93 +216,53 @@ The following is a description of the API-methods:
         {
             "event_type": [string],     # type of news
             "access_string": [string],  # now it is user's public key
-            "cid": [integer],           # content identifier 
+            "cid": [integer],           # profile identifier 
             "buyer_address": [string],  # buyer address
             "buyer_pubkey": [string],   # buyer public key
             "buyer_price": [integer],   # proposed buyer price * 10^8
-            "seller_price": [integer],  # content price * 10^8
-            "account_id": [integer]     # account identifier
+            "seller_price": [integer],  # profiles price * 10^8
+            "coinid": [string]          # blockchain identifier
+            "offer_type": [string]      # offers type
         }
     ]
 ```
 
 * **Description**
 
-    News about actions with user content.
+    News about actions with user profile.
 
 
-## Increment balance
 
-**temporary function**
 
-* **URL:** `/api/accounts/[user_id]/balance`
+## Post profile to the blockchain
+
+* **URL:** `/api/blockchain/[public_key]/profile`
 
 * **Method:** `POST`
 
 * **URL params**
-
-    `[json]`
-
-    `amount` represented as `real_amount * 10^8`. Where `real_amount` (amount on which you want to increment user's balance) could be `float`.
-
-```bash
-    {
-        "amount": [integer]
-    }
-```
-
-* **Body params**
 
     None
 
-* **Sample response**
+    `price` represented as `real_price * 10^8`. Where `real_price` (price of profile) could be `float`.
 
-    `[json]`
+* **Body params**
 
-    `amount` represented as `real_amount * 10^8`. Where `real_amount` could be `float`.
-
-```bash
-    {
-        "address": [sting],     # wallet address
-        "coinid": [sting],      # type of coin (for instance, "qtum")
-        "amount": [integer],    # updated amout of coins on the user's balance * 10^8
-        "uid": [integer]        # user's identifier
-    }
-```
-
-* **Description**
-
-    Increment user's balance with test coins.
-
-
-## Post content to the blockchain
-
-* **URL:** `/api/blockchain/[public_key]/content`
-
-* **Method:** `POST`
-
-* **URL params**
-
-    `[json]`
-
-    `price` represented as `real_price * 10^8`. Where `real_price` (price of content) could be `float`.
+    '[json]'
 
 ```bash
     {
         "public_key": [string],
         "message": {
             "timestamp": [string],
-            "cus": [string],        # content encrypted with private key
-            "price": [integer],     # content price * 10^8
-            "description": [string] # content description
+            "cus": [string],               # profile encrypted with private key
+            "read_access": [integer],      # profile read access price * 10^8
+            "write_access": [integer],     # profile write access price * 10^8
+            "description": [string]        # profile description
         },
         "signature": [string]
     }
 ```
-
-* **Body params**
-
-    None
 
 * **Sample response**
 
@@ -295,32 +270,25 @@ The following is a description of the API-methods:
 
 ```bash
     {
-        "result": {
-            "txid": [string],       # transaction id
-            "sender": [string],     # user address
-            "hash160": [string]     # transaction hash
-        }
-        "hash": [string],           # transaction hash which identify posted content in the blockchain
-        "cus": [string],            # content
-        "addr": [string],           # user's address
-        'owner_hex_addr": [string]  # hex of user address
+
+        "owneraddr": [string],           # owners address
+        "description": [string],         # profiles description
+        "read_price": [integer],         # read access price
+        "write_read": [integer]        # write access price
     }
 ```
 
-* **Description**
 
-    Post data to blockchain via transaction. When transaction will be approved (around 5-10 minutes) user could see posted content in the result of following command [Get all content which posted user](#get-all-content-which-posted-user).
+## Get profile from the blockchain by cid
 
-
-## Get content from the blockchain by cid
-
-* **URL:** `/api/blockchain/[cid]/content`
+* **URL:** `/api/blockchain/[cid]/[coinid]/profile`
 
 * **Method:** `GET`
 
 * **URL params**
 
     `cid=[string]`
+    'coinid=[string]'
 
 * **Body params**
 
@@ -334,22 +302,27 @@ The following is a description of the API-methods:
 
 ```bash
     {   
-        "account_id": [integer],    # account identifier
-        "cid": [integer],           # content identifier
-        "content": [string],        # encrypted content
-        "description": [string],    # content description
-        "owner": [string],          # owner public key
-        "price": [integer],         # content price * 10^8
-        "txid": [string]            # transaction identifier
+        "cid": [integer],                  # profile identifier
+        "coinid": [string],                # blockchain identifier
+        "description": [string],           # profile description
+        "owner": [string],                 # owner public key
+        "owneraddr": [string],             # owner address
+        "read_access": [integer],          # profiles read access price * 10^8
+        "write_access": [integer],         # profiles write access price * 10^8
+        "content": [string],               # profile
+        "seller_access_string": [string],  # seller access string
+        "seller_pubkey": [string],         # seller public key
+        "access_type": [string]            # access type of profile
+
     }
 ```
 
 * **Description**
 
-    Return content from the blockchain by content id
+    Return profile from the blockchain by profile id
 
 
-## Set description of content for cid
+## Set description of profile for cid
 
 **in progress**
 
@@ -383,19 +356,15 @@ The following is a description of the API-methods:
 
 ```bash
     {
-        "result": {
-            "txid": [string], 
-            "sender": [string], 
-            "hash160": [string]
-        }, 
-        "cid": [integer], 
-        "descr": [string], 
-        "addr": [string]
+        "cid": [integer],         # profiles cid 
+        "description": [string],  # profiles new description
+        "owneraddr": [string],    # owner address
+        "coinid": [string]        # blockchain identifier
     }
 ``` 
 
 
-## Set content price
+## Set profiles price
 
 **in progress**
 
@@ -429,20 +398,16 @@ The following is a description of the API-methods:
 
 ```bash
     {
-        "result": {
-            "txid": [string], 
-            "sender": [string], 
-            "hash160": [string]
-        }, 
-        "cid": [integer], 
-        "price": [integer]
+        "cid": [integer],                           # profiles cid 
+        "write_access" or "read_access": [integer]  # new profiles write access or read access price
+        "coinid": [string]                          # blockchain identifier
     }
 ```
 
 
-## Make an offer to buy the content
+## Make a profiles write access offer for owner
 
-* **URL:** `/api/blockchain/[public_key]/offer`
+* **URL:** `/api/blockchain/[public_key]/write-access-offer`
 
 * **Method:** `POST`
 
@@ -456,10 +421,11 @@ The following is a description of the API-methods:
 
 ```bash
     {
-        "public_key": [string],
         "message": {
             "timestamp": [string],
-            "cid": [integer],                   # content identifier
+            "cid": [integer],                   # profiles identifier
+            "coinid": [string],                 # blockchain identifier
+            "price": [integer],                 # write access price (optional, sellers price by    default)
             "buyer_access_string": [string]     # now it is user's public key
         },
         "signature": [string]
@@ -474,21 +440,17 @@ The following is a description of the API-methods:
 
 ```bash
     {
-        "result": {
-            "txid": [string],               # transaction id
-            "sender": [string],             # user address
-            "hash160": [string]             # transaction hash
-        }, 
-        "cid": [integer],                   # content identifier
+        "cid": [integer],                   # profile identifier
         "buyer_address": [string],          # buyer address
         "buyer_access_string": [string],    # now it is buyer's public key
-        "offer_price": [integer]            # price of content * 10^8
+        "offer_price": [integer],           # price of profile * 10^8
+        "offer_type": [string]              # offers type (write access)
     }
 ```
 
-## Make an offer to buy the content with a proposition of different price
+## Make a profiles read access offer for owner
 
-* **URL:** `/api/blockchain/[public_key]/offer`
+* **URL:** `/api/blockchain/[public_key]/read-access-offer`
 
 * **Method:** `POST`
 
@@ -500,16 +462,14 @@ The following is a description of the API-methods:
 
     `[json]`
 
-    `price` represented as `real_price * 10^8`. Where `real_price` (price proposed for buying contnet) could be `float`.
-
 ```bash
     {
-        "public_key": [string],
         "message": {
             "timestamp": [string],
-            "cid": [integer],                   # content identifier
-            "buyer_access_string": [string],    # now it is user's public key
-            "price": [integer]                  # proposed price for content * 10^8
+            "cid": [integer],                   # profiles identifier
+            "coinid": [string],                 # blockchain identifier
+            "price": [integer],                 # read access price (optional, sellers price by    default)
+            "buyer_access_string": [string]     # now it is user's public key
         },
         "signature": [string]
     }
@@ -523,20 +483,16 @@ The following is a description of the API-methods:
 
 ```bash
     {
-        "result": {
-            "txid": [string],               # transaction id
-            "sender": [string],             # user address
-            "hash160": [string]             # transaction hash
-        },
-        "cid": [integer],                   # content identifier
-        "buyer_addr": [string],             # buyer address
-        "buyer_access_string": [string],    # now it is user's public key
-        "offer_price": [integer]            # price of content * 10^8
+        "cid": [integer],                   # profile identifier
+        "buyer_address": [string],          # buyer address
+        "buyer_access_string": [string],    # now it is buyer's public key
+        "offer_price": [integer],           # price of profile * 10^8
+        "offer_type": [string]              # offers type (read access)
     }
 ```
 
 
-## Accept the offer to buy content
+## Accept buyers offer
 
 * **URL:** `/api/blockchain/[public_key]/deal`
 
@@ -555,9 +511,12 @@ The following is a description of the API-methods:
         "public_key": [string],
         "message": {
             "timestamp": [string],
-            "cid": [integer],                   # content identifier
+            "cid": [integer],                   # profile identifier
             "buyer_access_string": [string],    # now it is user's public key
-            "buyer_pubkey": [string]            # buyer public key
+            "buyer_pubkey": [string],           # buyer public key
+            "seller_access_string": [string],
+            "access_type": [string],            # write access or read access
+            "coinid": [string]                  # blockchain identifier 
         },
         "signature": [string]
     }
@@ -569,25 +528,20 @@ The following is a description of the API-methods:
 
 ```bash
     {
-        "result": {
-            "txid": [string],           # transaction id
-            "sender": [string],         # user address
-            "hash160": [string]         # transaction hash
-        }, 
-        "cid": [integer],               # content identifier
-        "buyer_address": [string],      # buyer address
+        "cid": [integer],               # profile identifier
         "access_string": [string],      # now it is user's public key
-        "content_owner": [string],      # address of the content owner
-        "contract_owner_hex": [string], # hex of the address of the content owner
         "new_owner": [string],          # address of the new owner
         "prev_owner": [string]          # address of the previous owner
     }
 ```
 
 
-## Reject the offer to buy content from the buyer side
 
-* **URL:** `/api/blockchain/[public_key]/offer`
+
+
+## Reject the write access offer by either buyer or seller
+
+* **URL:** `/api/blockchain/[public_key]/write-access-offer`
 
 * **Method:** `PUT`
 
@@ -599,7 +553,7 @@ The following is a description of the API-methods:
 
     `[json]`
 
-    `buyer_addr` is address of current user (he sent "make offer" to buy content before).
+    `buyer_address` is address of user who sent "make offer" request for buying profile.
 
 ```bash
     {
@@ -607,7 +561,7 @@ The following is a description of the API-methods:
         "message": {
             "timestamp": [string],
             "offer_id": {
-                "cid": [integer],           # content identifier
+                "cid": [integer],           # profile identifier
                 "buyer_address": [string]   # buyer address
             }
         },
@@ -621,20 +575,14 @@ The following is a description of the API-methods:
 
 ```bash
     {
-        "result": {
-            "txid": [string],       # transaction id
-            "sender": [string],     # user address
-            "hash160": [string]     # transaction hash
-        }, 
-        "cid": [integer],           # content identifier
+        "cid": [integer],           # profile identifier
         "buyer_address": [string]   # buyer address
     }
 ```
 
+## Reject the read access offer by either buyer or seller
 
-## Reject the offer to buy content from the content owner side
-
-* **URL:** `/api/blockchain/[public_key]/offer`
+* **URL:** `/api/blockchain/[public_key]/read-access-offer`
 
 * **Method:** `PUT`
 
@@ -646,7 +594,7 @@ The following is a description of the API-methods:
 
     `[json]`
 
-    `buyer_addr` is address of user who sent "make offer" request for buying content.
+    `buyer_address` is address of user who sent "make offer" request for buying profile.
 
 ```bash
     {
@@ -654,7 +602,7 @@ The following is a description of the API-methods:
         "message": {
             "timestamp": [string],
             "offer_id": {
-                "cid": [integer],           # content identifier
+                "cid": [integer],           # profile identifier
                 "buyer_address": [string]   # buyer address
             }
         },
@@ -668,20 +616,15 @@ The following is a description of the API-methods:
 
 ```bash
     {
-        "result": {
-            "txid": [string]",      # transaction id
-            "sender": [string],     # user address
-            "hash160": [string]     # transaction hash
-        }, 
-        "cid": [integer],           # content identifier
+        "cid": [integer],           # profile identifier
         "buyer_address": [string]   # buyer address
     }
 ```
 
 
-## Get all PMES contents from the blockchain
+## Get all PMES profiles from the blockchain
 
-* **URL:** `/api/blockchain/content`
+* **URL:** `/api/blockchain/profile`
 
 * **Method:** `GET`
 
@@ -702,20 +645,22 @@ The following is a description of the API-methods:
 ```bash
     [
         {
-            "cid": [integer],           # content identifier
-            "content": [string],        # encrypted content
-            "description": [string],    # content description
-            "price": [integer],         # content price * 10^8
-            "owner": [string],          # owner public key
+            "cid": [integer],            # profile identifier
+            "coinid": [string],          # blockchain identifier
+            "description": [string],     # profile description
+            "owneraddr": [string],       # owner address
+            "read_access": [integer],    # profile read access price * 10^8
+            "write_access": [integer],   # profile write access price * 10^8
+            "txid": [string]             # transaction status reference
         },
         ...
     ]
 ```
 
 
-## Get all content which posted user
+## Get all profiles which posted user
 
-* **URL:** `/api/accounts/[public_key]/contents`
+* **URL:** `/api/accounts/[public_key]/profiles`
 
 * **Method:** `GET`
 
@@ -746,10 +691,14 @@ The following is a description of the API-methods:
 ```bash
     [
         {
-            "cid": [integer],            # content identifier
-            "content": [string],         # encrypted content
-            "description": [string],     # content description
-            "price": [integer],          # content price * 10^8
+            "cid": [integer],            # profile identifier
+            "coinid": [string]           # blockchain identifier
+            "description": [string],     # profile description
+            "owneraddr": [string],       # owner address
+            "read_access": [integer],    # profile read access price * 10^8
+            "write_access": [integer],   # profile write access price * 10^8
+            "txid": [string]             # transaction status reference
+
         },
         ...
     ]
@@ -783,16 +732,19 @@ The following is a description of the API-methods:
 
     `[json]`
 
-    `buyer_price` and `seller_price` represented as `real_price * 10^8`. Where `real_price` could be `float`.
 
 ```bash
     [
-        {
-            "cid": [integer],           # content identifier
-            "buyer_price": [integer],   # proposed buyer price * 10^8
-            "seller_price": [integer],  # content price * 10^8
-            "owner_addr": [string],     # content owner's address
-            "owner_pubkey": [string]    # content owner's public key
+        {   
+            "buyer_access_string": [string],
+            "buyer_address": [string],          # buyers address
+            "cid": [integer],                   # profiles identifier
+            "price": [integer],                 # offers price
+            "seller_access_string": [integer],  # profile price * 10^8
+            "type": [string],                   # offers type
+            "coinid": [string],                 # blockchain identifier
+            "status": [integer],                # offer status
+            "seller_public_key": [string]       # seller public key
         },
         ...
     ]
@@ -800,10 +752,10 @@ The following is a description of the API-methods:
 
 * **Description**
 
-    Get all offers which made the user for buying access or rights of contents
+    Get all offers which made the user for buying access or rights of profiles
 
 
-## Get all offers to buy content for cid
+## Get all offers by cid
 
 * **URL:** `/api/accounts/[public_key]/input-offers`
 
@@ -817,8 +769,9 @@ The following is a description of the API-methods:
     {
         "public_key": [string],
         "message": {
-            "cid": [integer]
-            "timestamp": [string]
+            "cid": [integer],
+            "timestamp": [string],
+            "coinid": [string]
         },
         "signature": [string]
     }
@@ -836,16 +789,131 @@ The following is a description of the API-methods:
 
 ```bash
     [
-        {
-            "cid": [integer],           # content identifier
-            "buyer_price": [integer],   # proposed buyer price * 10^8
-            "seller_price": [integer],  # content price * 10^8
-            "buyer_addr": [string],     # buyer's address
-            "public_key": [string]      # buyer's public key
+         {   
+            "buyer_access_string": [string],
+            "buyer_address": [string],          # buyers address
+            "cid": [integer],                   # profiles identifier
+            "price": [integer],                 # offers price
+            "seller_access_string": [integer],  # profile price * 10^8
+            "type": [string],                   # offers type
+            "coinid": [string],                 # blockchain identifier
+            "status": [integer],                # offer status
+            "seller_public_key": [string]       # sellers public key
         },
         ...
     ]
 ```
+
+## Get all purchased read access profiles
+
+* **URL:** `/api/accounts/[public_key]/deals`
+
+* **Method:** `GET`
+
+* **URL params**
+
+    None
+
+
+* **Body params**
+
+    None
+
+* **Sample response**
+
+    `[json]`
+
+ 
+```bash
+    [
+        {
+            "cid": [integer],            # profile identifier
+            "coinid": [string]           # blockchain identifier
+            "description": [string],     # profile description
+            "owneraddr": [string],       # owner address
+            "read_access": [integer],    # profile read access price * 10^8
+            "write_access": [integer],   # profile write access price * 10^8
+            "txid": [string],            # transaction status reference
+
+        },
+
+    ]
+```
+
+
+## Make review for purchased profile
+
+* **URL:** `/api/accounts/[public_key]/review`
+
+* **Method:** `POST`
+
+* **URL params**
+
+    None
+
+
+* **Body params**
+
+```bash
+        {
+            "message": {
+                "cid": [integer],       # profile identifier
+                "timestamp": [string],
+                "coinid": [string],     # blockchain identifier
+                "review": [string],     # review
+                "rating": [integer]     # profiles rating in range from 1 to 5
+            },
+            "signature": [string]
+        }
+```
+
+* **Sample response**
+
+    `[json]`
+
+```bash
+    [
+         {   
+            "review": [string],     # review
+            "rating": [integer]     # profiles rating in range from 1 to 5
+            "cid": [integer]        # profiles identifier
+        },
+        ...
+    ]
+```
+
+## Get all profiles reviews
+
+* **URL:** `/api/accounts/[cid]/[coinid]/reviews`
+
+* **Method:** `GET`
+
+* **URL params**
+
+    None
+
+
+* **Body params**
+
+    None
+    
+
+* **Sample response**
+
+    `[json]`
+
+```bash
+    [
+         {   
+            "review": [string],               # review
+            "rating": [integer]               # profiles rating in range from 1 to 5
+            "buyer_address": [integer]        # buyers address
+            "confirmed": [integer]            # 1 by default
+        },
+        ...
+    ]
+```
+
 
 ## Standardization of an error messages 
 
