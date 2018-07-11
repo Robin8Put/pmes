@@ -24,6 +24,7 @@ This repository contains the following modules:
 5. **mail** - module that saves and sends emails
 6. **pdms** - Profile Data Management System (PDMS) - module that coordinate interactions between servers and daemons. It contains **qtum_bridge** module - middleware between the PMES and the blockchain
 7. **parser** - module that parses blockchain, catches blockchain transactions and changes state of the account at the server
+8. **js client** provides utilities for generating public / private keys / blockchain address and sign / verify messages.
 
 An installation and running of the PMES are described [here](Installation.md).
 
