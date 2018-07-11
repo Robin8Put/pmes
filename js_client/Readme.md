@@ -15,11 +15,11 @@ There are the following modules in the src folder:
     - `fromMnemonic` --- return public and private keys from mnemonic
     - `doSign` --- sign message with private_key
     - `doVerify` --- verify message with signature and public_key
-    - `encryptContent` --- encrypt profile with private key using sha256
-    - `decryptContent` --- decrypt profile with private key using sha256
+    - `encryptProfile` --- encrypt profile with private key using sha256
+    - `decryptProfile` --- decrypt profile with private key using sha256
     - `encryptPassword` --- encrypt password with private key using sha256
     - `decryptPassword` --- decrypt password with private key using sha256
-    - `decryptContentByHash` --- decrypt profile with password hash using sha256
+    - `decryptProfileByHash` --- decrypt profile with password hash using sha256
 - `walletInfo` --- library for generate public / private keys and sign / verify messages
     - `getTxHistory` --- return transaction history by address
     - `getBalance` --- return QTUM balance by address
@@ -29,5 +29,3 @@ There are the following modules in the src folder:
     - `sendRawTx` --- send transaction to the QTUM testnet
     - `generateSendToContractTx` --- generate transaction to send QRC tokens from one address to another
     - `generateCreateContractTx` --- generate transactions for creating contracts
-
-`index.html` import all these modules.
