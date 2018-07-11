@@ -66,7 +66,7 @@ var doVerify = function(pubkey, msg1, sigval) {
   var result = sig.verify(sigval);
   return result;
 }
-function encryptContent(content, private_key) {
+function encryptProfile(content, private_key) {
   var sha256 = new KJUR.crypto.MessageDigest({
     alg: "sha256",
     prov: "cryptojs"
@@ -77,8 +77,7 @@ function encryptContent(content, private_key) {
   return encrypted.toString();
 }
 
-function decryptContent(encrypted, private_key) {
-
+function decryptProfile(encrypted, private_key) {
   var sha256 = new KJUR.crypto.MessageDigest({
     alg: "sha256",
     prov: "cryptojs"
@@ -89,8 +88,7 @@ function decryptContent(encrypted, private_key) {
   return hexToAscii(decrypted.toString());
 }
 
-function decryptContentByHash(encrypted, password) {
-
+function decryptProfileByHash(encrypted, password) {
   var decrypted = CryptoJS.AES.decrypt(encrypted, password);
   return hexToAscii(decrypted.toString());
 }
@@ -124,15 +122,13 @@ function hexToAscii(str) {
 
 export default {
   doSign,
-  encryptContent,
+  encryptProfile,
   encryptPassword,
   decryptPassword,
-  decryptContentByHash,
-  decryptContent,
+  decryptProfileByHash,
+  decryptProfile,
   fromMnemonic,
   doVerify,
   encryptPassword,
   decryptPassword
-
-
 }
