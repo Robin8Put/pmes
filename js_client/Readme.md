@@ -29,3 +29,5 @@ There are the following modules in the src folder:
     - `sendRawTx` --- send transaction to the QTUM testnet
     - `generateSendToContractTx` --- generate transaction to send QRC tokens from one address to another
     - `generateCreateContractTx` --- generate transactions for creating contracts
+
+`index.html` import all these modules.

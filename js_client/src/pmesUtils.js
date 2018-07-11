@@ -78,7 +78,6 @@ function encryptProfile(content, private_key) {
 }
 
 function decryptProfile(encrypted, private_key) {
-
   var sha256 = new KJUR.crypto.MessageDigest({
     alg: "sha256",
     prov: "cryptojs"
@@ -90,7 +89,6 @@ function decryptProfile(encrypted, private_key) {
 }
 
 function decryptProfileByHash(encrypted, password) {
-
   var decrypted = CryptoJS.AES.decrypt(encrypted, password);
   return hexToAscii(decrypted.toString());
 }
