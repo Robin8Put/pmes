@@ -3,6 +3,19 @@ import { deriveQtumAddress, privateKeyToWif } from './bip32keys';
 import qtum from 'qtumjs-lib';
 import bs58check from 'bs58check';
 
+
+var curve = "secp256k1";
+var sigalg = "SHA256withECDSA";
+var qtum_magic_bytes = {
+  "mainnet": "3a",
+  "testnet": "78"
+}
+var wif_magic_bytes = {
+  "mainnet": "80",
+  "testnet": "ef"
+}
+
+
 // generate private and public key from mnemonic
 function fromMnemonic(mnemonic) {
   let network = qtum.networks.qtum_testnet
@@ -78,6 +91,7 @@ function encryptProfile(content, private_key) {
 }
 
 function decryptProfile(encrypted, private_key) {
+
   var sha256 = new KJUR.crypto.MessageDigest({
     alg: "sha256",
     prov: "cryptojs"
@@ -89,6 +103,7 @@ function decryptProfile(encrypted, private_key) {
 }
 
 function decryptProfileByHash(encrypted, password) {
+
   var decrypted = CryptoJS.AES.decrypt(encrypted, password);
   return hexToAscii(decrypted.toString());
 }
@@ -131,4 +146,6 @@ export default {
   doVerify,
   encryptPassword,
   decryptPassword
+
+
 }
