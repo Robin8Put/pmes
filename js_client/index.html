@@ -12,6 +12,45 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1/crypto-js.min.js"></script>
   <script language="JavaScript" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.11/jsrsasign-all-min.js"></script>
   <script src="http://peterolson.github.com/BigInteger.js/BigInteger.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
   <script src="./dist/main.js"></script>
+  <script>
+     
+        
+        $( document ).ready(function(){
+            var mnem = modulebip.generateMnemonic();
+            console.log(mnem)
+            var keys = modulebip.fromMnemonic(mnem);
+            console.log('keys', keys)
+            var enPwd = modulebip.encryptProfile(JSON.stringify(keys), 'test');
+            console.log('enPwd', enPwd)
+            var dePwd = modulebip.decryptProfile(enPwd, "test");
+            console.log('dePwd', dePwd)
+            var signed = modulebip.doSign(JSON.stringify({"timestamp": Date.now()}), keys.privateKey);
+            console.log('signature', signed);
+            
+            var data = {
+                "public_key": keys.publicKey,
+                "message": {
+                    "email": 'tet@test.com',
+                    "device_id": 'ios',
+                    "phone": '1234568752',
+                    "timestamp": Date.now()
+                },
+                "signature": signed
+            }
+            $.ajax({
+                url: 'http://pdms2.robin8.io/api/accounts',
+                method: 'POST',
+                xhrFields: {
+                    withCredentials: true
+                },
+                data: JSON.stringify(data)
+            })
+            .done(function(res){
+                console.log(res)
+            })
+        })
+  </script>
 </body>
 </html>
