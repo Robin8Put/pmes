@@ -10,7 +10,7 @@ import logging
 import json
 import os
 import settings
-from tornado_components.web import RobustTornadoClient, SignedTornadoClient 
+from utils.tornado_components.web import RobustTornadoClient, SignedTornadoClient
 from config import storage_type, storage_host, storage_port, storage_download_time_limit, \
                     contract_owner, contract_owner_hex, contract_address, blockchain_type, \
                     decimals, ipc_path, http_provider, pmes_abi, private_key, \
@@ -23,6 +23,14 @@ client_storage = SignedTornadoClient(settings.storageurl)
 client_balance = SignedTornadoClient(settings.balanceurl)
 
 coinid = "QTUM"
+
+def get_storage_handler():
+    if storage_type == 'ipfs':
+        return R8Storage.init_ipfs(host=storage_host, port=storage_port,
+                                   time_limit=storage_download_time_limit)
+    else:
+        return R8Storage.init_no_storage()
+        
 
 def verify(func):
     async def wrapper(*args, **kwargs):
@@ -47,37 +55,56 @@ def verify(func):
 
 
 
-def get_storage_handler():
-    if storage_type == 'ipfs':
-        return R8Storage.init_ipfs(host=storage_host, port=storage_port,
-                                   time_limit=storage_download_time_limit)
-    else:
-        return R8Storage.init_no_storage()
+if storage_type == 'ipfs':
+    storage_handler = R8Storage.init_ipfs(host=storage_host, port=storage_port,
+                               time_limit=storage_download_time_limit)
+else:
+    storage_handler = R8Storage.init_no_storage()
 
+def get_storage_handler():
+    storage_handler.reload_http_provider(storage_host, storage_port)
+    return storage_handler
+
+
+if blockchain_type == 'qtum':
+    blockchain_handler = R8Blockchain.init_qtum_http(http_provider)
+elif blockchain_type == 'eth':
+    if ipc_path:
+        blockchain_handler = R8Blockchain.init_ethereum_ipc(ipc_path)
+    else:
+        blockchain_handler = R8Blockchain.init_ethereum_http(http_provider)
 
 def get_blockchain_handler():
-    if blockchain_type == 'qtum':
-        return R8Blockchain.init_qtum_http(http_provider)
+    if ipc_path:
+        blockchain_handler.reload_ipc_path(ipc_path)
+    else:
+        blockchain_handler.reload_http_provider(http_provider)
+    return blockchain_handler
 
-    elif blockchain_type == 'eth':
-        if ipc_path:
-            return R8Blockchain.init_ethereum_ipc(ipc_path)
-        else:
-            return R8Blockchain.init_ethereum_http(http_provider)
 
+def get_eth_contract_handler():
+    if ipc_path:
+        return PmesEthContractHandler.from_ipc_path(ipc_path, contract_address, pmes_abi)
+    else:
+        return PmesEthContractHandler.from_http_provider(http_provider, contract_address, pmes_abi)
+
+def get_qtum_contract_handler():
+    return PmesQtumContractHandler.from_http_provider(http_provider, contract_address, pmes_abi)
+
+if blockchain_type == 'qtum':
+    contract_handler = get_qtum_contract_handler()
+    contract_handler.set_send_params({'gasLimit': gas_limit, 'gasPrice': gas_price, 'sender': contract_owner})
+elif blockchain_type == 'eth':
+    contract_handler = get_eth_contract_handler()
+    contract_handler.set_send_params({'gasLimit': gas_limit, 'gasPrice': gas_price, 'private_key': private_key})
+else:
+    raise Exception('Unknown blockchain id')
 
 def get_contract_handler():
-    if blockchain_type == 'qtum':
-        contract_handler = PmesQtumContractHandler.from_http_provider(http_provider,contract_address, pmes_abi)
-        contract_handler.set_send_params({'gasLimit': gas_limit, 'gasPrice': gas_price, 'sender': contract_owner})
-    elif blockchain_type == 'eth':
-        if ipc_path:
-            contract_handler = PmesEthContractHandler.from_ipc_path(ipc_path, contract_address, pmes_abi)
-        else:
-            contract_handler = PmesEthContractHandler.from_http_provider(http_provider, contract_address, pmes_abi)
-        contract_handler.set_send_params({'gasLimit': gas_limit, 'gasPrice': gas_price, 'private_key': private_key})
+    if ipc_path:
+        contract_handler.reload_ipc_path(ipc_path)
     else:
-        raise Exception('Unknown blockchain id')
+        contract_handler.reload_http_provider(http_provider)
     return contract_handler
 
 
@@ -449,24 +476,25 @@ class Bridge(object):
 
 
     async def get_reviews(*args, **kwargs):
-            kwargs = json.loads(kwargs.get("message"))
-            handler = get_contract_handler()
-            storage_handler = get_storage_handler()
-            res = []
-            cid = int(kwargs.get("cid"))
-            reviews = handler.get_reviews(cid)
-            for r in reviews:
-                r = storage_handler.download_content(r).decode()
-                res.append({'rating': r[0], 'buyer_address': r[1:41], 
-                                'review': r[41:]})
+        kwargs = json.loads(kwargs.get("message"))
+        handler = get_contract_handler()
+        storage_handler = get_storage_handler()
+        res = []
+        cid = int(kwargs.get("cid"))
+        reviews = handler.get_reviews(cid)
+        for r in reviews:
+            r = storage_handler.download_content(r).decode()
+            res.append({'rating': r[0], 'buyer_address': r[1:41], 
+                            'review': r[41:]})
 
-            return res
+        return res
 
     async def get_all_content(*args, **kwargs):
-
+        kwargs = json.loads(kwargs.get("message"))
+        range_ = kwargs.get("range_")
         contents = []
         last_cid = await get_next_cid()
-        for counter in range(last_cid["next_cid"] - 5, last_cid["next_cid"]):
+        for counter in range(*tuple(range_)):
             data = {}
             write_price = await get_write_price(message=json.dumps({"cid": counter}))
             read_price = await get_read_price(message=json.dumps({"cid": counter}))

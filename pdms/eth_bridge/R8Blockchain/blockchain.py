@@ -18,6 +18,12 @@ class R8Blockchain:
     def init_ethereum_http(cls, http_provider):
         return cls(EthereumBlockchain.from_http_provider(http_provider))
 
+    def reload_http_provider(self, http_provider):
+        self.handler.reload_http_provider(http_provider)
+
+    def reload_ipc_path(self, ipc_path):
+        self.handler.reload_ipc_path(ipc_path)
+
     def get_last_block_hash(self):
         return self.handler.get_last_block_hash()
 

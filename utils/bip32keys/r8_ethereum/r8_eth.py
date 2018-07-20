@@ -1,4 +1,4 @@
-from bip32keys.bip32keys import Bip32Keys, decode_hex, encode_hex
+from utils.bip32keys.bip32keys import Bip32Keys, decode_hex, encode_hex
 import sha3
 from web3 import Web3
 

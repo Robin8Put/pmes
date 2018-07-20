@@ -31,3 +31,20 @@ There are the following modules in the src folder:
     - `generateCreateContractTx` --- generate transactions for creating contracts
 
 `index.html` import all these modules.
+
+`encryptProfile` and `decryptProfile` functions was used for few cases:
+1. encrypt public and private keys before storing them to the keystore file
+Keystore file should contains encrypted public and private keys.
+In this case
+`content` - is the following JSON string:
+```bash
+{
+"pub_key": "qdjdfbfjbfh",
+"priv_key": "sssfsffef"
+}
+```
+`private_key` - is password for encrypt data to the keystore file
+2. encrypt profile before writing it to the blockchain:
+`content` - is profile
+`private_key` - is user's private key
+

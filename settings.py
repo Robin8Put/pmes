@@ -83,7 +83,6 @@ ethurl = "%s%s" % (ethhost, ENDPOINTS["bridge"])
 
 historyurl = "%s%s" % (historyhost, ENDPOINTS["history"]) 
 
-#emailurl = "%s%s" % (emailhost, ENDPOINTS["email"]) 
 emailurl = "%s%s" % (emailhost, ENDPOINTS["email"])
 
 
@@ -99,12 +98,16 @@ OFFER = "offer"
 CONTENT = "content"
 REVIEW = "review"
 DEAL = "deal"
+SOURCE = "source"
 
 AVAILABLE_COIN_ID = ["QTUM", "ETH"]
 
-BILLING_FILE = "pdms/qtum_bridge/robin8_billing/qtum_billing"
+qtum_settings_file = os.path.join(BASE_DIR, "pdms/qtum_bridge/qtum_settings.json")
 
 bridges = {"ETH": ethurl, "QTUM": bridgeurl}
 
 DEBUG = True
+
+# Pagination page limit
+LIMIT = 6
 

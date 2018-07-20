@@ -11,6 +11,7 @@ from utils.bip32keys.r8_ethereum.r8_eth import R8_Ethereum #
 import settings
 import string
 from random import choice
+from utils.models.account import Account 
 
 
 client = MotorClient()
@@ -40,6 +41,9 @@ def verify(func):
 
 class Balance(object):
 
+    def __init__(self):
+        self.account = Account()
+
     async def generate_token(self, length=16, chars=string.ascii_letters + string.punctuation + string.digits):
         return "".join(choice(chars) for x in range(0, length))
 
@@ -48,6 +52,7 @@ class Balance(object):
     create_address = {"QTUM": lambda x: Qtum(x, mainnet=False).get_address(),
                     "ETH": lambda x: R8_Ethereum(x).get_address(),
                     "PUT": lambda x: Qtum(x, mainnet=False).get_address()}
+
 
     @verify
     async def addaddr(self, *args, **kwargs):
@@ -161,21 +166,17 @@ class Balance(object):
             await balances.find_one_and_update(
                 {"uid": balance["uid"]}, {"$set": {"txid": txid}})
 
-
-        account_client = SignedTornadoClient(settings.storageurl)
-        account = await account_client.request(method_name="getaccountdata", 
-                                                **{"id":balance["uid"]})
+        account = await self.account.getaccountdata(**{"id":balance["uid"]})
 
         # Send mail to user
         if account.get("email"):
-            client_email = TornadoClient(settings.emailurl)
             email_data = {
                     "to": account["email"],
                     "subject": "Robin8 Support",
                     "optional": "You`ve got %s tokens. Now your balance is %s" %(
                                 amount/pow(10,8), int(result["amount"]) / pow(10,8)) 
                 }
-            await client_email.request(method_name="sendmail", **email_data)
+            await self.account.mailer.sendmail(**email_data)
 
         # Return result
         result = {i:result[i] for i in result if i != "_id"}
@@ -434,6 +435,7 @@ class Balance(object):
         # Get data from request
         #if message.get()
         message = json.loads(kwargs.get("message", "{}"))
+
         txid = message.get("txid")
         coinid = message.get("coinid")
         buyer_address = message.get("buyer_address")
@@ -444,9 +446,10 @@ class Balance(object):
         if not all([txid, coinid, cid, buyer_address]):
             return {"error":400, "reason": "Confirm balance. Missed required fields"}
 
-        client_bridge = SignedTornadoClient(settings.bridges[coinid])
-        offer = await client_bridge.request(method_name="get_offer", cid=cid, 
-                                            buyer_address=buyer_address)
+        if coinid in settings.AVAILABLE_COIN_ID:
+            self.account.blockchain.setendpoint(settings.bridges[coinid])
+        offer = await self.account.blockchain.getoffer(cid=cid, buyer_address=buyer_address)
+
         # Connect to database
         coinid = "PUT"
 
@@ -466,16 +469,13 @@ class Balance(object):
                                 {"txid":txid}, {"$inc":{"unconfirmed": -amount}})
 
         # Update users level if it is equal two
-        client_storage = SignedTornadoClient(settings.storageurl)
-        account = await client_storage.request(method_name="getaccountdata",
-                                                **{"id":updated["uid"]})
+        account = await self.account.getaccountdata(**{"id":updated["uid"]})
         if "error" in account.keys():
             return {"error":500,
                     "reason":"While incrementing balance current user was not found"}
 
         if int(account["level"]) == 2:
-            await client_storage.request(method_name="updatelevel",
-                                    **{"id":account["id"], "level":3})
+            await self.account.updatelevel(**{"id":account["id"], "level":3})
 
         return {i:updated[i] for i in updated if i != "_id" and i != "txid"}
 

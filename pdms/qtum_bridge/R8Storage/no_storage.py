@@ -8,3 +8,6 @@ class NoStorage(StorageHandler):
 
     def upload_data(self, content):
         return content
+
+    def reload_http_provider(self):
+        pass

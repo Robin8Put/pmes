@@ -31,6 +31,9 @@ class IpfsStorage(StorageHandler):
     def from_host_port(cls, host='127.0.0.1', port=5001, time_limit=1):
         return cls(ipfsapi.connect(host, port), time_limit)
 
+    def reload_http_provider(self, host, port):
+        self.ipfs_api = ipfsapi.connect(host, port)
+
     def upload_data(self, content):
         file_name = 'temp.bak'
 
