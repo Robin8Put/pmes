@@ -1,18 +1,36 @@
 from utils.tornado_components.web import RobustTornadoClient, SignedTornadoClient
-from .account_attributes import Balance, Blockchain
+from .account_attributes import Balance, Blockchain, Mail
 from .permissions import Permissions
 import settings
+from utils.qtum_utils.qtum import Qtum 
+from utils.bip32keys.r8_ethereum.r8_eth import R8_Ethereum
+from .genesis import GenesisClass
+import logging
 
 
-class AbstractClass(object):
-    pass
 
 
-class Account(AbstractClass):
+class Account(GenesisClass):
     balance = Balance()
     blockchain = Blockchain()
     permissions = Permissions()
+    mailer = Mail()
     client_storage = SignedTornadoClient(settings.storageurl)
+
+    validator = {
+            "QTUM": lambda x: Qtum.public_key_to_hex_address(x),
+            "ETH": lambda x: R8_Ethereum.public_key_to_checksum_address(x),
+            "PUT": lambda x: Qtum.public_key_to_hex_address(x),
+        }
+
+    ident_offer = {0:"read_access", 1:"write_access"}
+
+
+    async def logsource(self, **params):
+        result = await self.client_storage.request(method_name="logsource",
+                                                    **params)
+        return result
+
 
     async def createaccount(self, **params):
         result = await self.client_storage.request(method_name="createaccount",
@@ -115,60 +133,60 @@ class Account(AbstractClass):
 
     
     async def getreviews(self, **params):
-        result = self.client_storage.request(method_name="getreviews",
+        result = await self.client_storage.request(method_name="getreviews",
                                              **params)
         return result
 
     
     async def setreview(self, **params):
-        result = self.client_storage.request(method_name="setreview",
+        result = await self.client_storage.request(method_name="setreview",
                                              **params)
         return result
 
     
     async def updatereview(self, **params):
-        result = self.client_storage.request(method_name="updatereview",
+        result = await self.client_storage.request(method_name="updatereview",
                                              **params)
         return result
 
     
     async def writedeal(self, **params):
-        result = self.client_storage.request(method_name="writedeal",
+        result = await self.client_storage.request(method_name="writedeal",
                                              **params)
         return result
 
     
     async def getdeals(self, **params):
-        result = self.client_storage.request(method_name="getdeals",
+        result = await self.client_storage.request(method_name="getdeals",
                                              **params)
         return result
 
     
     async def updatedescription(self, **params):
-        result = self.client_storage.request(method_name="updatedescription",
+        result = await self.client_storage.request(method_name="updatedescription",
                                              **params)
         return result
 
     
     async def setwriteprice(self, **params):
-        result = self.client_storage.request(method_name="setwriteprice",
+        result = await self.client_storage.request(method_name="setwriteprice",
                                              **params)
         return result
 
     
     async def setreadprice(self, **params):
-        result = self.client_storage.request(method_name="setreadprice",
+        result = await self.client_storage.request(method_name="setreadprice",
                                              **params)
         return result
 
     
     async def changeowner(self, **params):
-        result = self.client_storage.request(method_name="changeowner",
+        result = await self.client_storage.request(method_name="changeowner",
                                              **params)
         return result
 
     
     async def sharecontent(self, **params):
-        result = self.client_storage.request(method_name="sharecontent",
+        result = await self.client_storage.request(method_name="sharecontent",
                                              **params)
         return result

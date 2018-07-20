@@ -6,20 +6,17 @@ import sys
 #Third-party
 import tornado
 from jsonrpcserver.aio import methods
-import ujson
 
 # Locals
 from utils.tornado_components import web 
 from utils.bip32keys.r8_ethereum.r8_eth import R8_Ethereum  
 from utils.qtum_utils.qtum import Qtum
 from utils import billing
+from utils.tornado_components.web import SignedTornadoClient
 from utils.models.account import Account
+from utils.pagination import Paginator
 import settings
 
-validator = {
-		"QTUM": lambda x: Qtum.public_key_to_hex_address(x),
-		"ETH": lambda x: R8_Ethereum.public_key_to_checksum_address(x)
-}
 
 class AllContentHandler(web.ManagementSystemHandler):
 	"""Handles all blockchain content requests
@@ -36,11 +33,8 @@ class AllContentHandler(web.ManagementSystemHandler):
 		self.set_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
 
 
-	def initialize(self, client_bridge, client_storage, client_balance, client_email):
-		self.client_bridge = client_bridge
-		self.client_storage = client_storage
-		self.client_balance = client_balance
-		self.client_email = client_email
+	def initialize(self):
+		self.account = Account()
 
 	async def get(self):
 		"""
@@ -58,23 +52,41 @@ class AllContentHandler(web.ManagementSystemHandler):
 
 		Verified: False
 		"""
+
+		page = self.get_query_argument("page", 1)
+
 		contents = []
 
-		for coinid in settings.AVAILABLE_COIN_ID:
+		coinids = settings.AVAILABLE_COIN_ID
 
-			self.client_bridge.endpoint = settings.bridges[coinid]
+		for coinid in coinids:
 
-			try:
-				content = await self.client_bridge.request(method_name="getallcontent")
-				if isinstance(content, dict):
-					if "error" in content.keys():
-						continue
-				contents.extend(content)
-			except:
-				continue
+			if coinids.index(coinid) == len(coinids) - 1:
+				paginator = Paginator(coinid=coinid, page=page, 
+					limit=(settings.LIMIT//len(coinids))+(settings.LIMIT%len(coinids)))
+			else:
+				paginator = Paginator(coinid=coinid, page=page, 
+									limit=settings.LIMIT // len(coinids))
 
-		self.write(ujson.dumps(contents))
-					
+
+			self.account.blockchain.setendpoint(settings.bridges[coinid])
+
+			
+			content = await self.account.blockchain.getallcontent(
+										range_=paginator.get_range())
+
+			if isinstance(content, dict):
+				if "error" in content.keys():
+					continue
+			contents.extend(content)
+		
+		response = {
+			"profiles":json.dumps(contents),
+		}
+		response.update(paginator.get_pages())
+
+		self.write(json.dumps(response))
+			
 
 	def options(self):
 		self.write(json.loads(["GET"]))
@@ -89,11 +101,8 @@ class ContentHandler(web.ManagementSystemHandler):
 
 	"""
 
-	def initialize(self, client_bridge, client_storage, client_balance, client_email):
-		self.client_bridge = client_bridge
-		self.client_storage = client_storage
-		self.client_balance = client_balance
-		self.client_email = client_email
+	def initialize(self):
+		self.account = Account()
 
 	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
@@ -130,36 +139,36 @@ class ContentHandler(web.ManagementSystemHandler):
 
 		# Set bridge url
 		if coinid in settings.AVAILABLE_COIN_ID:
-			self.client_bridge.endpoint = settings.bridges[coinid]
+			self.account.blockchain.setendpoint(settings.bridges[coinid])
 		# Get content
-		content = await self.client_bridge.request(method_name="getsinglecontent", cid=cid)
+		content = await self.account.blockchain.getsinglecontent(cid=cid)
 
 		if "error" in content.keys():
 			self.set_status(content["error"])
 			self.write(content)
 			raise tornado.web.Finish 
 		# Get owners account
-		account = await self.client_storage.request(method_name="getaccountbywallet", 
-														wallet=content["owneraddr"])
+		account = await self.account.getaccountbywallet(wallet=content["owneraddr"])
 		if "error" in account.keys():
 			self.set_status(account["error"])
 			self.write(account)
 			raise tornado.web.Finish
 
 		# Check if it is write or read access for content
-		cids = await self.client_storage.request(method_name="getuserscontent",
-															public_key=public_key)
-		deals = await self.client_storage.request(method_name="getdeals", buyer=public_key)
+		cids = await self.account.getuserscontent(public_key=public_key)
 
-		if int(content["cid"]) in [int(i[0]) for i in cids.get(coinid,[])]:
+		deals = await self.account.getdeals(buyer=public_key)
+
+
+		if int(content["cid"]) in [i[0] for i in cids.get(coinid,[])]:
 			content["access_type"] = "write_access"
 
-		elif int(content["cid"]) in [int(i[0]) for i in deals.get(coinid,[])]:
+		elif int(content["cid"]) in [i[0] for i in deals.get(coinid,[])]:
 			content["access_type"] = "read_access"
 
 		try:
-			offer = await self.client_bridge.request(method_name="get_offer", cid=cid, 
-										buyer_address=validator[coinid](public_key))
+			offer = await self.account.blockchain.getoffer(cid=cid, 
+							buyer_address=self.account.validator[coinid](public_key))
 
 			content["owner"] = account.get("public_key")
 			content["seller_access_string"] = offer.get("seller_access_string")
@@ -198,9 +207,9 @@ class ContentHandler(web.ManagementSystemHandler):
 		#super().verify()
 
 		# Define genesis variables
-		owneraddr = validator[coinid](public_key)    # Define owner address
+		owneraddr = self.account.validator[coinid](public_key)    # Define owner address
 		if coinid in settings.AVAILABLE_COIN_ID:     # Define bridge url
-			self.client_bridge.endpoint = settings.bridges[coinid]
+			self.account.blockchain.setendpoint(settings.bridges[coinid])
 		else:
 			self.set_status(400)
 			self.write({"error":400, "reason":"Invalid coinid"})
@@ -208,8 +217,7 @@ class ContentHandler(web.ManagementSystemHandler):
 
 
 		# Check if account exists
-		account = await self.client_storage.request(method_name="getaccountdata", 
-											public_key=public_key)
+		account = await self.account.getaccountdata(public_key=public_key)
 		if "error" in account.keys():
 			self.set_status(account["error"])
 			self.write(account)
@@ -252,15 +260,15 @@ class ContentHandler(web.ManagementSystemHandler):
 				"read_price":read_access,
 				"write_price":write_access
 				}
-		response = await self.client_bridge.request(method_name="makecid", **data)
+		response = await self.account.blockchain.makecid(**data)
 		if "error" in response.keys():
 			self.set_status(400)
 			self.write(response)
 			raise tornado.web.Finish
 
 		# Write cid to database
-		await self.client_storage.request(method_name="setuserscontent", public_key=public_key,
-			hash=response["cus_hash"],coinid=coinid, txid=response["result"]["txid"],access="content")
+		await self.account.setuserscontent(public_key=public_key,hash=response["cus_hash"],
+							coinid=coinid, txid=response["result"]["txid"],access="content")
 
 
 		response = {i:data[i] for i in data if i != "cus"}
@@ -286,11 +294,8 @@ class DescriptionHandler(web.ManagementSystemHandler):
 		self.set_header('Access-Control-Allow-Methods', 'PUT, OPTIONS')
 
 
-	def initialize(self, client_bridge, client_storage, client_balance, client_email):
-		self.client_bridge = client_bridge
-		self.client_storage = client_storage
-		self.client_balance = client_balance
-		self.client_email = client_email
+	def initialize(self):
+		self.account = Account()
 
 
 	async def put(self, cid):
@@ -345,10 +350,10 @@ class DescriptionHandler(web.ManagementSystemHandler):
 			self.write({"error":400, "reason":"Missed required fields"})
 			raise tornado.web.Finish
 		
-		owneraddr = validator[coinid](public_key)
+		owneraddr = self.account.validator[coinid](public_key)
 
 		# Get content owner
-		response = await self.client_bridge.request(method_name="ownerbycid", cid=cid)
+		response = await self.account.blockchain.ownerbycid(cid=cid)
 		if isinstance(response, dict):
 			if "error" in response.keys():
 				error_code = response["error"]
@@ -363,19 +368,20 @@ class DescriptionHandler(web.ManagementSystemHandler):
 			raise tornado.web.Finish
 
 		# Set fee
-		fee = await billing.update_description_fee(owneraddr=owneraddr,cid=cid, description=descr)
+		fee = await billing.update_description_fee(owneraddr=owneraddr,cid=cid, 
+													description=descr)
 
 		# Set bridge url
 		if coinid in settings.AVAILABLE_COIN_ID:
-			self.client_bridge.endpoint = settings.bridges[coinid]
+			self.account.blockchain.setendpoint(settings.bridges[coinid])
 		else:
 			self.set_status(400)
 			self.write({"error":400, "reason":"Invalid coinid"})
 			raise tornado.web.Finish 
 		
 		# Set description for content. Make request to the bridge
-		request = await self.client_bridge.request(method_name="setdescrforcid", 
-						cid=cid, descr=descr, owneraddr=owneraddr)
+		request = await self.account.blockchain.setdescrforcid(cid=cid, descr=descr, 
+																owneraddr=owneraddr)
 		if "error" in request.keys():
 			self.set_status(request["error"])
 			self.write(request)
@@ -401,11 +407,8 @@ class PriceHandler(web.ManagementSystemHandler):
 		self.set_header('Access-Control-Allow-Methods', 'PUT, OPTIONS')
 
 
-	def initialize(self, client_bridge, client_storage, client_balance, client_email):
-		self.client_bridge = client_bridge
-		self.client_storage = client_storage
-		self.client_balance = client_balance
-		self.client_email = client_email
+	def initialize(self):
+		self.account = Account()
 
 
 	async def put(self, cid):
@@ -461,17 +464,17 @@ class PriceHandler(web.ManagementSystemHandler):
 
 		# Set bridges url
 		if coinid in settings.AVAILABLE_COIN_ID:
-			self.client_bridge.endpoint = settings.bridges[coinid]
+			self.account.blockchain.setendpoint(settings.bridges[coinid])
 		else:
 			self.set_status(400)
 			self.write({"error":400, "reason":"Invalid coin ID"})
 			raise tornado.web.Finish
 
 		# Get public key hex or checksum format
-		check = validator[coinid](public_key)
+		check = self.account.validator[coinid](public_key)
 
 		# Get content owner address
-		owneraddr = await self.client_bridge.request(method_name="ownerbycid", cid=cid)
+		owneraddr = await self.account.blockchain.ownerbycid(cid=cid)
 		if isinstance(owneraddr, dict):
 			if "error" in owneraddr.keys():
 				self.set_status(404)
@@ -488,13 +491,11 @@ class PriceHandler(web.ManagementSystemHandler):
 
 		# Make setprice request to the bridge
 		if access_type == "write_price":
-			result = await self.client_bridge.request(method_name="set_write_price", 
-														cid=cid, write_price=price)
+			result = await self.account.blockchain.setwriteprice(cid=cid, write_price=price)
 			response["write_access"] = result["price"]
 
 		elif access_type == "read_price":
-			result = await self.client_bridge.request(method_name="set_read_price", 
-												cid=cid, read_price=price)
+			result = await self.account.blockchain.setreadprice(cid=cid, read_price=price)
 			response["read_access"] = result["price"]
 
 
@@ -522,11 +523,8 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 
 	"""
 
-	def initialize(self, client_bridge, client_storage, client_balance, client_email):
-		self.client_bridge = client_bridge
-		self.client_storage = client_storage
-		self.client_balance = client_balance
-		self.client_email = client_email
+	def initialize(self):
+		self.account = Account()
 
 
 	def set_default_headers(self):
@@ -588,7 +586,7 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 
 		# Set bridge url
 		if coinid in settings.AVAILABLE_COIN_ID:
-			self.client_bridge.endpoint = settings.bridges[coinid]
+			self.account.blockchain.setendpoint(settings.bridges[coinid])
 		else:
 			self.set_status(400)
 			self.write({"error":400, "reason":"Invalid coinid"})
@@ -596,17 +594,16 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 
 		# Get cid price from bridge if the does not specified
 		if not write_price:
-			write_price = await self.client_bridge.request(method_name="get_write_price", cid=cid)
+			write_price = await self.account.blockchain.getwriteprice(cid=cid)
 
 		# Get public key hex or checksum format
-		buyer_address = validator[coinid](public_key)
+		buyer_address = self.account.validator[coinid](public_key)
 
 		# Get owner address
-		owneraddr = await self.client_bridge.request(method_name="ownerbycid", cid=cid)
+		owneraddr = await self.account.blockchain.ownerbycid(cid=cid)
 
 		# Check if public key exists
-		account = await self.client_storage.request(method_name="getaccountdata", 
-													public_key=public_key)
+		account = await self.account.getaccountdata(public_key=public_key)
 		if "error" in account.keys():
 			# If account does not exist
 			self.set_status(account["error"])
@@ -614,8 +611,7 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 			raise tornado.web.Finish
 
 		#Get buyers balance
-		balances = await self.client_balance.request(method_name="getbalance", 
-													coinid=coinid, uid=account["id"])
+		balances = await self.account.balance.getbalance(coinid=coinid, uid=account["id"])
 
 		# Check if current content belongs to current user
 		if owneraddr == buyer_address:
@@ -644,7 +640,7 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 			"buyer_address": buyer_address,
 			"buyer_access_string":buyer_access_string
 		}
-		response = await self.client_bridge.request(method_name="make_offer", **offer_data)
+		response = await self.account.blockchain.makeoffer(**offer_data)
 		try:
 			response["error"]
 		except:
@@ -654,12 +650,11 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 			self.write(response)
 			raise tornado.web.Finish
 
-		await self.client_storage.request(method_name="insertoffer", cid=cid, 
-											txid=response["result"]["txid"], 
+		await self.account.insertoffer(cid=cid, txid=response["result"]["txid"], 
 											coinid=coinid, public_key=public_key)
 
 		# Send e-mail to seller
-		seller = await self.client_storage.request(method_name="getaccountbywallet",wallet=owneraddr)
+		seller = await self.account.getaccountbywallet(wallet=owneraddr)
 		if "error" in seller.keys():
 			self.set_status(seller["error"])
 			self.write(seller)
@@ -671,12 +666,19 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 				"subject": "Robin8 support",
      			"optional": "You`ve got an offer for content %s." % cid
 			}
-			await self.client_email.request(method_name="sendmail", **emaildata)
+			await self.account.sendmail(**emaildata)
 
 
 		# Freeze price at balance
-		await self.client_balance.request(method_name="depositbalance", uid=account["id"],
-															coinid=coinid, amount=write_price)
+		await self.account.balance.depositbalance(uid=account["id"],coinid=coinid, 
+													amount=write_price)
+		# Set fee
+		fee = await billing.set_make_offer_fee(buyer_address=buyer_address)
+		if "error" in fee.keys():
+			self.set_status(fee["error"])
+			self.write(fee)
+			raise tornado.web.Finish
+
 		response["offer_type"] = "write_access"
 		del response["result"]		
 		self.write(response)
@@ -708,16 +710,15 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 		coinid = message.get("coinid")
 
 		if coinid in settings.AVAILABLE_COIN_ID:
-			self.client_bridge.endpoint = settings.bridges[coinid]
+			self.account.blockchain.setendpoint(settings.bridges[coinid])
 		else:
 			self.set_status(400)
 			self.write({"error":400, "reason":"Invalid coin ID"})
 			raise tornado.web.Finish
 
-		check = validator[coinid](public_key)
+		check = self.account.validator[coinid](public_key)
 
-		account = await self.client_storage.request(method_name="getaccountdata", 
-															public_key=public_key)
+		account = await self.account.getaccountdata(public_key=public_key)
 		if "error" in account.keys():
 			error_code = account["error"]
 			self.set_status(error_code)
@@ -725,7 +726,7 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 			raise tornado.web.Finish
 	
 		# Check if one of sellers or buyers rejects offer
-		owneraddr = await self.client_bridge.request(method_name="ownerbycid", cid=cid)
+		owneraddr = await self.account.blockchain.ownerbycid(cid=cid)
 		hex_ = check
 		if buyer_address != hex_ and owneraddr != hex_:
 			# Avoid rejecting offer
@@ -733,16 +734,15 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 			self.write({"error": 403, "reason":"Forbidden. Offer does not belong to user."})
 		
 		# Reject offer
-		response = await self.client_bridge.request(method_name="reject_offer",
-										coinid=coinid, cid=cid, buyer_address=buyer_address)
+		response = await self.account.blockchain.rejectoffer(coinid=coinid, cid=cid, 
+															buyer_address=buyer_address)
 		if "error" in response.keys():
 			self.set_status(response["error"])
 			self.write(response)
 			raise tornado.web.Finish
 
 		# Get buyer for email sending
-		buyer = await self.client_storage.request(method_name="getaccountbywallet",
-																wallet=buyer_address)
+		buyer = await self.account.getaccountbywallet(wallet=buyer_address)
 		if "error" in buyer.keys():
 			self.set_status(buyer["error"])
 			self.write(buyer)
@@ -754,12 +754,12 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 				"subject": "Robin8 support",
      			"optional": "Your offer with cid %s was rejected." % cid
 			}
-			await self.client_email.request(method_name="sendmail", **emaildata)
+			await self.account.mailer.sendmail(**emaildata)
 		
 		# Undeposit balance
-		price = await self.client_bridge.request(method_name="get_write_price", cid=cid)
-		await self.client_balance.request(method_name="undepositbalance", uid=buyer["id"],
-														coinid=coinid, amount=price)
+		price = await self.account.blockchain.getwriteprice(cid=cid)
+		await self.account.balance.undepositbalance(uid=buyer["id"],coinid=coinid, 
+													amount=price)
 
 		del response["result"]
 		self.write(response)
@@ -772,11 +772,8 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 class ReadAccessOfferHandler(web.ManagementSystemHandler):
 	"""Handles requests binded with offers (make, reject etc)
 	"""
-	def initialize(self, client_bridge, client_storage, client_balance, client_email):
-		self.client_bridge = client_bridge
-		self.client_storage = client_storage
-		self.client_balance = client_balance
-		self.client_email = client_email
+	def initialize(self):
+		self.account = Account()
 
 
 	def set_default_headers(self):
@@ -818,7 +815,7 @@ class ReadAccessOfferHandler(web.ManagementSystemHandler):
 
 		# Set bridge url
 		if coinid in settings.AVAILABLE_COIN_ID:
-			self.client_bridge.endpoint = settings.bridges[coinid]
+			self.account.blockchain.setendpoint(settings.bridges[coinid])
 		else:
 			self.set_status(400)
 			self.write({"error":400, "reason":"Invalid coinid"})
@@ -826,15 +823,13 @@ class ReadAccessOfferHandler(web.ManagementSystemHandler):
 
 		# Get cid price from bridge
 		if not read_price:
-			read_price = await self.client_bridge.request(method_name="get_read_price", cid=cid)
+			read_price = await self.account.blockchain.getreadprice(cid=cid)
 
-		buyer_address = validator[coinid](public_key)
-		owneraddr = await self.client_bridge.request(method_name="ownerbycid", 
-													cid=cid)
+		buyer_address = self.account.validator[coinid](public_key)
+		owneraddr = await self.account.blockchain.ownerbycid(cid=cid)
 
 		# Check if public key exists
-		account = await self.client_storage.request(method_name="getaccountdata", 
-									public_key=public_key)
+		account = await self.account.getaccountdata(public_key=public_key)
 		if "error" in account.keys():
 			# If account does not exist
 			self.set_status(account["error"])
@@ -842,8 +837,7 @@ class ReadAccessOfferHandler(web.ManagementSystemHandler):
 			raise tornado.web.Finish
 
 		#Get sellers balance
-		balances = await self.client_balance.request(method_name="getbalance", 
-											coinid=coinid, uid=account["id"])
+		balances = await self.account.balance.getbalance(coinid=coinid, uid=account["id"])
 
 		# Check if current content does not belong to current user
 		if owneraddr == buyer_address:
@@ -871,8 +865,7 @@ class ReadAccessOfferHandler(web.ManagementSystemHandler):
 			"buyer_address": buyer_address,
 			"buyer_access_string":buyer_access_string
 		}
-		response = await self.client_bridge.request(method_name="make_offer", 
-													**offer_data)
+		response = await self.account.blockchain.makeoffer(**offer_data)
 		try:
 			response["error"]
 		except:
@@ -882,11 +875,10 @@ class ReadAccessOfferHandler(web.ManagementSystemHandler):
 			self.write(response)
 			raise tornado.web.Finish
 
-		await self.client_storage.request(method_name="insertoffer", cid=cid, 
-											txid=response["result"]["txid"], 
+		await self.account.insertoffer(cid=cid, txid=response["result"]["txid"], 
 											coinid=coinid, public_key=public_key)
 		# Send e-mail to seller
-		seller = await self.client_storage.request(method_name="getaccountbywallet",wallet=owneraddr)
+		seller = await self.account.getaccountbywallet(wallet=owneraddr)
 		if "error" in seller.keys():
 			self.set_status(seller["error"])
 			self.write(seller)
@@ -898,12 +890,20 @@ class ReadAccessOfferHandler(web.ManagementSystemHandler):
 				"subject": "Robin8 support",
      			"optional": "You`ve got an offer for content %s." % cid
 			}
-			await self.client_email.request(method_name="sendmail", **emaildata)
+			await self.account.mailer.sendmail(**emaildata)
 
 
 		# Freeze price at balance
-		await self.client_balance.request(method_name="depositbalance", uid=account["id"],
-															coinid=coinid, amount=read_price)
+		await self.account.balance.depositbalance(uid=account["id"],coinid=coinid, 
+																amount=read_price)
+
+		# Set fee
+		fee = await billing.set_make_offer_fee(buyer_address=buyer_address)
+		if "error" in fee.keys():
+			self.set_status(fee["error"])
+			self.write(fee)
+			raise tornado.web.Finish
+
 		response["offer_type"] = "read_access"
 		del response["result"]		
 
@@ -936,16 +936,15 @@ class ReadAccessOfferHandler(web.ManagementSystemHandler):
 		coinid = message.get("coinid")
 
 		if coinid in settings.AVAILABLE_COIN_ID:
-			self.client_bridge.endpoint = settings.bridges[coinid]
+			self.account.blockchain.setendpoint(settings.bridges[coinid])
 		else:
 			self.set_status(400)
 			self.write({"error":400, "reason":"Invalid coin ID"})
 			raise tornado.web.Finish
 
-		check = validator[coinid](public_key)
+		check = self.account.validator[coinid](public_key)
 
-		account = await self.client_storage.request(method_name="getaccountdata", 
-															public_key=public_key)
+		account = await self.account.getaccountdata(public_key=public_key)
 		if "error" in account.keys():
 			error_code = account["error"]
 			self.set_status(error_code)
@@ -954,7 +953,7 @@ class ReadAccessOfferHandler(web.ManagementSystemHandler):
 
 	
 		# Check if one of sellers or buyers rejects offer
-		owneraddr = await self.client_bridge.request(method_name="ownerbycid", cid=cid)
+		owneraddr = await self.account.blockchain.ownerbycid(cid=cid)
 		hex_ = check
 		if buyer_address != hex_ and owneraddr != hex_:
 			# Avoid rejecting offer
@@ -962,16 +961,15 @@ class ReadAccessOfferHandler(web.ManagementSystemHandler):
 			self.write({"error": 403, "reason":"Forbidden. Offer does not belong to user."})
 		
 		# Reject offer
-		response = await self.client_bridge.request(method_name="reject_offer",
-										coinid=coinid, cid=cid, buyer_address=buyer_address)
+		response = await self.account.blockchain.rejectoffer(coinid=coinid, cid=cid, 
+															buyer_address=buyer_address)
 		if "error" in response.keys():
 			self.set_status(response["error"])
 			self.write(response)
 			raise tornado.web.Finish
 
 		# Get buyer for email sending
-		buyer = await self.client_storage.request(method_name="getaccountbywallet",
-																wallet=buyer_address)
+		buyer = await self.account.getaccountbywallet(wallet=buyer_address)
 		if "error" in buyer.keys():
 			self.set_status(buyer["error"])
 			self.write(buyer)
@@ -983,12 +981,12 @@ class ReadAccessOfferHandler(web.ManagementSystemHandler):
 				"subject": "Robin8 support",
      			"optional": "Your offer with cid %s was rejected." % cid
 			}
-			await self.client_email.request(method_name="sendmail", **emaildata)
+			await self.account.mailer.sendmail(**emaildata)
 		
 
-		price = await self.client_bridge.request(method_name="get_write_price", cid=cid)
-		await self.client_balance.request(method_name="undepositbalance", uid=buyer["id"],
-														coinid=coinid, amount=price)
+		price = await self.account.blockchain.getwriteprice(cid=cid)
+		await self.account.balance.undepositbalance(uid=buyer["id"],coinid=coinid, 
+																		amount=price)
 
 		del response["result"]
 		self.write(response)
@@ -1003,11 +1001,8 @@ class DealHandler(web.ManagementSystemHandler):
 	"""Handles accept offer requests
 	"""
 
-	def initialize(self, client_bridge, client_storage, client_balance, client_email):
-		self.client_bridge = client_bridge
-		self.client_storage = client_storage
-		self.client_balance = client_balance
-		self.client_email = client_email
+	def initialize(self):
+		self.account = Account()
 
 	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
@@ -1023,6 +1018,7 @@ class DealHandler(web.ManagementSystemHandler):
 			- buyer public key
 			- seller public key
 		"""
+		logging.debug("[+] -- Deal handler")
 		super().verify()
 		# Check if message contains required data
 		try:
@@ -1052,18 +1048,21 @@ class DealHandler(web.ManagementSystemHandler):
 			raise tornado.web.Finish
 
 		if coinid in settings.AVAILABLE_COIN_ID:
-			self.client_bridge.endpoint = settings.bridges[coinid]
+			self.account.blockchain.setendpoint(settings.bridges[coinid])
+			logging.debug("\n\n")
+			logging.debug(self.account.blockchain.client_bridge.endpoint)
+			logging.debug("\n\n")
+
 		else:
 			self.set_status(400)
 			self.write({"error":400, "reason":"Invalid coin ID"})
 			raise tornado.web.Finish 
 
 		# Sellcontent
-		buyer_address = validator[coinid](buyer_pubkey)
+		buyer_address = self.account.validator[coinid](buyer_pubkey)
 
 		# Check if accounts exists
-		seller_account = await self.client_storage.request(method_name="getaccountdata", 
-																	public_key=public_key)
+		seller_account = await self.account.getaccountdata(public_key=public_key)
 
 		try:
 			error_code = seller_account["error"]
@@ -1074,8 +1073,7 @@ class DealHandler(web.ManagementSystemHandler):
 			self.write(seller_account)
 			raise tornado.web.Finish
 
-		buyer_account = await self.client_storage.request(method_name="getaccountdata", 
-										public_key=buyer_pubkey)
+		buyer_account = await self.account.getaccountdata(public_key=buyer_pubkey)
 		try:
 			error_code = buyer_account["error"]
 		except:
@@ -1086,16 +1084,16 @@ class DealHandler(web.ManagementSystemHandler):
 			raise tornado.web.Finish
 
 		# Check if content belongs to current account
-		owneraddr = await self.client_bridge.request(method_name="ownerbycid", cid=cid)
+		owneraddr = await self.account.blockchain.ownerbycid(cid=cid)
 		
-		if owneraddr != validator[coinid](public_key):
+		if owneraddr != self.account.validator[coinid](public_key):
 			self.set_status(403)
 			self.write({"error":403, "reason":"Forbidden. Profile owner does not match."})
 			raise tornado.web.Finish
 
 		#Get buyers balance
-		balances = await self.client_balance.request(method_name="getbalance", 
-								coinid=coinid, uid=buyer_account["id"])
+		balances = await self.account.balance.getbalance(coinid=coinid, 
+														uid=buyer_account["id"])
 		if isinstance(balances, dict):
 			if "error" in balances.keys():
 				self.set_status(balances["error"])
@@ -1104,8 +1102,8 @@ class DealHandler(web.ManagementSystemHandler):
 
 
 		# Get difference with balance and price
-		get_price = await self.client_bridge.request(method_name="get_offer", cid=cid, 
-														buyer_address=buyer_address)
+		get_price = await self.account.blockchain.getoffer(buyer_address=buyer_address,
+															cid=cid)
 		price = get_price["price"]
 
 		for w in balances:
@@ -1132,11 +1130,11 @@ class DealHandler(web.ManagementSystemHandler):
 					"seller_public_key": public_key
 				}
 
-				response = await self.client_bridge.request(method_name="changeowner", 
-														**chownerdata)
+				response = await self.account.blockchain.changeowner(**chownerdata)
 
-				await self.client_storage.request(method_name="changeowner", cid=cid, 
-									public_key=buyer_account["public_key"], coinid=coinid)
+				await self.account.changeowner(cid=cid, 
+										public_key=buyer_account["public_key"], 
+										coinid=coinid)
 
 			elif access_type == "read_access":
 
@@ -1155,27 +1153,22 @@ class DealHandler(web.ManagementSystemHandler):
 					"seller_public_key":public_key
 				}
 
-				response = await self.client_bridge.request(method_name="sellcontent", 
-														**selldata)
+				response = await self.account.blockchain.sellcontent(**selldata)
 
 				# Write cid to database
-				await self.client_storage.request(method_name="setuserscontent", 
-											public_key=buyer_account["public_key"], 
+				await self.account.setuserscontent(public_key=buyer_account["public_key"], 
 											hash=None,coinid=coinid, cid=cid,
 											txid=response["result"]["txid"],
 											access="deal")
 
 			
 			# Increment and decrement balances of seller and buyer
-			await self.client_balance.request(method_name="undepositbalance", 
-													uid=buyer_account["id"],
+			await self.account.balance.undepositbalance(uid=buyer_account["id"],
 													amount=price, coinid=coinid)
 
-			await self.client_balance.request(method_name="decbalance", 
-												uid=buyer_account["id"], amount=price)
+			await self.account.balance.decbalance(uid=buyer_account["id"], amount=price)
 
-			await self.client_balance.request(method_name="incbalance", 
-												txid=response["result"]["txid"], 
+			await self.account.balance.incbalance(txid=response["result"]["txid"], 
 												uid=seller_account["id"], amount=price, 
 												coinid=coinid)
 
@@ -1196,11 +1189,8 @@ class DealHandler(web.ManagementSystemHandler):
 class ReviewsHandler(web.ManagementSystemHandler):
 	""" Reviews handler class """
 
-	def initialize(self, client_bridge, client_storage, client_balance, client_email):
-		self.client_bridge = client_bridge
-		self.client_storage = client_storage
-		self.client_balance = client_balance
-		self.client_email = client_email
+	def initialize(self):
+		self.account = Account()
 
 	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
@@ -1213,10 +1203,10 @@ class ReviewsHandler(web.ManagementSystemHandler):
 		"""
 
 		if coinid in settings.AVAILABLE_COIN_ID:
-			self.client_bridge.endpoint = settings.bridges[coinid]
+			self.account.blockchain.setendpoint(settings.bridges[coinid])
 
 
-		reviews = await self.client_bridge.request(method_name="get_reviews", cid=cid)
+		reviews = await self.account.blockchain.getreviews(cid=cid)
 		if isinstance(reviews, dict):
 			if "error" in reviews:
 				self.set_status(500)
@@ -1226,8 +1216,7 @@ class ReviewsHandler(web.ManagementSystemHandler):
 		for review in reviews:
 			review["confirmed"] = 1
 
-		storage_reviews = await self.client_storage.request(method_name="getreviews", 
-															coinid=coinid, cid=cid)
+		storage_reviews = await self.account.getreviews(coinid=coinid, cid=cid)
 
 		if isinstance(reviews, dict):
 			if "error" in reviews.keys():
@@ -1252,11 +1241,8 @@ class ReviewHandler(web.ManagementSystemHandler):
 		self.set_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
 
 
-	def initialize(self, client_bridge, client_storage, client_balance, client_email):
-		self.client_bridge = client_bridge
-		self.client_storage = client_storage
-		self.client_balance = client_balance
-		self.client_email = client_email
+	def initialize(self):
+		self.account = Account()
 
 	async def post(self, public_key):
 		"""Writes contents review
@@ -1283,19 +1269,17 @@ class ReviewHandler(web.ManagementSystemHandler):
 			self.write({"error":400, "reason":"Missed required fields"})
 
 		if coinid in settings.AVAILABLE_COIN_ID:
-			self.client_bridge.endpoint = settings.bridges[coinid]
+			self.account.blockchain.setendpoint(settings.bridges[coinid])
 		else:
 			self.set_status(400)
 			self.write({"error":400, "reason":"Invalid coinid"})
 			raise tornado.web.Finish 
 
-		buyer_address = validator[coinid](public_key)
+		buyer_address = self.account.validator[coinid](public_key)
 
-		review = await self.client_bridge.request(method_name="add_review", cid=int(cid),
-																buyer_address=buyer_address,
-																stars=int(rating), review=review)
-		await self.client_storage.request(method_name="setreview", cid=cid, 
-										txid=review["result"]["txid"], coinid=coinid)
+		review = await self.account.blockchain.addreview(cid=int(cid),buyer_address=buyer_address,
+														stars=int(rating), review=review)
+		await self.account.setreview(cid=cid, txid=review["result"]["txid"], coinid=coinid)
 
 		self.write({"cid":cid, "review":review, "rating":rating})
 
@@ -1310,14 +1294,11 @@ class DealsHandler(web.ManagementSystemHandler):
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
 		self.set_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
 
-	def initialize(self, client_bridge, client_storage, client_balance, client_email):
-		self.client_bridge = client_bridge
-		self.client_storage = client_storage
-		self.client_balance = client_balance
-		self.client_email = client_email
+	def initialize(self):
+		self.account = Account()
 
 	async def get(self, public_key):
-		cids = await self.client_storage.request(method_name="getdeals", buyer=public_key)
+		cids = await self.account.getdeals(buyer=public_key)
 		if "error" in cids.keys():
 			self.set_status(cids["error"])
 			self.write(cids)
@@ -1328,11 +1309,11 @@ class DealsHandler(web.ManagementSystemHandler):
 		for coinid in cids:
 
 			if coinid in settings.AVAILABLE_COIN_ID:
-				self.client_bridge.endpoint = settings.bridges[coinid]
+				self.account.blockchain.setendpoint(settings.bridges[coinid])
 			
 			try:
-				contents = await self.client_bridge.request(method_name="getuserscontent", 
-															cids=json.dumps(cids[coinid]))
+				contents = await self.account.blockchain.getuserscontent(
+													cids=json.dumps(cids[coinid]))
 				if isinstance(contents, dict):
 					if "error" in contents.keys():
 						continue

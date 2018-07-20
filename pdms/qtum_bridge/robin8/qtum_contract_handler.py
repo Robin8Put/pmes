@@ -28,6 +28,12 @@ class QtumContractHandler:
     def from_http_provider(cls, http_provider, contract_address, abi):
         return cls(AuthServiceProxy(http_provider), contract_address, abi)
 
+    def reload_http_provider(self, http_provider):
+        self.qtum_rpc = AuthServiceProxy(http_provider)
+
+    def set_provider(self, provider):
+        self.qtum_rpc = provider
+
     def set_send_params(self, send_params):
         self.send_params = {**self.send_params, **send_params}   #merge dicts
 

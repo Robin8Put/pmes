@@ -16,6 +16,9 @@ class QtumBlockchain(BlockchainHandler):
     def from_http_provider(cls, http_provider):
         return cls(AuthServiceProxy(http_provider))
 
+    def reload_http_provider(self, http_provider):
+        self.qtum_rpc = AuthServiceProxy(http_provider)
+
     def get_block_count(self):
         return self.qtum_rpc.getblockcount()
 

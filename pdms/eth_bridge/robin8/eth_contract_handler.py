@@ -1,6 +1,8 @@
 from web3 import Web3, IPCProvider, HTTPProvider
 from web3.middleware import geth_poa_middleware
 import codecs
+import time
+import logging
 
 class EthContractHandler:
     send_params = {
@@ -8,6 +10,7 @@ class EthContractHandler:
         'gasLimit': 250000,
         'gasPrice': 49000000000,
         'private_key': '',
+        'nonce': 0
     }
 
     def __init__(self, eth_rpc, contract_address, abi):
@@ -26,8 +29,23 @@ class EthContractHandler:
     def from_ipc_path(cls, ipc_path, contract_address, abi):
         return cls(Web3(IPCProvider(ipc_path)), contract_address, abi)
 
+    def reload_http_provider(self, http_provider):
+        self.w3 = Web3(HTTPProvider(http_provider))
+
+    def reload_ipc_path(self, ipc_path):
+        self.w3 = Web3(IPCProvider(ipc_path))
+
+    def get_nonce(self, private_key):
+        account = self.w3.eth.account.privateKeyToAccount(self.send_params['private_key'])
+        return self.w3.eth.getTransactionCount(account.address)
+
+    def update_nonce(self):
+        self.send_params['nonce'] = self.get_nonce(self.send_params['private_key'])
+
     def set_send_params(self, send_params):
         self.send_params = {**self.send_params, **send_params}   #merge dicts
+        if 'private_key' in send_params:
+            self.update_nonce()
 
     def get_contract(self):
         return self.contract
@@ -37,7 +55,7 @@ class EthContractHandler:
 
         construct_txn = fn.buildTransaction({
             'from': account.address,
-            'nonce': self.w3.eth.getTransactionCount(account.address),
+            'nonce': self.send_params['nonce'],
             'gas': self.send_params['gasLimit'],
             'gasPrice': self.send_params['gasPrice'],
             'value': self.send_params['value']})
@@ -45,6 +63,12 @@ class EthContractHandler:
         signed = account.signTransaction(construct_txn)
 
         result = self.w3.eth.sendRawTransaction(signed.rawTransaction)
+        logging.debug("\n\n")
+        logging.debug(self.send_params['nonce'])
+        logging.debug("\n\n")
+
+        self.send_params['nonce'] += 1
+
         decode_hex = codecs.getdecoder("hex_codec")
         encode_hex = codecs.getencoder("hex_codec")
         result = encode_hex(result)[0].decode()
@@ -52,11 +76,18 @@ class EthContractHandler:
 
 
 if __name__ == '__main__':
-    with open('robin8.abi') as f:
-        abi = f.read()
-    ch = EthContractHandler.from_http_provider('http://qtumuser:qtum2018@127.0.0.1:8333', '363d33ed942bd543b073101fa6e5ee00aa67cbad190cce8e', abi)
-    ch.set_send_params({'private_key': 'f66a89b636ed5738b3abda384f1b91d6b314825307d8bb32411d1af7d3006341'})
-    print(ch.get_contract().functions.getCUS(1))
+    ch = EthContractHandler.from_http_provider('https://rinkeby.infura.io/jPgsGcw3RjKP5MjlcJeg', '0xBc9df82727513A5F14315883A048324A1fAA0788',
+                                               '[{"constant":false,"inputs":[{"name":"cid","type":"uint256"},{"name":"description","type":"string"}],"name":"setDescription","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"cus","type":"string"}],"name":"getCid","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"publisherAddress","type":"address"},{"name":"accessLevel","type":"uint256"}],"name":"setAccessLevel","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"","type":"address"}],"name":"publishersMap","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"","type":"uint256"},{"name":"","type":"address"}],"name":"CidBuyerIdToOfferId","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"cid","type":"uint256"},{"name":"buyerId","type":"address"},{"name":"review","type":"string"}],"name":"addReview","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"","type":"uint256"},{"name":"","type":"uint256"}],"name":"CidToOfferIds","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"nextOfferId","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"cid","type":"uint256"},{"name":"buyerId","type":"address"},{"name":"offerType","type":"uint256"},{"name":"price","type":"uint256"},{"name":"buyerAccessString","type":"string"}],"name":"makeOffer","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"cid","type":"uint256"},{"name":"buyerId","type":"address"},{"name":"sellerPublicKey","type":"string"},{"name":"sellerAccessString","type":"string"}],"name":"sellContent","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"","type":"uint256"}],"name":"offers","outputs":[{"name":"buyerAccessString","type":"string"},{"name":"sellerPublicKey","type":"string"},{"name":"sellerAccessString","type":"string"},{"name":"status","type":"uint8"},{"name":"cid","type":"uint256"},{"name":"buyerId","type":"address"},{"name":"offerType","type":"uint256"},{"name":"price","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"cus","type":"string"},{"name":"ownerId","type":"address"},{"name":"description","type":"string"},{"name":"readPrice","type":"uint256"},{"name":"writePrice","type":"uint256"}],"name":"makeCid","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"owner","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"cid","type":"uint256"},{"name":"price","type":"uint256"}],"name":"setReadPrice","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"","type":"address"},{"name":"","type":"uint256"}],"name":"BuyerIdToOfferIds","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"","type":"uint256"},{"name":"","type":"uint256"}],"name":"reviews","outputs":[{"name":"","type":"string"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"","type":"uint256"}],"name":"contents","outputs":[{"name":"cus","type":"string"},{"name":"description","type":"string"},{"name":"owner","type":"address"},{"name":"readPrice","type":"uint256"},{"name":"writePrice","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"cid","type":"uint256"},{"name":"buyerId","type":"address"},{"name":"sellerPublicKey","type":"string"},{"name":"sellerAccessString","type":"string"}],"name":"changeOwner","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"cid","type":"uint256"},{"name":"price","type":"uint256"}],"name":"setWritePrice","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"nextCid","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"cid","type":"uint256"},{"name":"buyerId","type":"address"}],"name":"rejectOffer","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"inputs":[],"payable":false,"stateMutability":"nonpayable","type":"constructor"}]'
+                                               )
+    ch.set_send_params({'private_key': '89b255e8b0ff38b033bb45202c2eb3d66b9044e5a4e5a290f1fdcded930abb35'})
+    print(ch.get_contract().functions.offers(1).call())
 
-    # ch.send_to_contract(ch.get_contract().functions.makeCID('Simple', '0x8EcBec1639a0B4313E493158b0a1169526D836b6', 'descr', 10000, 10000),
-    #                   '89b255e8b0ff38b033bb45202c2eb3d66b9044e5a4e5a290f1fdcded930abb35')
+    print(ch.send_to_contract(ch.get_contract().functions.makeCid('Simplefdsr2fd22fd23423', '0xBc9df82727513A5F14315883A048324A1fAA0788', 'descr', 10000, 10000)))
+    print(ch.send_to_contract(ch.get_contract().functions.makeCid('Simple5fd333fdgss222', '0xBc9df82727513A5F14315883A048324A1fAA0788', 'descr5345435', 10000, 10000)))
+
+    time.sleep(60)
+    #ch.reload_http_provider('https://rinkeby.infura.io/jPgsGcw3RjKP5MjlcJeg')
+    print(ch.send_to_contract(ch.get_contract().functions.makeCid('Simplefdsr222fdsdfd23fdfd423', '0xBc9df82727513A5F14315883A048324A1fAA0788', 'descr', 10000, 10000)))
+    print(ch.send_to_contract(ch.get_contract().functions.makeCid('Simple5fd333fdg2fdfd2fdf2', '0xBc9df82727513A5F14315883A048324A1fAA0788', 'descr5345435', 10000, 10000)))
+
+

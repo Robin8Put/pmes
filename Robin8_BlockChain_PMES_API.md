@@ -36,9 +36,9 @@ The API-methods:
 
 - [Accept buyers offer](#accept-buyers-offer)
 
-- [Reject the write access offer by either buyer or seller](#reject-the-write-access-offer-by-either-buer-or-seller)
+- [Reject the read access offer by either buyer or seller](#reject-the-write-access-offer-by-either-buyer-or-seller)
 
-- [Reject the read access offer by either buyer or seller](#reject-the-read-access-offer-by-either-buer-or-seller)
+- [Reject the read access offer by either buyer or seller](#reject-the-read-access-offer-by-either-buyer-or-seller)
 
 - [Get all PMES profiles from the blockchain](#get-all-pmes-profiles-from-the-blockchain)
 
@@ -207,7 +207,7 @@ The following is a description of the API-methods:
 
     `[json]`
 
-    When the user sends an offer to buy profile `event_type` is 'made offer'.
+    When the user sends an offer to buy profile `event_type` is `made offer`.
 
     `buyer_price` and `seller_price` represented as `real_price * 10^8`. Where `real_price` could be `float`.
 
@@ -248,7 +248,7 @@ The following is a description of the API-methods:
 
 * **Body params**
 
-    '[json]'
+    `[json]`
 
 ```bash
     {
@@ -288,7 +288,7 @@ The following is a description of the API-methods:
 * **URL params**
 
     `cid=[string]`
-    'coinid=[string]'
+    `coinid=[string]`
 
 * **Body params**
 
@@ -319,7 +319,7 @@ The following is a description of the API-methods:
 
 * **Description**
 
-    Return profile from the blockchain by profile id
+    Return content from the blockchain by content id
 
 
 ## Set description of profile for cid
@@ -374,7 +374,7 @@ The following is a description of the API-methods:
 
 * **URL params**
 
-    'cid=[string]'
+    `cid=[string]`
 
 * **Body params**
 
@@ -413,7 +413,7 @@ The following is a description of the API-methods:
 
 * **URL params**
 
-    'public_key=[string]'
+    `public_key=[string]`
 
 * **Body params**
 
@@ -456,7 +456,7 @@ The following is a description of the API-methods:
 
 * **URL params**
 
-    'public_key=[string]'
+    `public_key=[string]`
 
 * **Body params**
 
@@ -500,7 +500,7 @@ The following is a description of the API-methods:
 
 * **URL params**
 
-    'public_key=[string]'
+    `public_key=[string]`
 
 * **Body params**
 
@@ -547,7 +547,7 @@ The following is a description of the API-methods:
 
 * **URL params**
 
-    'public_key=[string]'
+    `public_key=[string]`
 
 * **Body params**
 
@@ -588,7 +588,7 @@ The following is a description of the API-methods:
 
 * **URL params**
 
-    'public_key=[string]'
+    `public_key=[string]`
 
 * **Body params**
 
@@ -643,18 +643,21 @@ The following is a description of the API-methods:
     `price` represented as `real_price * 10^8`. Where `real_price` could be `float`.
 
 ```bash
-    [
-        {
-            "cid": [integer],            # profile identifier
-            "coinid": [string],          # blockchain identifier
-            "description": [string],     # profile description
-            "owneraddr": [string],       # owner address
-            "read_access": [integer],    # profile read access price * 10^8
-            "write_access": [integer],   # profile write access price * 10^8
-            "txid": [string]             # transaction status reference
-        },
+    {"profiles": [array]                     # array with profiles
+        [
+            {
+                "cid": [integer],            # profile identifier
+                "coinid": [string],          # blockchain identifier
+                "description": [string],     # profile description
+                "owneraddr": [string],       # owner address
+                "read_access": [integer],    # profile read access price * 10^8
+                "write_access": [integer],   # profile write access price * 10^8
+                "txid": [string]             # transaction status reference
+            },
         ...
-    ]
+        ],
+    "pages":[integer]                        # number of used pages for pagination 
+    }
 ```
 
 
@@ -690,16 +693,19 @@ The following is a description of the API-methods:
 
 ```bash
     [
-        {
-            "cid": [integer],            # profile identifier
-            "coinid": [string]           # blockchain identifier
-            "description": [string],     # profile description
-            "owneraddr": [string],       # owner address
-            "read_access": [integer],    # profile read access price * 10^8
-            "write_access": [integer],   # profile write access price * 10^8
-            "txid": [string]             # transaction status reference
+        profiles: [array]                    # array with profiles
+            [
+                {
+                    "cid": [integer],            # profile identifier
+                    "coinid": [string]           # blockchain identifier
+                    "description": [string],     # profile description
+                    "owneraddr": [string],       # owner address
+                    "read_access": [integer],    # profile read access price * 10^8
+                    "write_access": [integer],   # profile write access price * 10^8
+                    "txid": [string]             # transaction status reference
 
-        },
+                }
+            ]
         ...
     ]
 ```
@@ -794,7 +800,7 @@ The following is a description of the API-methods:
             "buyer_address": [string],          # buyers address
             "cid": [integer],                   # profiles identifier
             "price": [integer],                 # offers price
-            "seller_access_string": [integer],  # profile price * 10^8
+            "seller_access_string": [integer],  # content price * 10^8
             "type": [string],                   # offers type
             "coinid": [string],                 # blockchain identifier
             "status": [integer],                # offer status

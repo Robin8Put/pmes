@@ -3,7 +3,7 @@ import json
 import logging
 
 #Third-party
-import tornado_components.web 
+import utils.tornado_components.web
 from jsonrpcserver.aio import methods
 
 # Locals
@@ -12,7 +12,7 @@ from . import rpc_methods
 
 
 
-class StorageHandler(tornado_components.web.ManagementSystemHandler):
+class StorageHandler(utils.tornado_components.web.ManagementSystemHandler):
 	"""Class handler Storage API
 	"""
 	async def post(self):

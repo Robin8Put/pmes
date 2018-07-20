@@ -1,5 +1,5 @@
 
-from bip32keys.bip32NetworkKeys import Bip32NetworkKeys, encode_hex, decode_hex
+from utils.bip32keys.bip32NetworkKeys import Bip32NetworkKeys, encode_hex, decode_hex
 from hashlib import sha256
 import hashlib
 import base58check

@@ -6,6 +6,7 @@ import datetime
 import string
 from random import choice
 from hashlib import sha256
+import re
 
 #Third-party
 import tornado.web
@@ -15,16 +16,10 @@ from tornado import gen
 # Locals
 import settings
 from utils.tornado_components import web 
-from utils.tornado_components.timestamp import get_time_stamp
-from utils.qtum_utils.qtum import Qtum
-from utils.bip32keys.r8_ethereum.r8_eth import R8_Ethereum #public_key_to_checksum_address 
-
-validator = {
-		"QTUM": lambda x: Qtum.public_key_to_hex_address(x),
-		"ETH": lambda x: R8_Ethereum.public_key_to_checksum_address(x)
-}
-
-ident_offer = {0:"read_access", 1:"write_access"}
+from utils.tornado_components.timestamp import get_time_stamp 
+from utils.tornado_components.web import RobustTornadoClient
+from utils.models.account import Account
+from utils.pagination import Paginator
 
 
 
@@ -40,18 +35,13 @@ class BalanceHandler(tornado.web.RequestHandler):
 		self.set_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
 
 
-	def initialize(self, client_storage, client_balance, client_email, client_bridge):
-		self.client_storage = client_storage
-		self.client_balance = client_balance
-		self.client_email = client_email
-		self.client_bridge = client_bridge
-
+	def initialize(self):
+		self.account = Account()
 
 
 	async def get(self, uid):
 
-		balance = await self.client_balance.request(method_name="getbalance",
-												uid=uid)
+		balance = await self.account.balance.getbalance(uid=uid)
 		if "error" in balance.keys():
 			self.set_status(balance["error"])
 			self.write(balance)
@@ -70,8 +60,8 @@ class BalanceHandler(tornado.web.RequestHandler):
 			
 		amount = data.get("amount")
 		coinid  =data.get("coinid")
-		balance = await self.client_balance.request(method_name="incbalance",
-										uid=uid, amount=amount, coinid=coinid)
+		balance = await self.account.balance.incbalance(uid=uid, amount=amount, 
+														coinid=coinid)
 		if "error" in balance.keys():
 			self.set_status(balance["error"])
 			self.write(balance)
@@ -97,12 +87,8 @@ class AMSHandler(web.ManagementSystemHandler):
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
 		self.set_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
 
-	def initialize(self, client_storage, client_balance, client_email, client_bridge):
-		self.client_storage = client_storage
-		self.client_balance = client_balance
-		self.client_email = client_email 
-		self.client_bridge = client_bridge
-
+	def initialize(self):
+		self.account = Account()
 
 	
 	async def post(self):
@@ -145,8 +131,7 @@ class AMSHandler(web.ManagementSystemHandler):
 		message = data["message"]
 
 		# Create account
-		new_account = await self.client_storage.request(method_name="createaccount",
-															**data)
+		new_account = await self.account.createaccount(**data)
 		if "error" in new_account.keys():
 			# Raise error if the one does exist
 			self.set_status(new_account["error"])
@@ -157,8 +142,7 @@ class AMSHandler(web.ManagementSystemHandler):
 		balance_params = {
 			"uid": new_account["id"]
 		}
-		new_addr = await self.client_balance.request(method_name="addaddr", 
-													**balance_params)
+		new_addr = await self.account.balance.addaddr(**balance_params)
 		if "error" in new_addr.keys():
 			self.set_status(new_addr["error"])
 			self.write(new_addr)
@@ -168,8 +152,7 @@ class AMSHandler(web.ManagementSystemHandler):
 		request_balance = {
 			"uid": new_account["id"]
 		}
-		wallets = await self.client_balance.request(method_name="getbalance", 
-													**request_balance)
+		wallets = await self.account.balance.getbalance(**request_balance)
 		if isinstance(wallets, dict):
 			if "error" in wallets.keys():
 				self.set_status(wallets["error"])
@@ -186,7 +169,7 @@ class AMSHandler(web.ManagementSystemHandler):
 	        	"subject": "Robin8 Support",
 	         	"optional": "Your account was created on %s" % settings.domain + new_account["href"]
 	        }
-			await self.client_email.request(method_name="sendmail", **email_data)
+			await self.account.mailer.sendmail(**email_data)
 		# Response
 		self.write(new_account)
 
@@ -211,13 +194,8 @@ class AccountHandler(web.ManagementSystemHandler):
 		self.set_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
 
 
-	def initialize(self, client_storage, client_balance, client_email, client_bridge):
-		self.client_storage = client_storage
-		self.client_balance = client_balance
-		self.client_email = client_email
-		self.client_bridge = client_bridge
-
-
+	def initialize(self):
+		self.account = Account()
 
 	async def get(self, public_key):
 		""" Receive account data
@@ -245,25 +223,34 @@ class AccountHandler(web.ManagementSystemHandler):
 		# Signature verification
 		super().verify()
 
+		# Get users request source
+		compiler = re.compile(r"\((.*?)\)")
+		match = compiler.search(self.request.headers.get("User-Agent"))
+		try:
+			source = match.group(1)
+		except:
+			source = None
+		# Write source to database
+		await self.account.logsource(public_key=public_key, source=source)
+
 		# Get account
-		response = await self.client_storage.request(method_name="getaccountdata",
-												public_key=public_key)
+		response = await self.account.getaccountdata(public_key=public_key)
 		if "error" in response.keys():
 			self.set_status(response["error"])
 			self.write(response)
 			raise tornado.web.Finish
 
 		# Receive balances from balance host
-		wallets = await self.client_balance.request(method_name="getbalance", 
-													 uid=response["id"])
+		wallets = await self.account.balance.getbalance(uid=response["id"])
 		if isinstance(wallets, dict):
 			if "error" in wallets.keys():
 				self.set_status(wallets["error"])
 				self.write(wallets)
 				raise tornado.web.Finish
-		
+
 		# Prepare response
-		response.update({"wallets":json.dumps(wallets)})
+		response.update({"wallets":json.dumps(
+						[i for i in wallets if not "ETH" in i.values()])})
 		# Return account data
 		self.write(response)
 
@@ -282,12 +269,8 @@ class NewsHandler(web.ManagementSystemHandler):
 		self.set_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
 
 
-	def initialize(self, client_storage, client_balance, client_email, client_bridge):
-		self.client_storage = client_storage
-		self.client_balance = client_balance
-		self.client_email = client_email
-		self.client_bridge = client_bridge
-
+	def initialize(self):
+		self.account = Account()
 
 
 	async def get(self, public_key):
@@ -296,8 +279,7 @@ class NewsHandler(web.ManagementSystemHandler):
 		"""
 		super().verify()
 
-		response = await self.client_storage.request(method_name="getnews", 
-												public_key=public_key)
+		response = await self.account.getnews(public_key=public_key)
 		# If we`ve got a empty or list with news 
 		if isinstance(response, list):
 			self.write(json.dumps(response))
@@ -328,17 +310,8 @@ class OutputOffersHandler(web.ManagementSystemHandler):
 		self.set_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
 	
 
-	def initialize(self, client_storage, client_balance, client_email, client_bridge):
-		"""Initializes:
-		- client for storage requests
-		- client for balance requests
-		- client for email requests
-		"""
-		self.client_storage = client_storage
-		self.client_balance = client_balance
-		self.client_email = client_email
-		self.client_bridge = client_bridge
-
+	def initialize(self):
+		self.account = Account()
 
 
 	async def get(self, public_key):
@@ -349,8 +322,7 @@ class OutputOffersHandler(web.ManagementSystemHandler):
 		# Sign-verifying functional
 		super().verify()
 		# Get coinid
-		account = await self.client_storage.request(method_name="getaccountdata",
-												public_key=public_key)
+		account = await self.account.getaccountdata(public_key=public_key)
 		if "error" in account.keys():
 			self.set_status(account["error"])
 			self.write(account)
@@ -361,16 +333,16 @@ class OutputOffersHandler(web.ManagementSystemHandler):
 		offers_collection = []
 		for coinid in settings.AVAILABLE_COIN_ID:
 
-			self.client_bridge.endpoint = settings.bridges[coinid]
+			self.account.blockchain.setendpoint(settings.bridges[coinid])
 
 			try:
-				offers = await self.client_bridge.request(method_name="get_buyer_offers", 
-											buyer_address=validator[coinid](public_key))
+				offers = await self.account.blockchain.getbuyeroffers( 
+								buyer_address=self.account.validator[coinid](public_key))
 				for offer in offers:
-					offer["type"] = ident_offer[offer["type"]]
+					offer["type"] = self.account.ident_offer[offer["type"]]
 	
-				storage_offers = await self.client_storage.request(method_name="getoffers",
-														coinid=coinid, public_key=public_key)
+				storage_offers = await self.account.getoffers(coinid=coinid, 
+																public_key=public_key)
 
 			except:
 				continue
@@ -393,17 +365,8 @@ class InputOffersHandler(web.ManagementSystemHandler):
 		self.set_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
 	
 
-	def initialize(self, client_storage, client_balance, client_email, client_bridge):
-		"""Initializes:
-		- client for storage requests
-		- client for balance requests
-		- client for email requests
-		"""
-		self.client_storage = client_storage
-		self.client_balance = client_balance
-		self.client_email = client_email
-		self.client_bridge = client_bridge
-
+	def initialize(self):
+		self.account = Account()
 
 
 	async def get(self, public_key):
@@ -422,16 +385,15 @@ class InputOffersHandler(web.ManagementSystemHandler):
 			raise tornado.web.Finish
 
 
-		account = await self.client_storage.request(method_name="getaccountdata",
-												public_key=public_key)
+		account = await self.account.getaccountdata(public_key=public_key)
 		if "error" in account.keys():
 			self.set_status(account["error"])
 			self.write(account)
 			raise tornado.web.Finish
 
 		if coinid in settings.AVAILABLE_COIN_ID:
-			self.client_bridge.endpoint = settings.bridges[coinid]
-		offers = await self.client_bridge.request(method_name="get_cid_offers", cid=cid)
+			self.account.blockchain.setendpoint(settings.bridges[coinid])
+		offers = await self.account.blockchain.getcidoffers(cid=cid)
 
 		if isinstance(offers, dict):
 			self.set_status(offers["error"])
@@ -439,10 +401,9 @@ class InputOffersHandler(web.ManagementSystemHandler):
 			raise tornado.web.Finish
 
 		for offer in offers:
-			offer["type"] = ident_offer[offer["type"]]
+			offer["type"] = self.account.ident_offer[offer["type"]]
 
-		storage_offers = await self.client_storage.request(method_name="getoffers", 
-															cid=cid, coinid=coinid)
+		storage_offers = await self.account.getoffers(cid=cid, coinid=coinid)
 
 		self.write(json.dumps(offers + storage_offers))
 
@@ -458,16 +419,8 @@ class ContentsHandler(web.ManagementSystemHandler):
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
 		self.set_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
 
-	def initialize(self, client_storage, client_balance, client_email, client_bridge):
-		"""Initializes:
-		- client for storage requests
-		- client for balance requests
-		- client for email requests
-		"""
-		self.client_storage = client_storage
-		self.client_balance = client_balance
-		self.client_email = client_email
-		self.client_bridge = client_bridge
+	def initialize(self):
+		self.account = Account()
 
 
 	async def get(self, public_key):
@@ -478,8 +431,9 @@ class ContentsHandler(web.ManagementSystemHandler):
 		# Sign-verifying functional
 		super().verify()
 
-		cids = await self.client_storage.request(method_name="getuserscontent",
-															public_key=public_key)
+		page = self.get_query_argument("page", 1)
+
+		cids = await self.account.getuserscontent(public_key=public_key)
 		
 		if isinstance(cids, dict):
 			if "error" in cids.keys():
@@ -491,17 +445,28 @@ class ContentsHandler(web.ManagementSystemHandler):
 
 		for coinid in cids:
 
-			if coinid in settings.AVAILABLE_COIN_ID:
-				self.client_bridge.endpoint = settings.bridges[coinid]
+			if list(cids.keys()).index(coinid) == len(cids) - 1:
+				paginator = Paginator(coinid=coinid, page=page, 
+					limit=(settings.LIMIT//len(cids))+(settings.LIMIT%len(cids)), cids=cids)
+			else:
+				paginator = Paginator(coinid=coinid, page=page, 
+									limit=settings.LIMIT // len(cids), cids=cids)
 
-				try:
-					contents = await self.client_bridge.request(method_name="getuserscontent", 
-																cids=json.dumps(cids[coinid]))
-				except:
-					continue
+			if coinid in settings.AVAILABLE_COIN_ID:
+				self.account.blockchain.setendpoint(settings.bridges[coinid])
+
+				contents = await self.account.blockchain.getuserscontent(
+												cids=json.dumps(cids[coinid]))
+		
 			container.extend(contents)
 
-		self.write(json.dumps(container))
+		response = {
+			"profiles":json.dumps(container),
+			}
+		
+		response.update(paginator.get_pages())
+	
+		self.write(json.dumps(response))
 
 
 	def options(self, public_key):

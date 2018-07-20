@@ -14,19 +14,11 @@ from utils.tornado_components import mongo
 from utils.qtum_utils.qtum import Qtum
 from utils.tornado_components.web import SignedTornadoClient, RobustTornadoClient
 from utils.bip32keys.r8_ethereum.r8_eth import R8_Ethereum
+from utils.models.account import Account
 
-
-client_bridge = SignedTornadoClient(settings.bridgeurl)
-client_email = RobustTornadoClient(settings.emailurl)
 
 client = MotorClient()
 
-ident_offers = {0: "read_access", 1: "write_access"}
-
-validator = {
-		"QTUM": lambda x: Qtum.public_key_to_hex_address(x),
-		"ETH": lambda x: R8_Ethereum.public_key_to_checksum_address(x)
-}
 
 coin_ids = settings.AVAILABLE_COIN_ID + ["PUT"]
 
@@ -55,6 +47,10 @@ def verify(func):
 
 
 class StorageTable(mongo.Table):
+
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.account = Account()
 	
 	#@verify
 	async def create_account(self, **params):
@@ -62,7 +58,7 @@ class StorageTable(mongo.Table):
 		"""
 		model = {
 		"unique": ["email", "public_key"],
-		"required": ("public_key", "device_id"),
+		"required": ("public_key",),
 		"default": {"count":len(settings.AVAILABLE_COIN_ID), 
 					"level":2, 
 					"news_count":0, 
@@ -98,25 +94,18 @@ class StorageTable(mongo.Table):
 		await self.collection.insert_one(row)
 		account = await self.collection.find_one({"public_key":row["public_key"]})
 
-		logging.debug("[+] -- Creating new wallet ")
 		# Create wallets
-		validator = {
-			"QTUM": lambda x: Qtum.public_key_to_hex_address(x),
-			"ETH": lambda x: R8_Ethereum.public_key_to_checksum_address(x),
-			"PUT": lambda x: Qtum.public_key_to_hex_address(x),
-
-		}
 
 		for coinid in settings.AVAILABLE_COIN_ID:
 			database = client[coinid]
 			wallet_collection = database[settings.WALLET]
 			await wallet_collection.insert_one({
 					"account_id": account["id"],
-					"wallet": validator[coinid](account["public_key"]) 
+					"wallet": self.account.validator[coinid](account["public_key"]) 
 				})
 			wallet = await wallet_collection.find_one({
 					"account_id": account["id"],
-					"wallet": validator[coinid](account["public_key"]) 
+					"wallet": self.account.validator[coinid](account["public_key"]) 
 				})
 
 		return account
@@ -206,11 +195,11 @@ class StorageTable(mongo.Table):
 
 		# Get address of content owner and check if it exists
 		if coinid in settings.AVAILABLE_COIN_ID:
-			client_bridge = SignedTornadoClient(settings.bridges[coinid])
+			self.account.blockchain.setendpoint(settings.bridges[coinid])
 		else:
 			return {"error":400, "reason": "Invalid coin ID"}
 
-		owneraddr = await client_bridge.request(method_name="ownerbycid",cid=cid)
+		owneraddr = await self.account.blockchain.ownerbycid(cid=cid)
 
 		# Get sellers account
 		seller = await getaccountbywallet(wallet=owneraddr)
@@ -221,14 +210,14 @@ class StorageTable(mongo.Table):
 		news_collection = self.database[settings.NEWS]
 
 		# Get sellers price
-		client_bridge.endpoint = settings.bridges[coinid]
+		self.account.blockchain.setendpoint(settings.bridges[coinid])
 		if offer_type == 1:
-			seller_price = await client_bridge.request(method_name="get_write_price", cid=cid)
+			seller_price = await self.account.blockchain.getwriteprice(cid=cid)
 		elif offer_type == 0:
-			seller_price = await client_bridge.request(method_name="get_read_price", cid=cid)
+			seller_price = await self.account.blockchain.getreadprice(cid=cid)
 
 		
-		row = {"offer_type": ident_offers[offer_type], 
+		row = {"offer_type": self.account.ident_offer[offer_type], 
 				"buyer_address":buyer_address,
 				"cid":cid,
 				"access_string":access_string,
@@ -630,8 +619,8 @@ class StorageTable(mongo.Table):
 					"reason":"Update content. Content with txid %s not found" % txid}
 
 		if content.get("hash"):
-			client = SignedTornadoClient(settings.bridges[coinid])
-			cid = await client.request(method_name="getcid", hash=content["hash"])
+			self.account.blockchain.setendpoint(settings.bridges[coinid])
+			cid = await self.account.blockchain.getcid(hash=content["hash"])
 
 			await content_collection.find_one_and_update({"txid":txid}, {"$set":{"cid":int(cid)}})
 			await content_collection.find_one_and_update({"txid":txid}, {"$set":{"hash":None}})
@@ -1037,6 +1026,24 @@ class StorageTable(mongo.Table):
 		return deals
 
 
+	async def log_source(self, **params):
+		""" Logging users request sources
+		"""
+		if params.get("message"):
+			params = json.loads(params.get("message", "{}"))
+		
+		if not params:
+			return {"error":400, "reason":"Missed required fields"}
+
+		# Insert new source if does not exists the one
+		client = MotorClient()
+		database = client[settings.DBNAME]
+		source_collection = database[settings.SOURCE]
+		await source_collection.update({"public_key":params.get("public_key")}, 
+						 {"$addToSet":{"source":params.get("source")}},
+						 upsert=True)
+
+		return {"result": "ok"}
 
 
 
@@ -1247,4 +1254,9 @@ async def changeowner(**params):
 @methods.add 
 async def sharecontent(**params):
 	result = await table.share_content(**params)
+	return result
+
+@methods.add 
+async def logsource(**params):
+	result = await table.log_source(**params)
 	return result

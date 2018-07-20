@@ -1,11 +1,16 @@
 from utils.tornado_components.web import RobustTornadoClient, SignedTornadoClient
 import settings
+from .genesis import GenesisClass
+import logging
 
 
-class Blockchain:
+class Blockchain(GenesisClass):
     """Make request to bridge
     """
     client_bridge = SignedTornadoClient(settings.bridgeurl)
+
+    def setendpoint(self, endpoint):
+        self.client_bridge.endpoint = endpoint
 
     async def lastblockcid(self, *args, **kwargs):
         result = await self.client_bridge.request(method_name="lastblockid", *args, **kwargs)
@@ -63,15 +68,15 @@ class Blockchain:
         result = await self.client_bridge.request(method_name="getprice", *args, **kwargs)
         return result
 
-    async def make_offer(self, *args, **kwargs):
+    async def makeoffer(self, *args, **kwargs):
         result = await self.client_bridge.request(method_name="make_offer", *args, **kwargs)
         return result
 
-    async def reject_offer(self, *args, **kwargs):
+    async def rejectoffer(self, *args, **kwargs):
         result = await self.client_bridge.request(method_name="reject_offer", *args, **kwargs)
         return result
 
-    async def add_review(self, *args, **kwargs):
+    async def addreview(self, *args, **kwargs):
         result = await self.client_bridge.request(method_name="add_review", *args, **kwargs)
         return result
 
@@ -87,16 +92,40 @@ class Blockchain:
         result = await self.client_bridge.request(method_name="getuserscontent", *args, **kwargs)
         return result
 
-    async def get_reviews(self, *args, **kwargs):
+    async def getreviews(self, *args, **kwargs):
         result = await self.client_bridge.request(method_name="get_reviews", *args, **kwargs)
         return result
 
-    async def get_offer(self, *args, **kwargs):
+    async def getoffer(self, *args, **kwargs):
         result = await self.client_bridge.request(method_name="get_offer", *args, **kwargs)
         return result
 
+    async def getbuyeroffers(self, *args, **kwargs):
+        result = await self.client_bridge.request(method_name="get_buyer_offers", *args, **kwargs)
+        return result
 
-class Balance:
+    async def getcidoffers(self, *args, **kwargs):
+        result = await self.client_bridge.request(method_name="get_cid_offers", *args, **kwargs)
+        return result
+
+    async def setwriteprice(self, *args, **kwargs):
+        result = await self.client_bridge.request(method_name="set_write_price", *args, **kwargs)
+        return result
+
+    async def setreadprice(self, *args, **kwargs):
+        result = await self.client_bridge.request(method_name="set_read_price", *args, **kwargs)
+        return result
+
+    async def getwriteprice(self, *args, **kwargs):
+        result = await self.client_bridge.request(method_name="get_write_price", *args, **kwargs)
+        return result
+
+    async def getreadprice(self, *args, **kwargs):
+        result = await self.client_bridge.request(method_name="get_read_price", *args, **kwargs)
+        return result
+
+
+class Balance(GenesisClass):
     """Make request to balance
     """
     client_balance = SignedTornadoClient(settings.balanceurl)
@@ -140,4 +169,18 @@ class Balance:
         result = await self.client_balance.request(method_name="confirmbalance",
                                               **params)
         return result
+
+
+
+class Mail(GenesisClass):
+
+    client_email = RobustTornadoClient(settings.emailurl)
+
+    async def sendmail(self, **params):
+        result = await self.client_email.request(method_name="sendmail", **params)
+        return result
+
+
+
+
 

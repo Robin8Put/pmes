@@ -1,7 +1,7 @@
 import string
 from random import choice
 
-from bip32keys.bip32addresses import Bip32Addresses
+from utils.bip32keys.bip32addresses import Bip32Addresses
 
 
 class Qtum(Bip32Addresses):

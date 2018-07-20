@@ -1,163 +1,16 @@
-from time import sleep
-from pprint import pprint
-import codecs
-from eth_abi import encode_abi, decode_abi
-from jsonrpcclient.http_client import HTTPClient
-from tornado_components.web import SignedHTTPClient
-from web3 import Web3, IPCProvider, HTTPProvider
-import os
 import binascii
+import codecs
+from time import sleep
+from eth_abi import decode_abi
+from web3 import Web3, IPCProvider
 from web3.middleware import geth_poa_middleware
+from BalanceCli import ClientBalance
+from StorgCli import ClientStorge
+from settings_file import *
 
-address_smart_contract = "0xBc9df82727513A5F14315883A048324A1fAA0788"
-# txid = "d67284450fa37b92aad9f902b262dbc078a53fc235be6faab9d989c4dcda36f3"
-# qtum_host_def = "http://%s:%s@127.0.0.1:8333" % ("qtumuser", "qtum2018")
-from_i = 2586585
+
+from_i = 2609344
 coin_id = "ETH"
-storghost = "http://192.168.1.199:8001/api/storage"
-balance_server = "http://192.168.1.199:8004/api/balance"
-home = os.path.expanduser("~")
-ipc_provider = "{}/.ethereum/rinkeby/geth.ipc".format(home)
-
-
-class ClientBalance():
-    """ Client for balance
-    """
-
-    def __init__(self, host=None):
-        self.host = host if host else balance_server
-        self.client = SignedHTTPClient(self.host)
-
-    def get_balance(self, uids=None, coin_id=coin_id):
-        # get balance for uid
-        if uids:
-            request = self.client.request(method_name="getbalance",
-                                          address=uids,
-                                          coinid=coin_id)
-            return request
-        else:
-            return {2: "Missing name uid"}
-
-    def inc_balance(self, uids=None, amount=.0, coin_id=coin_id):
-        # increment for uid
-        if uids:
-            request = self.client.request(method_name="incbalance",
-                                          address=uids,
-                                          amount=amount,
-                                          coinid=coin_id)
-            return request
-        else:
-            return {2: "Missing name uid"}
-
-    def dec_balance(self, uids=None, amount=.0, coin_id=coin_id):
-        # decrement for uid
-        if uids:
-            request = self.client.request(method_name="decbalance",
-                                          address=uids,
-                                          amount=amount,
-                                          coinid=coin_id)
-            return request
-        else:
-            return {2: "Missing name uid"}
-
-    def set_balance(self, uid, amount):
-        return self.client.set_balance(uid, amount)
-
-    def confirm_balance(self, txid=None, buyer_address=None, cid=None, coin_id=coin_id):
-        if txid and buyer_address and cid:
-            request = self.client.request(method_name="confirmbalance",
-                                          txid=txid,
-                                          cid=cid,
-                                          buyer_address=buyer_address,
-                                          coinid=coin_id)
-            return request
-        else:
-            return {2: "Missing name uid"}
-
-
-
-class ClientStorge():
-    def __init__(self, sotrg_host=None):
-        self.history_host = sotrg_host if sotrg_host else storghost
-        self.client = HTTPClient(self.history_host)
-
-    def insert_offer(self, cid=None, buyer_addr=None, price=None, coinid=coin_id):
-        if cid and buyer_addr and price:
-            try:
-                request = self.client.request(method_name="insertoffer",
-                                              cid=cid,
-                                              buyer_address=buyer_addr,
-                                              price=price,
-                                              coinid=coinid)
-                return request
-            except:
-                print("Erorr from insertoffer")
-        else:
-            return {2: "Missing parameter"}
-
-    def get_offer(self, cid=None, buyer_addr=None, coinid=coin_id):
-        if cid and buyer_addr:
-            try:
-                request = self.client.request(method_name="getoffer",
-                                              cid=cid,
-                                              buyer_address=buyer_addr,
-                                              coinid=coinid)
-                return request
-            except:
-                print("Erorr from getoffer")
-        else:
-            return {2: "Missing parameter"}
-
-    def update_offer(self, txid=None, coinid=coin_id):
-        if txid:
-            try:
-                request = self.client.request(method_name="updateoffer",
-                                              txid=txid,
-                                              coinid=coinid)
-                return request
-            except Exception as e:
-                print("Erorr from updateoffer", e)
-        else:
-            return {2: "Missing parameter"}
-
-    def mailed_confirm(self, cid=None, buyer_address=None, offer_type=None, price=None, coinid=coin_id):
-        if cid and buyer_address and price:
-            try:
-                request = self.client.request(method_name="mailedconfirm",
-                                              cid=cid,
-                                              buyer_address=buyer_address,
-                                              price=price,
-                                              offer_type=offer_type,
-                                              coinid=coinid)
-                return request
-            except Exception as e:
-                return e
-        else:
-            return {2: "Missing parameter"}
-
-    def update_users_content(self, txid=None, coinid=coin_id):
-        if txid:
-            try:
-                request = self.client.request(method_name="updateuserscontent",
-                                              txid=txid,
-                                              coinid=coinid)
-                return request
-            except:
-                print("Erorr from updateuserscontent")
-        else:
-            return {2: "Missing parameter"}
-
-    def update_review(self, txid=None, coinid=coin_id):
-        if txid:
-            try:
-                request = self.client.request(method_name="updatereview",
-                                              txid=txid,
-                                              coinid=coinid)
-                return request
-            except:
-                print("Erorr from updatereview")
-        else:
-            return {2: "Missing parameter"}
 
 
 class SearchTransaction():
@@ -197,28 +50,16 @@ class SearchTransaction():
                                    self.update_review],
                       }
         list_data = []
-        # hex_block = self.qtum.getrawtransaction(txid)
-        # decode_block = self.qtum.decoderawtransaction(hex_block)
-        # pprint(decode_block)
-        # vouts = decode_block["vout"]
         asm_data = vouts
         hex_address = asm_data[:8]
         data = asm_data[8:]
         signatures_list = signatures[hex_address]
         signatures_list_type = signatures_list[1]
-        # signatures_list_text = signatures_list[0]
-        # print(data, signatures_list_type)
         decode = self.abi_to_params(data, signatures_list_type)
         new_decode = self.change_decode(signatures_list_type, decode)
         data_write = [txid] + new_decode
-        # print(data_write)
         method = signatures_list[2]
         method_call = method(data_write)
-        # print(method_call)
-        # print(map(signatures_list[2], data))
-        # print(data)
-        # decode_string = signatures_list_text.format(new_decode)
-        # print(decode_string)
         list_data += [data]
         return list_data
 
@@ -243,8 +84,6 @@ class SearchTransaction():
                 block = self.from_block
             block = self.web3.eth.getBlock(block)
             transactions = block.transactions
-            # print(transactions)
-            # list_tx = block["tx"]
             return transactions
         except Exception as e:
             pass
@@ -254,14 +93,12 @@ class SearchTransaction():
         try:
             if not transaction_blocks:
                 transaction_blocks = self.get_transaction_in_block()
-                # print(transaction_blocks)
             transaction_list = []
             for transaction_block in transaction_blocks:
                 try:
                     transaction_data = dict(self.web3.eth.getTransaction(transaction_block))
                     transaction_block = binascii.hexlify(transaction_block).decode('utf-8')
                     transaction_data["tx_hash"] = transaction_block
-                    # print(transaction_data)
                     transaction_list += [transaction_data]
                 except Exception as e:
                     print(e)
@@ -279,21 +116,11 @@ class SearchTransaction():
                     pass
             for encoded_data in encoded_datas:
                 try:
-                    # encoded_data = encoded_datas[2]
-                    # encoded_data = encoded_data[0]
-                    # print(encoded_data)
-                    # transaction_data = self.qtum.decoderawtransaction(encoded_data)
-                    # pprint(encoded_data)
-                    # print(transaction_data)
-                    # vin = transaction_data["vin"]
-                    # print(vin)
-                    # print(encoded_data)
                     to = encoded_data["to"]
                     if to == address_smart_contract:
                         txid = encoded_data["tx_hash"]
                         vout = encoded_data["input"][2:]
                         result = self.search_transaction(txid, vout)
-                        # print(result)
                 except:
                     pass
         except:
@@ -302,10 +129,7 @@ class SearchTransaction():
     def new_cid(self, data):
         tx_hash = data[0]
         cid = data[1]
-        # print(tx_hash)
-        # txid = binascii.hexlify(tx_hash).decode('utf-8')
-        # print(tx_hash)
-        result = self.client.update_users_content(txid=tx_hash)
+        result = self.client.update_users_content(txid=tx_hash, coin_id=coin_id)
 
     def new_offer(self, data):
         txid = data[0]
@@ -313,18 +137,18 @@ class SearchTransaction():
         address = data[2]
         offer_type = data[3]
         price = data[4]
-        self.client.update_offer(txid)
-        result = self.client.mailed_confirm(cid=cid, buyer_address=address, offer_type=offer_type, price=price)
+        self.client.update_offer(txid, coin_id=coin_id)
+        result = self.client.mailed_confirm(cid=cid, buyer_address=address, offer_type=offer_type, price=price, coin_id=coin_id)
 
     def confirm_balance(self, data):
         tx_hash = data[0]
         cid = data[1]
         address = data[2]
-        result = self.balance.confirm_balance(txid=tx_hash, cid=cid, buyer_address=address)
+        result = self.balance.confirm_balance(txid=tx_hash, cid=cid, buyer_address=address, coin_id=coin_id)
 
     def update_review(self, data):
         txid = data[0]
-        self.client.update_review(txid)
+        result = self.client.update_review(txid=txid, coin_id=coin_id)
 
     def conection_stor(self):
         while True:
@@ -348,8 +172,4 @@ class SearchTransaction():
 
 if __name__ == "__main__":
     client = SearchTransaction()
-    search_transaction = client.run(from_i, address_smart_contract)
-    #print(search_transaction)
-
-    # bal = ClientBalance()
-    # print(bal.confirm_balance("99bd6b923fe517c5dde0096c32b64cc6178210993ff36858eb28fe3fa49f60d3", "e7c5aac6416440cafb65a8f92e8bb495bb26e58a", 14))
+    search_transaction = client.run(from_i, address_smart_contract_eth)

@@ -22,6 +22,12 @@ class EthereumBlockchain(BlockchainHandler):
     def from_http_provider(cls, http_provider):
         return cls(Web3(HTTPProvider(http_provider)))
 
+    def reload_http_provider(self, http_provider):
+        self.w3 = Web3(HTTPProvider(http_provider))
+
+    def reload_ipc_path(self, ipc_path):
+        self.w3 = Web3(IPCProvider(ipc_path))
+
     def get_last_block_hash(self):
         return self.encode_hex(self.w3.eth.getBlock('latest').hash)[0].decode()
 

@@ -17,6 +17,9 @@ class R8Storage:
     def init_no_storage(cls):
         return cls(NoStorage())
 
+    def reload_http_provider(self, host, port):
+        self.handler.reload_http_provider(host, port)
+
     def download_content(self, hash):
         return self.handler.download_data(hash)
 
