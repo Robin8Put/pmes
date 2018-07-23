@@ -903,6 +903,7 @@ The following is a description of the API-methods:
 * **URL params**
 
     `cid=[string]` - profile identifier
+
     `coinid=[string]` - blockchain identifier (ETH, QTUM)
 
 
