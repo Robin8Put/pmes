@@ -473,7 +473,7 @@ The following is a description of the API-methods:
             "timestamp": [string],
             "cid": [integer],                   # profiles identifier
             "coinid": [string],                 # type of blockchain (ETH, QTUM)
-            "price": [integer],                 # read access price (optional, sellers price by    default)
+            "price": [integer],                 # read access price (optional, sellers price by default)
             "buyer_access_string": [string]     # now it is user's public key
         },
         "signature": [string]
@@ -521,7 +521,7 @@ The following is a description of the API-methods:
             "buyer_pubkey": [string],           # buyer public key
             "seller_access_string": [string],
             "access_type": [string],            # write access or read access
-            "coinid": [string]                  # type of blockchain (ETH, QTUM) 
+            "coinid": [string]                  # type of blockchain (ETH, QTUM)
         },
         "signature": [string]
     }
@@ -905,7 +905,6 @@ The following is a description of the API-methods:
     `cid=[string]` - profile identifier
 
     `coinid=[string]` - type of blockchain (ETH, QTUM)
-
 
 * **Body params**
 
