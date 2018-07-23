@@ -328,7 +328,7 @@ The following is a description of the API-methods:
 
 * **URL:** `/api/blockchain/[cid]/description`
 
-* **Method:** `POST`
+* **Method:** `PUT`
 
 * **URL params**
 
@@ -344,7 +344,8 @@ The following is a description of the API-methods:
         "message": {
             "timestamp": [string],
             "cid": [integer],
-            "description": [string]
+            "description": [string],
+            "coinid": [string]
         },
         "signature": [string]
     }
@@ -370,7 +371,7 @@ The following is a description of the API-methods:
 
 * **URL:** `/api/blockchain/[cid]/price`
 
-* **Method:** `POST`
+* **Method:** `PUT`
 
 * **URL params**
 
@@ -380,13 +381,17 @@ The following is a description of the API-methods:
 
     `[json]`
 
+    `price` represented as `real_price * 10^8`. Where `real_price` could be `float`.
+
 ```bash
     {
         "public_key": [string],
         "message": {
             "timestamp": [string],
             "cid": [integer],
-            "price": [integer]
+            "price": [integer],			# price * 10^8
+            "coinid": [string] 			# blockchain identifier (ETH, QTUM)
+            "access_type": [string] (read_access, write_access)
         },
         "signature": [string]
     }
@@ -400,7 +405,7 @@ The following is a description of the API-methods:
     {
         "cid": [integer],                           # profiles cid 
         "write_access" or "read_access": [integer]  # new profiles write access or read access price
-        "coinid": [string]                          # blockchain identifier
+        "coinid": [string]                          # blockchain identifier (ETH, QTUM)
     }
 ```
 
@@ -424,8 +429,8 @@ The following is a description of the API-methods:
         "message": {
             "timestamp": [string],
             "cid": [integer],                   # profiles identifier
-            "coinid": [string],                 # blockchain identifier
-            "price": [integer],                 # write access price (optional, sellers price by    default)
+            "coinid": [string],                 # blockchain identifier (ETH, QTUM)
+            "price": [integer],                 # write access price (optional, sellers price by default)
             "buyer_access_string": [string]     # now it is user's public key
         },
         "signature": [string]
@@ -467,7 +472,7 @@ The following is a description of the API-methods:
         "message": {
             "timestamp": [string],
             "cid": [integer],                   # profiles identifier
-            "coinid": [string],                 # blockchain identifier
+            "coinid": [string],                 # blockchain identifier (ETH, QTUM)
             "price": [integer],                 # read access price (optional, sellers price by    default)
             "buyer_access_string": [string]     # now it is user's public key
         },
@@ -516,7 +521,7 @@ The following is a description of the API-methods:
             "buyer_pubkey": [string],           # buyer public key
             "seller_access_string": [string],
             "access_type": [string],            # write access or read access
-            "coinid": [string]                  # blockchain identifier 
+            "coinid": [string]                  # blockchain identifier (ETH, QTUM) 
         },
         "signature": [string]
     }
@@ -624,13 +629,14 @@ The following is a description of the API-methods:
 
 ## Get all PMES profiles from the blockchain
 
-* **URL:** `/api/blockchain/profile`
+* **URL:** `/api/blockchain/profile?page=`
 
 * **Method:** `GET`
 
 * **URL params**
 
-    None
+
+    "page": [integer]
 
 * **Body params**
 
@@ -647,7 +653,7 @@ The following is a description of the API-methods:
         [
             {
                 "cid": [integer],            # profile identifier
-                "coinid": [string],          # blockchain identifier
+                "coinid": [string],          # blockchain identifier (ETH, QTUM)
                 "description": [string],     # profile description
                 "owneraddr": [string],       # owner address
                 "read_access": [integer],    # profile read access price * 10^8
@@ -663,11 +669,15 @@ The following is a description of the API-methods:
 
 ## Get all profiles which posted user
 
-* **URL:** `/api/accounts/[public_key]/profiles`
+* **URL:** `/api/accounts/[public_key]/profiles?page=`
 
 * **Method:** `GET`
 
 * **URL params**
+
+    "page": [integer]
+
+* **Body params**
 
     `[json]`
 
@@ -681,10 +691,6 @@ The following is a description of the API-methods:
     }
 ```
 
-* **Body params**
-
-    None
-
 * **Sample response**
 
     `[json]`
@@ -697,7 +703,7 @@ The following is a description of the API-methods:
             [
                 {
                     "cid": [integer],            # profile identifier
-                    "coinid": [string]           # blockchain identifier
+                    "coinid": [string]           # blockchain identifier (ETH, QTUM)
                     "description": [string],     # profile description
                     "owneraddr": [string],       # owner address
                     "read_access": [integer],    # profile read access price * 10^8
@@ -748,7 +754,7 @@ The following is a description of the API-methods:
             "price": [integer],                 # offers price
             "seller_access_string": [integer],  # profile price * 10^8
             "type": [string],                   # offers type
-            "coinid": [string],                 # blockchain identifier
+            "coinid": [string],                 # blockchain identifier (ETH, QTUM)
             "status": [integer],                # offer status
             "seller_public_key": [string]       # seller public key
         },
@@ -777,7 +783,7 @@ The following is a description of the API-methods:
         "message": {
             "cid": [integer],
             "timestamp": [string],
-            "coinid": [string]
+            "coinid": [string]		# blockchain identifier (ETH, QTUM)
         },
         "signature": [string]
     }
@@ -802,7 +808,7 @@ The following is a description of the API-methods:
             "price": [integer],                 # offers price
             "seller_access_string": [integer],  # content price * 10^8
             "type": [string],                   # offers type
-            "coinid": [string],                 # blockchain identifier
+            "coinid": [string],                 # blockchain identifier (ETH, QTUM)
             "status": [integer],                # offer status
             "seller_public_key": [string]       # sellers public key
         },
@@ -834,7 +840,7 @@ The following is a description of the API-methods:
     [
         {
             "cid": [integer],            # profile identifier
-            "coinid": [string]           # blockchain identifier
+            "coinid": [string]           # blockchain identifier (ETH, QTUM)
             "description": [string],     # profile description
             "owneraddr": [string],       # owner address
             "read_access": [integer],    # profile read access price * 10^8
@@ -865,7 +871,7 @@ The following is a description of the API-methods:
             "message": {
                 "cid": [integer],       # profile identifier
                 "timestamp": [string],
-                "coinid": [string],     # blockchain identifier
+                "coinid": [string],     # blockchain identifier (ETH, QTUM)
                 "review": [string],     # review
                 "rating": [integer]     # profiles rating in range from 1 to 5
             },
@@ -896,7 +902,9 @@ The following is a description of the API-methods:
 
 * **URL params**
 
-    None
+    `cid=[string]` - profile identifier
+
+    `coinid=[string]` - blockchain identifier (ETH, QTUM)
 
 
 * **Body params**
