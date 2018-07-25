@@ -236,7 +236,7 @@ The following is a description of the API-methods:
 
 ## Post profile to the blockchain
 
-* **URL:** `/api/blockchain/[public_key]/profile`
+* **URL:** `/api/blockchain/[public_key]/coinid/profile`
 
 * **Method:** `POST`
 
