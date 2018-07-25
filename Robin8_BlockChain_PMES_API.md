@@ -236,13 +236,15 @@ The following is a description of the API-methods:
 
 ## Post profile to the blockchain
 
-* **URL:** `/api/blockchain/[public_key]/profile`
+* **URL:** `/api/blockchain/[public_key]/[coinid]/profile`
 
 * **Method:** `POST`
 
 * **URL params**
 
-    None
+    `public_key=[string]`
+
+    `coinid=[string]`
 
     `price` represented as `real_price * 10^8`. Where `real_price` (price of profile) could be `float`.
 
@@ -288,6 +290,7 @@ The following is a description of the API-methods:
 * **URL params**
 
     `cid=[string]`
+
     `coinid=[string]`
 
 * **Body params**
