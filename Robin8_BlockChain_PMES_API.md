@@ -76,7 +76,7 @@ The following is a description of the API-methods:
 
     **Optional:**
 
-    `phone` and `email`
+    `email` and `phone`
 
     **Required:**
 
@@ -101,28 +101,40 @@ The following is a description of the API-methods:
 
     If such account already exists user receives a `Unique violation error`.
 
+    There are the following user's balances present in the user's wallets: 
+
+    - `amount` - an active amount of user's balance.
+
+    - `deposit` - a frozen amount. When a user posted an offer to buy some content with price is 100 tokens, these tokens will be frozen and displays as "deposit" field.
+
+    - `unconfirmed` - is the number of coins/tokens that is not confirmed in the blockchain yet. When transaction will be confirmed, this number of coins/tokens will be shown in the "amount" field.
+
+    Therefore, when a buyer pays for buying profile from the seller the following steps happen:
+
+    1) buyer sends tokens to the seller and this tokens will become frozen and will be shown in the `deposit` field
+
+    2) seller receive tokens and they will be shown in the `unconfirmed` field until transaction will be confirmed in the blockchain
+
     `balance` represented as `real_user_balance * 10^8`. Where `real_user_balance` could be `float`.
 
-    After successful account creation user receives the response with following structure:
+    After successful account creation user receives the response with the following structure:
 
 ```bash
     {
         "count": [integer],         # number of user's wallets
         "device_id": [string],
         "email": [string],
-        "href": [string],           # link to user account
-        "level": [integer],         # user account level (2 - when balance is zero ( by default), 3 - when balance is not null)
+        "href": [string],           # link to the user account
+        "level": [integer],         # user account level (2 - when balance is zero (by default), 3 - when balance is not null)
         "public_key": [string],
         "news_count": [integer],    # number of news about offers to buy profile (0 by default)
-        "id": [integer],            # user's identifier
+        "id": [integer],            # identifier of the user account
         "wallets": [string],        # list of dicts with user's wallets addresses
-            "address": [string],                # wallet address
-            "amount": 0 [integer],              # current balance
-            "deposit": 0 [integer],             # freezed balance
-            "unconfirmed": 0 [integer],         # unconfirmed balance
-            "coinid": [string]                  # type of blockchain (ETH, QTUM)
-
-
+            "address": [string],                # wallet address to which user could refill coins/tokens
+            "amount": 0 [integer],              # an active amount of coins/tokens
+            "deposit": 0 [integer],             # a frozen amount of coins/tokens
+            "unconfirmed": 0 [integer],         # is the number of coins/tokens that is not confirmed in the blockchain yet
+            "coinid": [string]                  # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
     }
 ```
 
@@ -168,13 +180,11 @@ The following is a description of the API-methods:
         "news_count": [integer],    # number of news about offers to buy profile (0 by default)
         "id": [integer],            # user's identifier
         "wallets": [string],        # list of dicts with user's wallets addresses
-            "address": [string],                # wallet address
-            "amount": 0 [integer],              # current balance
-            "deposit": 0 [integer],             # freezed balance
-            "unconfirmed": 0 [integer],         # unconfirmed balance
-            "coinid": [string]                  # type of blockchain (ETH, QTUM)
-
-
+            "address": [string],                # wallet address to which user could refill coins/tokens
+            "amount": 0 [integer],              # an active amount of coins/tokens
+            "deposit": 0 [integer],             # a frozen amount of coins/tokens
+            "unconfirmed": 0 [integer],         # is the number of coins/tokens that is not confirmed in the blockchain yet
+            "coinid": [string]                  # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
     }
 ```
 
@@ -221,7 +231,7 @@ The following is a description of the API-methods:
             "buyer_pubkey": [string],   # buyer public key
             "buyer_price": [integer],   # proposed buyer price * 10^8
             "seller_price": [integer],  # profiles price * 10^8
-            "coinid": [string]          # type of blockchain (ETH, QTUM)
+            "coinid": [string]          # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
             "offer_type": [string]      # offers type
         }
     ]
@@ -306,7 +316,7 @@ The following is a description of the API-methods:
 ```bash
     {   
         "cid": [integer],                  # profile identifier
-        "coinid": [string],                # type of blockchain (ETH, QTUM)
+        "coinid": [string],                # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
         "description": [string],           # profile description
         "owner": [string],                 # owner public key
         "owneraddr": [string],             # owner address
@@ -363,7 +373,7 @@ The following is a description of the API-methods:
         "cid": [integer],         # profiles cid 
         "description": [string],  # profiles new description
         "owneraddr": [string],    # owner address
-        "coinid": [string]        # type of blockchain (ETH, QTUM)
+        "coinid": [string]        # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
     }
 ``` 
 
@@ -393,7 +403,7 @@ The following is a description of the API-methods:
             "timestamp": [string],
             "cid": [integer],
             "price": [integer],			# price * 10^8
-            "coinid": [string] 			# type of blockchain (ETH, QTUM)
+            "coinid": [string] 			# type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
             "access_type": [string] (read_access, write_access)
         },
         "signature": [string]
@@ -408,7 +418,7 @@ The following is a description of the API-methods:
     {
         "cid": [integer],                           # profiles cid 
         "write_access" or "read_access": [integer]  # new profiles write access or read access price
-        "coinid": [string]                          # type of blockchain (ETH, QTUM)
+        "coinid": [string]                          # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
     }
 ```
 
@@ -432,7 +442,7 @@ The following is a description of the API-methods:
         "message": {
             "timestamp": [string],
             "cid": [integer],                   # profiles identifier
-            "coinid": [string],                 # type of blockchain (ETH, QTUM)
+            "coinid": [string],                 # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
             "price": [integer],                 # write access price (optional, sellers price by default)
             "buyer_access_string": [string]     # now it is user's public key
         },
@@ -475,7 +485,7 @@ The following is a description of the API-methods:
         "message": {
             "timestamp": [string],
             "cid": [integer],                   # profiles identifier
-            "coinid": [string],                 # type of blockchain (ETH, QTUM)
+            "coinid": [string],                 # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
             "price": [integer],                 # read access price (optional, sellers price by default)
             "buyer_access_string": [string]     # now it is user's public key
         },
@@ -524,7 +534,7 @@ The following is a description of the API-methods:
             "buyer_pubkey": [string],           # buyer public key
             "seller_access_string": [string],
             "access_type": [string],            # write access or read access
-            "coinid": [string]                  # type of blockchain (ETH, QTUM)
+            "coinid": [string]                  # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
         },
         "signature": [string]
     }
@@ -656,7 +666,7 @@ The following is a description of the API-methods:
         [
             {
                 "cid": [integer],            # profile identifier
-                "coinid": [string],          # type of blockchain (ETH, QTUM)
+                "coinid": [string],          # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
                 "description": [string],     # profile description
                 "owneraddr": [string],       # owner address
                 "read_access": [integer],    # profile read access price * 10^8
@@ -706,7 +716,7 @@ The following is a description of the API-methods:
             [
                 {
                     "cid": [integer],            # profile identifier
-                    "coinid": [string]           # type of blockchain (ETH, QTUM)
+                    "coinid": [string]           # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
                     "description": [string],     # profile description
                     "owneraddr": [string],       # owner address
                     "read_access": [integer],    # profile read access price * 10^8
@@ -757,7 +767,7 @@ The following is a description of the API-methods:
             "price": [integer],                 # offers price
             "seller_access_string": [integer],  # profile price * 10^8
             "type": [string],                   # offers type
-            "coinid": [string],                 # type of blockchain (ETH, QTUM)
+            "coinid": [string],                 # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
             "status": [integer],                # offer status
             "seller_public_key": [string]       # seller public key
         },
@@ -786,7 +796,7 @@ The following is a description of the API-methods:
         "message": {
             "cid": [integer],
             "timestamp": [string],
-            "coinid": [string]		# type of blockchain (ETH, QTUM)
+            "coinid": [string]		# type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
         },
         "signature": [string]
     }
@@ -811,7 +821,7 @@ The following is a description of the API-methods:
             "price": [integer],                 # offers price
             "seller_access_string": [integer],  # content price * 10^8
             "type": [string],                   # offers type
-            "coinid": [string],                 # type of blockchain (ETH, QTUM)
+            "coinid": [string],                 # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
             "status": [integer],                # offer status
             "seller_public_key": [string]       # sellers public key
         },
@@ -843,7 +853,7 @@ The following is a description of the API-methods:
     [
         {
             "cid": [integer],            # profile identifier
-            "coinid": [string]           # type of blockchain (ETH, QTUM)
+            "coinid": [string]           # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
             "description": [string],     # profile description
             "owneraddr": [string],       # owner address
             "read_access": [integer],    # profile read access price * 10^8
@@ -874,7 +884,7 @@ The following is a description of the API-methods:
             "message": {
                 "cid": [integer],       # profile identifier
                 "timestamp": [string],
-                "coinid": [string],     # type of blockchain (ETH, QTUM)
+                "coinid": [string],     # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
                 "review": [string],     # review
                 "rating": [integer]     # profiles rating in range from 1 to 5
             },
@@ -907,7 +917,7 @@ The following is a description of the API-methods:
 
     `cid=[string]` - profile identifier
 
-    `coinid=[string]` - type of blockchain (ETH, QTUM)
+    `coinid=[string]` - type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
 
 * **Body params**
 
