@@ -32,19 +32,66 @@ There are the following modules in the src folder:
 
 `index.html` import all these modules.
 
-`encryptProfile` and `decryptProfile` functions was used for few cases:
-1. encrypt public and private keys before storing them to the keystore file
-Keystore file should contains encrypted public and private keys.
-In this case
-`content` - is the following JSON string:
-```bash
-{
-"pub_key": "qdjdfbfjbfh",
-"priv_key": "sssfsffef"
-}
-```
-`private_key` - is password for encrypt data to the keystore file
-2. encrypt profile before writing it to the blockchain:
-`content` - is profile
-`private_key` - is user's private key
+## Encryption details
 
+`encryptProfile` and `decryptProfile` functions was used for few cases:
+
+1. encrypt public and private keys before storing them to the keystore file.
+
+    Keystore file should contains encrypted public and private keys.
+
+    In this case:
+
+    `private_key` - is password for encrypt data to the keystore file
+
+    `content` - is the following JSON string:
+
+```bash
+    {
+        "pub_key": "qdjdfbfjbfh",
+        "priv_key": "sssfsffef"
+    }
+```
+
+2. encrypt profile before writing it to the blockchain:
+
+    `private_key` - is user's private key
+
+    `content` - is profile
+
+## Installation
+
+Open terminal and run the following commands in the js_client project folder:
+
+```bash
+    sudo apt install npm
+    npm install
+    sudo npm install -g webpack webpack-cli
+    webpack --config webpack.config.js
+```
+
+## Running
+
+For running JS client make the following actions:
+
+- open `index.html` in the browser
+- click on the right button
+- choose "Inspect element" item
+- open "Console" tab
+- expand "Object" item
+
+Then you will see the all available commands:
+
+```bash
+    decryptPassword
+    decryptProfile
+    decryptProfileByHash
+    deriveQtumAddress
+    doGenerate
+    doSign
+    doVerify
+    encryptPassword
+    encryptProfile
+    fromMnemonic
+    ...
+```
