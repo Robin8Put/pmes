@@ -11,6 +11,7 @@ domain = "http://pdms2.robin8.io"
 
 host = "http://127.0.0.1"
 
+prepport = 7999
 pmesport = 8000
 storageport = 8001
 bridgeport = 8003
@@ -19,6 +20,7 @@ balanceport = 8004
 historyport = 8005
 emailport = 8006
 
+prephost = "%s:%s" % (host, prepport)
 pmeshost = "%s:%s" % (host, pmesport)
 storagehost = "%s:%s" % (host, storageport)
 bridgehost = "%s:%s" % (host, bridgeport)
@@ -26,6 +28,7 @@ ethhost = "%s:%s" % (host, ethport)
 balancehost = "%s:%s" % (host, balanceport)
 historyhost = "%s:%s" % (host, historyport)
 emailhost = "%s:%s" % (host, emailport)
+withdrawhost = "http://localhost:8011/api/withdraw"
 
 
 
@@ -65,12 +68,13 @@ ENDPOINTS = {
 	# GET/POST blockchain content
 	"content": r"/api/blockchain/([a-zA-Z0-9]+?)/([a-zA-Z0-9]+?)/profile",    
 
-
+	"withdraw": r"/api/accounts/withdraw",
 	"history": r"/api/history",
 	"balance": r"/api/balance",
 	"bridge": r"/api/bridge",
 	"storage": r"/api/storage",
-	"email": r"/api/email"
+	"email": r"/api/email",
+	"bulk": r"/api/bulk"
 }
 
 storageurl = "%s%s" % (storagehost, ENDPOINTS["storage"])
@@ -99,8 +103,11 @@ CONTENT = "content"
 REVIEW = "review"
 DEAL = "deal"
 SOURCE = "source"
+HISTORY = "history"
 
-AVAILABLE_COIN_ID = ["QTUM", "ETH"]
+AVAILABLE_COIN_ID = ["BTCTEST", "LTCTEST", "ETH", "QTUMTEST", "PUTTEST"]
+
+AVAILABLE_COIN_TYPES = ["ETH", "QTUM"]
 
 qtum_settings_file = os.path.join(BASE_DIR, "pdms/qtum_bridge/qtum_settings.json")
 

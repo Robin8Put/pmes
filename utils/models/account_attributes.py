@@ -140,36 +140,53 @@ class Balance(GenesisClass):
                                                    **params)
         return result
 
-    async def incbalance(self, **params):
-        result = await self.client_balance.request(method_name="incbalance",
+    async def add_active(self, **params):
+        result = await self.client_balance.request(method_name="add_active",
                                                    **params)
         return result
 
-    async def decbalance(self, **params):
-        result = await self.client_balance.request(method_name="decbalance",
+    async def sub_active(self, **params):
+        result = await self.client_balance.request(method_name="sub_active",
                                                    **params)
         return result
 
-    async def getbalance(self, **params):
-        result = await self.client_balance.request(method_name="getbalance",
+    async def get_wallets(self, **params):
+        result = await self.client_balance.request(method_name="get_wallets",
                                                    **params)
         return result
 
-    async def depositbalance(self, **params):
-        result = await self.client_balance.request(method_name="depositbalance",
+    async def freeze(self, **params):
+        result = await self.client_balance.request(method_name="freeze",
                                               **params)
         return result
 
-    async def undepositbalance(self, **params):
-        result = await self.client_balance.request(method_name="undepositbalance",
+    async def unfreeze(self, **params):
+        result = await self.client_balance.request(method_name="unfreeze",
+                                              **params)
+        return result
+
+    async def sub_frozen(self, **params):
+        result = await self.client_balance.request(method_name="sub_frozen",
+                                              **params)
+        return result
+
+    async def add_frozen(self, **params):
+        result = await self.client_balance.request(method_name="add_frozen",
                                               **params)
         return result
 
     async def confirmbalance(self, **params):
-        result = await self.client_balance.request(method_name="confirmbalance",
+        result = await self.client_balance.request(method_name="sub_frozen",
+                                              **params)
+
+        result = await self.client_balance.request(method_name="add_active",
                                               **params)
         return result
 
+    async def registerdeal(self, **params):
+        result = await self.client_balance.request(method_name="registerdeal",
+                                              **params)
+        return result
 
 
 class Mail(GenesisClass):

@@ -214,10 +214,13 @@ class Bridge(object):
 
 
     async def ownerbycid(*args, **kwargs):
+        logging.debug("\n\n")
+        logging.debug("[+] -- Owner by cid debugging. ")
         kwargs = json.loads(kwargs.get("message"))
 
         cid = int(kwargs.get("cid", 0))
         r8_sc = get_contract_handler()
+        logging.debug(cid)
 
         owner_hex_addr = r8_sc.getOwner(cid)
         if not owner_hex_addr:

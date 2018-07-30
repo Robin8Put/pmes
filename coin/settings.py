@@ -3,10 +3,8 @@ import sys
 import logging
 
 
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
-
 
 
 host = "http://127.0.0.1"
@@ -26,12 +24,11 @@ historyhost = "%s:%s" % (host, historyport)
 emailhost = "%s:%s" % (host, emailport)
 
 
-
 ENDPOINTS = {
 	#Public API requests
 
 	# POST new account
-	"ams": r"/api/accounts",       
+	"ams": r"/api/accounts",
 	#GET accounts data
 	"account": r"/api/accounts/([a-zA-Z0-9]+?)",
 	# GET news
@@ -49,7 +46,7 @@ ENDPOINTS = {
 
 	# json-rpc requests
 	"blockchain": r"/api/blockchain",
-	"allcontent": r"/api/blockchain/content", 
+	"allcontent": r"/api/blockchain/content",
 	"history": r"/api/history",
 	"balance": r"/api/balance",
 	"bridge": r"/api/bridge",

@@ -1,56 +1,28 @@
+import os
+import sys
 from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
-from tornado_components.web import SignedHTTPClient
-from settings import *
+from BalanceCli import ClientBalance, TablePars
 
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-balance_server = balanceurl
+from utils.tornado_components.web import SignedHTTPClient
+
+balance_server = "http://localhost:8004/api/balance"
 qtum_server = "http://%s:%s@127.0.0.1:8333" % ("qtumuser", "qtum2018")
-coin_id = "QTUM"
-
-
-class ClientBalance():
-    """ Client for balance
-    """
-    def __init__(self, host=None):
-        self.host = host if host else balance_server
-        self.client = SignedHTTPClient(self.host)
-
-    def get_balance(self, uids=None, coin_id=coin_id):
-        # get balance for uid
-        if uids:
-            request = self.client.request(method_name="getbalance", address=uids, coinid=coin_id)
-            return request
-        else:
-            return {2: "Missing name uid"}
-
-    def inc_balance(self, uids=None, amount=.0, coin_id=coin_id):
-        # increment for uid
-        if uids:
-            request = self.client.request(method_name="incbalance", address=uids, amount=amount, coinid=coin_id)
-            return request
-        else:
-            return {2: "Missing name uid"}
-
-    def dec_balance(self, uids=None, amount=.0, coin_id=coin_id):
-        # decrement for uid
-        if uids:
-            request = self.client.request(method_name="decbalance", address=uids, amount=amount, coinid=coin_id)
-            return request
-        else:
-            return {2: "Missing name uid"}
-
-    def set_balance(self, uid, amount):
-        return self.client.set_balance(uid, amount)
+coin_id = "QTUMTEST"
 
 
 class ParsingBlock():
     """ Parsing all transaction in all blocks
     """
-    def __init__(self, from_block=0, to_block=-1):
+
+    def __init__(self, from_block=0, to_block=-1, db_host=None, db_name=None):
         self.from_block = from_block
         self.to_block = to_block
+        self.coinid = coin_id
         self.qtum = AuthServiceProxy(qtum_server)
-        self.client = ClientBalance()
+        self.client = ClientBalance(balance_server)
+        self.db = TablePars(db_host, db_name)
 
     def block_hash_num(self, block=None):
         # get block hash
@@ -109,10 +81,9 @@ class ParsingBlock():
                             value_dec = vout_prev_data["value"]
                             script_pub_key = vout_prev_data["scriptPubKey"]
                             addresses = script_pub_key["addresses"]
-                            value_int = int(value_dec*(10**8))
+                            value_int = int(value_dec * (10 ** 8))
                         except:
                             pass
-                    #pprint(vin_i)
                 except:
                     pass
         except:
@@ -126,11 +97,11 @@ class ParsingBlock():
                     script_pub_key = vout_i["scriptPubKey"]
                     addresses = script_pub_key["addresses"]
                     value = vout_i["value"]
-                    value_int = int(value*(10**8))
+                    value_int = int(value * (10 ** 8))
                     for adr in addresses:
-                        data = self.client.get_balance(adr)
-                        if type(data) == list:
-                            update_data_1 = self.client.inc_balance(adr, value_int)
+                        data = self.db.check_address(adr, self.coinid)
+                        if data:
+                            update_data_1 = self.client.inc_balance(adr, value_int, coin_id)
                 except:
                     pass
         except:
@@ -143,9 +114,9 @@ class ParsingBlock():
                 encoded_datas = self.get_raw_transaction()
             for encoded_data in encoded_datas:
                 transaction_data = self.qtum.decoderawtransaction(encoded_data)
-                #vin = transaction_data["vin"]
+                # vin = transaction_data["vin"]
                 vout = transaction_data["vout"]
-                #self.transaction_in(vin)
+                # self.transaction_in(vin)
                 self.transaction_out(vout)
         except:
             pass
@@ -153,7 +124,3 @@ class ParsingBlock():
     def get_block_count(self):
         # Get count documents in db
         return self.qtum.getblockcount()
-
-    def show_db(self):
-        # show db
-        return self.db_wallet.show_db()

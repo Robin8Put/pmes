@@ -102,13 +102,24 @@ class ManagementSystemHandler(tornado.web.RequestHandler):
 		Signature verifying logic.
 
 		"""
+		logging.debug("\n\n")
+		logging.debug("[+] -- Verify debugging")
+		logging.debug("\n\n")
+
 		if self.request.body:
+			logging.debug("\n Request body")
+			logging.debug(self.request.body)
 			data = json.loads(self.request.body)
 			message = json.dumps(data.get("message")).replace(" ", "")
+			logging.debug("\n")
+			logging.debug(message)
 
 		elif self.request.arguments:
+			logging.debug("\n Arguments")
+			logging.debug(self.request.arguments)
 			data = {i:self.get_argument(i) for i in self.request.arguments}
 			message = data.get("message", "{}")
+			logging.debug(message)
 
 		try:
 			# Check if required fields exist
@@ -134,13 +145,20 @@ class ManagementSystemHandler(tornado.web.RequestHandler):
 				raise tornado.web.HTTPError(403)
 		# If exist - call verifying static method
 		try:
+			logging.debug("\n[] Try block. Verifying")
+			logging.debug(message)
+			logging.debug(signature)
+			logging.debug(public_key)
 			flag = Qtum.verify_message(message, signature, public_key)
 		except Exception as e:
 			# If public key is not valid or it`s missing - return 404 error
-			self.set_status(403)
-			self.write({"error":403, 
-						"reason":"Forbidden. Invalid signature." + str(e)})
-			raise tornado.web.Finish
+			#self.set_status(403)
+			#self.write({"error":403, 
+			#			"reason":"Forbidden. Invalid signature." + str(e)})
+			#raise tornado.web.Finish
+			logging.debug("\n Exception")
+			logging.debug(str(e))
+			pass
 
 
 	def get(self, *args, **kwargs):

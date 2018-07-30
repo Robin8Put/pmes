@@ -1,24 +1,32 @@
+import sys
+import os
 import codecs
 from time import sleep
 from eth_abi import  decode_abi
 from jsonrpcclient.http_client import HTTPClient
 from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
-from qtum_utils.qtum import Qtum
-from BalanceCli import ClientBalance
+from BalanceCli import ClientBalance, TablePars
 from StorgCli import ClientStorge
 from settings_file import *
 
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from_i = 170942
+from utils.qtum_utils.qtum import Qtum
+
+from_i = 184065
 coin_id = "QTUM"
+db_host = "localhost"
+db_name = "balance"
 
 
 class SearchTransaction():
-    def __init__(self, from_block=0, qtum_host=qtum_host_def):
+    def __init__(self, from_block=0, qtum_host=qtum_host_def, db_name=None, db_host=None):
         self.qtum = AuthServiceProxy(qtum_host)
         self.from_block = from_block
         self.client = self.conection_stor()
         self.balance = ClientBalance(balance_server)
+        self.db = TablePars(db_host, db_name)
+        self.coinid_put = "PUTTEST"
 
     def abi_to_params(self, abi, output_types):
         decode_hex = codecs.getdecoder("hex_codec")
@@ -46,9 +54,11 @@ class SearchTransaction():
                       '41309af4': ["newReview({0[0]}, {0[1]}, {0[2]}, {0[3]})",
                                    ["uint256", "address", "string"],
                                    self.update_review],
-                        
-                      #'a9059cbb': ["",['address', 'uint'],self.balance_put]
-                        
+
+                      'a9059cbb': ["",
+                                   ['address', 'uint'],
+                                   self.balance_put]
+
                       }
         list_data = []
         for vout in vouts:
@@ -73,7 +83,6 @@ class SearchTransaction():
                         list_data += data
                     except Exception as e:
                         print(e)
-
         return list_data
 
     def change_decode(self, signatures_list_type, decode):
@@ -158,9 +167,9 @@ class SearchTransaction():
         address = data[1]
         address = Qtum.hex_to_qtum_address(address, mainnet=False)
         ammount = data[2]
-        check = self.balance.get_balance(address, "PUT")
-        if type(check) == list:
-            update_data_1 = self.balance.inc_balance(address, ammount, "PUT")
+        data = self.db.check_address(address, self.coinid_put)
+        if data:
+            update_data_1 = self.balance.inc_balance(address, ammount, self.coinid_put)
 
     def new_cid(self, data):
         tx_hash = data[0]
@@ -180,7 +189,7 @@ class SearchTransaction():
         tx_hash = data[0]
         cid = data[1]
         address = data[2]
-        result = self.balance.confirm_balance(txid=tx_hash, cid=cid, buyer_address=address, coin_id=coin_id)
+        result = self.balance.confirm_balance(txid=tx_hash, cid=cid, buyer_address=address, coinid=coin_id)
 
     def update_review(self, data):
         txid = data[0]
@@ -194,18 +203,18 @@ class SearchTransaction():
             except:
                 sleep(1)
 
-    def run(self, from_i, address_smart_contract):
-        while True:
-            getlastblock = self.qtum.getblockcount()
-            if getlastblock >= from_i:
-                pars = SearchTransaction(from_i)
-                result = pars.decode_raw_transaction(address_smart_contract)
-                print(from_i)
-                from_i += 1
-            else:
-                sleep(1)
+
+def run(from_i, address_smart_contract, db_name, db_host):
+    while True:
+        pars = SearchTransaction(from_i, db_name=db_name, db_host=db_host)
+        getlastblock = pars.qtum.getblockcount()
+        if getlastblock >= from_i:
+            result = pars.decode_raw_transaction(address_smart_contract)
+            print(from_i)
+            from_i += 1
+        else:
+            sleep(1)
 
 
 if __name__ == "__main__":
-    client = SearchTransaction()
-    search_transaction = client.run(from_i, address_smart_contract_qtum)
+    run(from_i, address_smart_contract_qtum, db_name, db_host)

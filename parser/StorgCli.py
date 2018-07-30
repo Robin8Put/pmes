@@ -68,8 +68,8 @@ class ClientStorge():
                                               txid=txid,
                                               coinid=coin_id)
                 return request
-            except:
-                print("Erorr from updateuserscontent")
+            except Exception as e:
+                print("Erorr from updateuserscontent", e)
         else:
             return {2: "Missing parameter"}
 

@@ -545,6 +545,9 @@ class Bridge(object):
 
         message = json.loads(kwargs.get("message"))
         cids = json.loads(message.get("cids"))
+        logging.debug("\n\n")
+        logging.debug("[+] -- Get users content debugging. ")
+        logging.debug(cids)
 
         container = []
 

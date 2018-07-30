@@ -29,6 +29,7 @@ class AllContentHandler(web.ManagementSystemHandler):
 
 	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header('Cache-Control', "no-store")
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
 		self.set_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
 
@@ -57,7 +58,7 @@ class AllContentHandler(web.ManagementSystemHandler):
 
 		contents = []
 
-		coinids = settings.AVAILABLE_COIN_ID
+		coinids = list(settings.bridges.keys())
 
 		for coinid in coinids:
 
@@ -106,6 +107,7 @@ class ContentHandler(web.ManagementSystemHandler):
 
 	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header('Cache-Control', "no-store")
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
 		self.set_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
 
@@ -132,13 +134,14 @@ class ContentHandler(web.ManagementSystemHandler):
 
 		Verified: True
 		"""
+		logging.debug("[+] -- Get single content\n\n")
 		#super().verify()
 		message = json.loads(self.get_argument("message", "{}"))
 
 		public_key = message.get("public_key")
 
 		# Set bridge url
-		if coinid in settings.AVAILABLE_COIN_ID:
+		if coinid in settings.bridges.keys():
 			self.account.blockchain.setendpoint(settings.bridges[coinid])
 		# Get content
 		content = await self.account.blockchain.getsinglecontent(cid=cid)
@@ -205,10 +208,11 @@ class ContentHandler(web.ManagementSystemHandler):
 		"""
 
 		#super().verify()
+		logging.debug("[+] -- Post content debugging. ")
 
 		# Define genesis variables
 		owneraddr = self.account.validator[coinid](public_key)    # Define owner address
-		if coinid in settings.AVAILABLE_COIN_ID:     # Define bridge url
+		if coinid in settings.bridges.keys():     # Define bridge url
 			self.account.blockchain.setendpoint(settings.bridges[coinid])
 		else:
 			self.set_status(400)
@@ -222,6 +226,7 @@ class ContentHandler(web.ManagementSystemHandler):
 			self.set_status(account["error"])
 			self.write(account)
 			raise tornado.web.Finish
+
 
 
 		# Get message from request 
@@ -247,7 +252,9 @@ class ContentHandler(web.ManagementSystemHandler):
 			raise tornado.web.Finish
 
 		# Set fee
-		fee = await billing.upload_content_fee(cus=cus, owneraddr=owneraddr, description=description)
+		fee = await billing.upload_content_fee(cus=cus, owneraddr=owneraddr, 
+											description=description)
+		
 		if "error" in fee.keys():
 			self.set_status(fee["error"])
 			self.write(fee)
@@ -290,6 +297,7 @@ class DescriptionHandler(web.ManagementSystemHandler):
 	"""
 	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header('Cache-Control', "no-store")
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
 		self.set_header('Access-Control-Allow-Methods', 'PUT, OPTIONS')
 
@@ -345,7 +353,7 @@ class DescriptionHandler(web.ManagementSystemHandler):
 		coinid = message.get("coinid")
 
 		# Check if all required data exists
-		if not all([public_key, cid, descr]):
+		if not all([public_key, descr, coinid]):
 			self.set_status(400)
 			self.write({"error":400, "reason":"Missed required fields"})
 			raise tornado.web.Finish
@@ -354,6 +362,11 @@ class DescriptionHandler(web.ManagementSystemHandler):
 
 		# Get content owner
 		response = await self.account.blockchain.ownerbycid(cid=cid)
+		logging.debug("\n\n")
+		logging.debug("[+] -- Description debugging.")
+		logging.debug("\n\n")
+		logging.debug(cid)
+		logging.debug(response)
 		if isinstance(response, dict):
 			if "error" in response.keys():
 				error_code = response["error"]
@@ -372,7 +385,7 @@ class DescriptionHandler(web.ManagementSystemHandler):
 													description=descr)
 
 		# Set bridge url
-		if coinid in settings.AVAILABLE_COIN_ID:
+		if coinid in settings.bridges.keys():
 			self.account.blockchain.setendpoint(settings.bridges[coinid])
 		else:
 			self.set_status(400)
@@ -403,6 +416,7 @@ class PriceHandler(web.ManagementSystemHandler):
 
 	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header('Cache-Control', "no-store")
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
 		self.set_header('Access-Control-Allow-Methods', 'PUT, OPTIONS')
 
@@ -463,7 +477,7 @@ class PriceHandler(web.ManagementSystemHandler):
 			self.write({"error":400, "reason":"Missed price and access type for content"})
 
 		# Set bridges url
-		if coinid in settings.AVAILABLE_COIN_ID:
+		if coinid in settings.bridges.keys():
 			self.account.blockchain.setendpoint(settings.bridges[coinid])
 		else:
 			self.set_status(400)
@@ -529,11 +543,12 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 
 	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header('Cache-Control', "no-store")
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
 		self.set_header('Access-Control-Allow-Methods', 'POST, PUT, OPTIONS')
 
 
-	async def post(self, public_key=None):
+	async def post(self, public_key):
 		"""Creates a new offer with freezing balance
 
 		Accepts:
@@ -585,7 +600,7 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 			raise tornado.web.Finish
 
 		# Set bridge url
-		if coinid in settings.AVAILABLE_COIN_ID:
+		if coinid in settings.bridges.keys():
 			self.account.blockchain.setendpoint(settings.bridges[coinid])
 		else:
 			self.set_status(400)
@@ -611,7 +626,7 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 			raise tornado.web.Finish
 
 		#Get buyers balance
-		balances = await self.account.balance.getbalance(coinid=coinid, uid=account["id"])
+		balances = await self.account.balance.get_wallets(coinid=coinid, uid=account["id"])
 
 		# Check if current content belongs to current user
 		if owneraddr == buyer_address:
@@ -621,10 +636,10 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 			raise tornado.web.Finish
 
 		# Get difference with balance and price
-		for w in balances:
-			if "PUT" in w.values():
+		for w in balances["wallets"]:
+			if "PUTTEST" in w.values():
 				balance = w 
-		difference = int(balance["amount"]) - int(write_price)
+		difference = int(balance["amount_active"]) - int(write_price)
 
 		if difference < 0:
 			# If Insufficient funds
@@ -670,7 +685,8 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 
 
 		# Freeze price at balance
-		await self.account.balance.depositbalance(uid=account["id"],coinid=coinid, 
+		coinid = "PUTTEST"
+		await self.account.balance.freeze(uid=account["id"],coinid=coinid, 
 													amount=write_price)
 		# Set fee
 		fee = await billing.set_make_offer_fee(buyer_address=buyer_address)
@@ -684,7 +700,7 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 		self.write(response)
 
 
-	async def put(self, public_key=None):
+	async def put(self, public_key):
 		"""Reject offer and unfreeze balance
 		
 		Accepts:
@@ -709,7 +725,12 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 		buyer_address = message["offer_id"].get("buyer_address")
 		coinid = message.get("coinid")
 
-		if coinid in settings.AVAILABLE_COIN_ID:
+		if not all([cid, buyer_address, coinid]):
+			self.set_status(400)
+			self.write({"error":400, "reason": "Missed required fields."})
+			raise tornado.web.Finish
+
+		if coinid in settings.bridges.keys():
 			self.account.blockchain.setendpoint(settings.bridges[coinid])
 		else:
 			self.set_status(400)
@@ -758,7 +779,8 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 		
 		# Undeposit balance
 		price = await self.account.blockchain.getwriteprice(cid=cid)
-		await self.account.balance.undepositbalance(uid=buyer["id"],coinid=coinid, 
+		coinid = "PUTTEST"
+		await self.account.balance.unfreeze(uid=buyer["id"],coinid=coinid, 
 													amount=price)
 
 		del response["result"]
@@ -778,6 +800,7 @@ class ReadAccessOfferHandler(web.ManagementSystemHandler):
 
 	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header('Cache-Control', "no-store")
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
 		self.set_header('Access-Control-Allow-Methods', 'POST, PUT, OPTIONS')
 
@@ -814,7 +837,7 @@ class ReadAccessOfferHandler(web.ManagementSystemHandler):
 			raise tornado.web.Finish
 
 		# Set bridge url
-		if coinid in settings.AVAILABLE_COIN_ID:
+		if coinid in settings.bridges.keys():
 			self.account.blockchain.setendpoint(settings.bridges[coinid])
 		else:
 			self.set_status(400)
@@ -837,7 +860,7 @@ class ReadAccessOfferHandler(web.ManagementSystemHandler):
 			raise tornado.web.Finish
 
 		#Get sellers balance
-		balances = await self.account.balance.getbalance(coinid=coinid, uid=account["id"])
+		balances = await self.account.balance.get_wallets(coinid=coinid, uid=account["id"])
 
 		# Check if current content does not belong to current user
 		if owneraddr == buyer_address:
@@ -847,10 +870,10 @@ class ReadAccessOfferHandler(web.ManagementSystemHandler):
 			raise tornado.web.Finish
 
 		# Get difference with balance and price
-		for w in balances:
-			if "PUT" in w.values():
+		for w in balances["wallets"]:
+			if "PUTTEST" in w.values():
 				balance = w 
-		difference = int(balance["amount"]) - int(read_price)
+		difference = int(balance["amount_active"]) - int(read_price)
 		if difference < 0:
 			# If Insufficient funds
 			self.set_status(402)
@@ -894,7 +917,8 @@ class ReadAccessOfferHandler(web.ManagementSystemHandler):
 
 
 		# Freeze price at balance
-		await self.account.balance.depositbalance(uid=account["id"],coinid=coinid, 
+		coinid = "PUTTEST"
+		await self.account.balance.freeze(uid=account["id"],coinid=coinid, 
 																amount=read_price)
 
 		# Set fee
@@ -935,7 +959,12 @@ class ReadAccessOfferHandler(web.ManagementSystemHandler):
 		buyer_address = message["offer_id"].get("buyer_address")
 		coinid = message.get("coinid")
 
-		if coinid in settings.AVAILABLE_COIN_ID:
+		if not all([cid, buyer_address, coinid]):
+			self.set_status(400)
+			self.write({"error":400, "reason":"Missed required fields"})
+			raise tornado.web.Finish
+
+		if coinid in settings.bridges.keys():
 			self.account.blockchain.setendpoint(settings.bridges[coinid])
 		else:
 			self.set_status(400)
@@ -985,7 +1014,8 @@ class ReadAccessOfferHandler(web.ManagementSystemHandler):
 		
 
 		price = await self.account.blockchain.getwriteprice(cid=cid)
-		await self.account.balance.undepositbalance(uid=buyer["id"],coinid=coinid, 
+		coinid = "PUTTEST"
+		await self.account.balance.unfreeze(uid=buyer["id"],coinid=coinid, 
 																		amount=price)
 
 		del response["result"]
@@ -1006,6 +1036,7 @@ class DealHandler(web.ManagementSystemHandler):
 
 	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header('Cache-Control', "no-store")
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
 		self.set_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
 
@@ -1018,7 +1049,6 @@ class DealHandler(web.ManagementSystemHandler):
 			- buyer public key
 			- seller public key
 		"""
-		logging.debug("[+] -- Deal handler")
 		super().verify()
 		# Check if message contains required data
 		try:
@@ -1042,16 +1072,13 @@ class DealHandler(web.ManagementSystemHandler):
 
 		coinid = message.get("coinid")
 		# check passes data
-		if not all([buyer_access_string, cid, buyer_pubkey]):
+		if not all([buyer_access_string, cid, buyer_pubkey, coinid]):
 			self.set_status(400)
 			self.write({"error":400, "reason":"Missed required fields"})
 			raise tornado.web.Finish
 
-		if coinid in settings.AVAILABLE_COIN_ID:
+		if coinid in settings.bridges.keys():
 			self.account.blockchain.setendpoint(settings.bridges[coinid])
-			logging.debug("\n\n")
-			logging.debug(self.account.blockchain.client_bridge.endpoint)
-			logging.debug("\n\n")
 
 		else:
 			self.set_status(400)
@@ -1092,7 +1119,7 @@ class DealHandler(web.ManagementSystemHandler):
 			raise tornado.web.Finish
 
 		#Get buyers balance
-		balances = await self.account.balance.getbalance(coinid=coinid, 
+		balances = await self.account.balance.get_wallets(coinid=coinid, 
 														uid=buyer_account["id"])
 		if isinstance(balances, dict):
 			if "error" in balances.keys():
@@ -1106,11 +1133,11 @@ class DealHandler(web.ManagementSystemHandler):
 															cid=cid)
 		price = get_price["price"]
 
-		for w in balances:
-			if "PUT" in w.values():
+		for w in balances["wallets"]:
+			if "PUTTEST" in w.values():
 				balance = w
 
-		difference = int(balance["deposit"]) - int(price)
+		difference = int(balance["amount_frozen"]) - int(price)
 
 		if difference >= 0:
 
@@ -1163,14 +1190,21 @@ class DealHandler(web.ManagementSystemHandler):
 
 			
 			# Increment and decrement balances of seller and buyer
-			await self.account.balance.undepositbalance(uid=buyer_account["id"],
+			coinid = "PUTTEST"
+			await self.account.balance.unfreeze(uid=buyer_account["id"],
 													amount=price, coinid=coinid)
 
-			await self.account.balance.decbalance(uid=buyer_account["id"], amount=price)
+			await self.account.balance.sub_active(uid=buyer_account["id"], 
+												coinid=coinid, amount=price)
 
-			await self.account.balance.incbalance(txid=response["result"]["txid"], 
-												uid=seller_account["id"], amount=price, 
-												coinid=coinid)
+			await self.account.balance.add_frozen(uid=seller_account["id"], 
+												amount=price, coinid=coinid)
+
+			# Write entry with txid to database
+			await self.account.balance.registerdeal(uid=seller_account["id"],
+													public_key=seller_account["public_key"], 
+													txid=response["result"]["txid"],
+													coinid=coinid, cid=cid)
 
 			del response["result"]
 			del response["contract_owner_hex"]
@@ -1194,6 +1228,7 @@ class ReviewsHandler(web.ManagementSystemHandler):
 
 	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header('Cache-Control', "no-store")
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
 		self.set_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
 
@@ -1202,7 +1237,7 @@ class ReviewsHandler(web.ManagementSystemHandler):
 		"""Receives all contents reviews
 		"""
 
-		if coinid in settings.AVAILABLE_COIN_ID:
+		if coinid in settings.bridges.keys():
 			self.account.blockchain.setendpoint(settings.bridges[coinid])
 
 
@@ -1237,6 +1272,7 @@ class ReviewHandler(web.ManagementSystemHandler):
 
 	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header('Cache-Control', "no-store")
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
 		self.set_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
 
@@ -1268,7 +1304,7 @@ class ReviewHandler(web.ManagementSystemHandler):
 			self.set_status(400)
 			self.write({"error":400, "reason":"Missed required fields"})
 
-		if coinid in settings.AVAILABLE_COIN_ID:
+		if coinid in settings.bridges.keys():
 			self.account.blockchain.setendpoint(settings.bridges[coinid])
 		else:
 			self.set_status(400)
@@ -1291,6 +1327,7 @@ class DealsHandler(web.ManagementSystemHandler):
 
 	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header('Cache-Control', "no-store")
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
 		self.set_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
 
@@ -1298,6 +1335,7 @@ class DealsHandler(web.ManagementSystemHandler):
 		self.account = Account()
 
 	async def get(self, public_key):
+		logging.debug("\n\n[+] -- Deals handler \n")
 		cids = await self.account.getdeals(buyer=public_key)
 		if "error" in cids.keys():
 			self.set_status(cids["error"])
@@ -1308,7 +1346,7 @@ class DealsHandler(web.ManagementSystemHandler):
 
 		for coinid in cids:
 
-			if coinid in settings.AVAILABLE_COIN_ID:
+			if coinid in settings.bridges.keys():
 				self.account.blockchain.setendpoint(settings.bridges[coinid])
 			
 			try:
@@ -1320,6 +1358,9 @@ class DealsHandler(web.ManagementSystemHandler):
 				container.extend(contents)
 			except:
 				continue
+		logging.debug("\n")
+		logging.debug(container)
+		logging.debug("\n\n")
 
 		self.write(json.dumps(container))
 
