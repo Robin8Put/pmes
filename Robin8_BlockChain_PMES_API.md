@@ -946,7 +946,7 @@ The following is a description of the API-methods:
 ```
 
 
-##Withdraw PUT tokens
+## Withdraw PUT tokens
 
 * **URL:** `/api/accounts/withdraw`
 
@@ -997,7 +997,7 @@ The following is a description of the API-methods:
 ```
 
 
-##Bulk operations
+## Bulk operations
 
 * **URL:** `/api/bulk`
 
@@ -1019,7 +1019,7 @@ The following is a description of the API-methods:
     Part of bulk operation is present bellow:
 
 ```bash
-var test = {
+{
     "message": {                            # signed json
         "send": [{
             "message":{
