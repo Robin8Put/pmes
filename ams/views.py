@@ -11,6 +11,7 @@ import re
 #Third-party
 import tornado.web
 from tornado import gen
+from tornado.httpclient import AsyncHTTPClient
 
 
 # Locals
@@ -31,6 +32,7 @@ class BalanceHandler(tornado.web.RequestHandler):
 
 	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header('Cache-Control', "no-store")
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
 		self.set_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
 
@@ -60,7 +62,7 @@ class BalanceHandler(tornado.web.RequestHandler):
 			
 		amount = data.get("amount")
 		coinid  =data.get("coinid")
-		balance = await self.account.balance.incbalance(uid=uid, amount=amount, 
+		balance = await self.account.balance.add_active(uid=uid, amount=amount, 
 														coinid=coinid)
 		if "error" in balance.keys():
 			self.set_status(balance["error"])
@@ -84,6 +86,7 @@ class AMSHandler(web.ManagementSystemHandler):
 
 	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header('Cache-Control', "no-store")
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
 		self.set_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
 
@@ -138,21 +141,8 @@ class AMSHandler(web.ManagementSystemHandler):
 			self.write(new_account)
 			raise tornado.web.Finish
 
-		# Create new wallets for account
-		balance_params = {
-			"uid": new_account["id"]
-		}
-		new_addr = await self.account.balance.addaddr(**balance_params)
-		if "error" in new_addr.keys():
-			self.set_status(new_addr["error"])
-			self.write(new_addr)
-			raise tornado.web.Finish
-
 		# Receive balance from balance host
-		request_balance = {
-			"uid": new_account["id"]
-		}
-		wallets = await self.account.balance.getbalance(**request_balance)
+		wallets = await self.account.balance.get_wallets(uid=new_account["id"])
 		if isinstance(wallets, dict):
 			if "error" in wallets.keys():
 				self.set_status(wallets["error"])
@@ -161,7 +151,7 @@ class AMSHandler(web.ManagementSystemHandler):
 
 		#Prepare response 
 		new_account.update({"href": settings.ENDPOINTS["ams"]+"/"+ new_account["public_key"],
-							"wallets": json.dumps(wallets)})
+							"wallets": json.dumps(wallets["wallets"])})
 		# Send mail to user
 		if new_account.get("email"):
 			email_data = {
@@ -190,6 +180,7 @@ class AccountHandler(web.ManagementSystemHandler):
 
 	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header('Cache-Control', "no-store")
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
 		self.set_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
 
@@ -241,16 +232,19 @@ class AccountHandler(web.ManagementSystemHandler):
 			raise tornado.web.Finish
 
 		# Receive balances from balance host
-		wallets = await self.account.balance.getbalance(uid=response["id"])
+		wallets = await self.account.balance.get_wallets(uid=response["id"])
 		if isinstance(wallets, dict):
 			if "error" in wallets.keys():
 				self.set_status(wallets["error"])
 				self.write(wallets)
 				raise tornado.web.Finish
-
-		# Prepare response
+		logging.debug("[+] -- Wallets debugging")
+		logging.debug(wallets)
+		
+		# Filter wallets
 		response.update({"wallets":json.dumps(
-						[i for i in wallets if not "ETH" in i.values()])})
+					[i for i in wallets["wallets"] 
+					if i.get("coinid") not in ["BTCTEST", "LTCTEST", "ETH"]])})
 		# Return account data
 		self.write(response)
 
@@ -265,6 +259,7 @@ class NewsHandler(web.ManagementSystemHandler):
 
 	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header('Cache-Control', "no-store")
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
 		self.set_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
 
@@ -306,6 +301,7 @@ class OutputOffersHandler(web.ManagementSystemHandler):
 	"""
 	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header('Cache-Control', "no-store")
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
 		self.set_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
 	
@@ -331,7 +327,7 @@ class OutputOffersHandler(web.ManagementSystemHandler):
 
 
 		offers_collection = []
-		for coinid in settings.AVAILABLE_COIN_ID:
+		for coinid in settings.bridges.keys():
 
 			self.account.blockchain.setendpoint(settings.bridges[coinid])
 
@@ -361,6 +357,7 @@ class InputOffersHandler(web.ManagementSystemHandler):
 	"""
 	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header('Cache-Control', "no-store")
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
 		self.set_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
 	
@@ -391,7 +388,7 @@ class InputOffersHandler(web.ManagementSystemHandler):
 			self.write(account)
 			raise tornado.web.Finish
 
-		if coinid in settings.AVAILABLE_COIN_ID:
+		if coinid in settings.bridges.keys():
 			self.account.blockchain.setendpoint(settings.bridges[coinid])
 		offers = await self.account.blockchain.getcidoffers(cid=cid)
 
@@ -416,6 +413,7 @@ class ContentsHandler(web.ManagementSystemHandler):
 	"""
 	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
+		self.set_header('Cache-Control', "no-store")
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
 		self.set_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
 
@@ -452,13 +450,14 @@ class ContentsHandler(web.ManagementSystemHandler):
 				paginator = Paginator(coinid=coinid, page=page, 
 									limit=settings.LIMIT // len(cids), cids=cids)
 
-			if coinid in settings.AVAILABLE_COIN_ID:
+			if coinid in settings.bridges.keys():
+
 				self.account.blockchain.setendpoint(settings.bridges[coinid])
 
 				contents = await self.account.blockchain.getuserscontent(
 												cids=json.dumps(cids[coinid]))
 		
-			container.extend(contents)
+				container.extend(contents)
 
 		response = {
 			"profiles":json.dumps(container),
@@ -471,6 +470,111 @@ class ContentsHandler(web.ManagementSystemHandler):
 
 	def options(self, public_key):
 		self.write(json.dumps(["GET"]))
+
+
+class WithdrawHandler(tornado.web.RequestHandler):
+	"""
+	"""
+	def initialize(self):
+		self.account = Account()
+
+	async def post(self):
+		"""
+		Funds from account to given address.
+		1. Verify signature
+		2. Freeze senders amount.
+		3. Request to withdraw server.
+		4. Call balances sub_frozen method.
+
+		Accepts:
+			- message [dict]:
+				- coinid [string]
+				- amount [integer]
+				- address [string]
+			- public_key
+			- signature
+
+		Returns:
+			- txid [string]
+		"""
+		logging.debug("\n\n[+] -- Withdraw debugging.")
+		# Get data from requests body
+		data = json.loads(self.request.body)
+		logging.debug(data)
+		public_key = data.get("public_key")
+		signature = data.get("signature")
+
+		if isinstance(data.get("message"), str):
+			message = json.loads(data["message"])
+		elif isinstance(data.get("message"), dict):
+			message = data["message"]
+
+		# Get data from signed message
+		coinid = message.get("coinid")
+		amount = message.get("amount")
+		address = message.get("address")
+		timestamp = message.get("timestamp")
+		recvWindow = message.get("recvWindow")
+		# 
+		if not all([coinid, amount, address, public_key, 
+					signature, timestamp, recvWindow]):
+			data.update({"error":400, "reason":"Missed required fields. "})
+			self.set_status(400)
+			self.write(data)
+			raise tornado.web.Finish
+
+		# Get account
+		account = await self.account.getaccountdata(public_key=public_key)
+		if "error" in account.keys():
+			data.update(account)
+			self.set_status(404)
+			self.write(data)
+			raise tornado.web.Finish
+
+
+		# Request to balance and call freeze method
+		freeze = await self.account.balance.freeze(uid=account["id"], coinid=coinid,
+													amount=amount)
+		if "error" in freeze.keys():
+			data.update(freeze)
+			self.set_status(freeze["error"])
+			self.write(data)
+			raise tornado.web.Finish
+
+		# Request to withdraw server
+		txid = await self.account.withdraw(amount=amount, coinid=coinid, 
+							address=self.account.withdraw_address[coinid](address))
+
+		# Check if txid exists
+		if "error" in txid.keys():
+			await self.account.balance.unfreeze(uid=account["id"], coinid=coinid,
+														amount=amount)
+			data.update(txid)
+			self.set_status(500)
+			self.write(data)
+			raise tornado.web.Finish
+
+		# Submit amount from frozen balance
+		sub_frozen = await self.account.balance.sub_frozen(uid=account["id"], 
+													coinid=coinid, amount=amount)
+		if "error" in sub_frozen.keys():
+			data.update(sub_frozen)
+			self.set_status(sub_frozen["error"])
+			self.write(data)
+			raise tornado.web.Finish
+
+		# Return txid
+		data.update(txid)
+		self.write(data)
+
+
+
+
+
+
+
+
+
 
 
 

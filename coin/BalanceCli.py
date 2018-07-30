@@ -1,10 +1,9 @@
 import os
 import sys
-from settings_file import *
+
 import pymongo
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 
 from utils.tornado_components.web import SignedHTTPClient
 
@@ -13,7 +12,7 @@ class ClientBalance():
     """ Client for balance
     """
     def __init__(self, host=None):
-        self.host = host if host else balance_server
+        self.host = host
         self.client = SignedHTTPClient(self.host)
 
     def inc_balance(self, address=None, amount=0, coinid=None):

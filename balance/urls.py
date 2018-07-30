@@ -1,9 +1,9 @@
 import tornado.web
+from views import MainRequestHandler
 import settings
-import balance.views
 
 
 
 balance_router = tornado.web.Application([
-        	(settings.ENDPOINTS["balance"], balance.views.MainHandler),
+        	(r"/api/balance/*", MainRequestHandler),
         ], debug=settings.DEBUG)

@@ -1,18 +1,22 @@
-import logging
+#import logging
 import sys
 from time import sleep
 from daemon import Daemon
 from Parsing import ParsingBlock
 
-from_block = 175084
+from_block = 184086
+db_host = "localhost"
+db_name = "balance"
+coinid = "QTUMTEST"
+
 
 def server_w(from_i):
     while True:
         try:
-            data = ParsingBlock()
+            data = ParsingBlock(db_host=db_host, db_name=db_name)
             best_block = data.get_block_count()
             if best_block >= from_i:
-                pars = ParsingBlock(from_i)
+                pars = ParsingBlock(from_block=from_i, db_host=db_host, db_name=db_name)
                 #logging.critical(from_i)
                 decode_raw_transaction = pars.decode_raw_transaction()
                 print(from_i)
@@ -20,16 +24,19 @@ def server_w(from_i):
             else:
                 sleep(1)
         except Exception as e:
+            print(e)
             #logging.warning("\n[+] -- Error while connecting to blockchain.\n")
             sleep(10)
+
 server_w(from_block)
 
+'''
 class MyDaemon(Daemon):
     def run(self):
         # main program for demonizing
         server_w(from_block)
 
-"""
+
 if __name__ == "__main__":
     # initiation command for work from daemon
     daemon = MyDaemon('/tmp/daem_coin.pid')
@@ -47,4 +54,4 @@ if __name__ == "__main__":
     else:
         print("usage: %s start|stop|restart" % sys.argv[0])
         sys.exit(2)
-"""
+'''

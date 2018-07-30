@@ -9,7 +9,7 @@ from StorgCli import ClientStorge
 from settings_file import *
 
 
-from_i = 2609344
+from_i = 2620000
 coin_id = "ETH"
 
 

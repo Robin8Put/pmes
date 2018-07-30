@@ -4,9 +4,10 @@ from .permissions import Permissions
 import settings
 from utils.qtum_utils.qtum import Qtum 
 from utils.bip32keys.r8_ethereum.r8_eth import R8_Ethereum
+from utils.bip32keys import bip32addresses
 from .genesis import GenesisClass
 import logging
-
+from jsonrpcclient.tornado_client import TornadoClient
 
 
 
@@ -16,12 +17,18 @@ class Account(GenesisClass):
     permissions = Permissions()
     mailer = Mail()
     client_storage = SignedTornadoClient(settings.storageurl)
+    client_withdraw = TornadoClient(settings.withdrawhost)
 
     validator = {
             "QTUM": lambda x: Qtum.public_key_to_hex_address(x),
             "ETH": lambda x: R8_Ethereum.public_key_to_checksum_address(x),
             "PUT": lambda x: Qtum.public_key_to_hex_address(x),
         }
+
+    withdraw_address = {
+            "PUTTEST": lambda x: bip32addresses.Bip32Addresses.address_to_hex(x),
+            "QTUMTEST": lambda x: x
+    }
 
     ident_offer = {0:"read_access", 1:"write_access"}
 
@@ -188,5 +195,10 @@ class Account(GenesisClass):
     
     async def sharecontent(self, **params):
         result = await self.client_storage.request(method_name="sharecontent",
+                                             **params)
+        return result
+
+    async def withdraw(self, **params):
+        result = await self.client_withdraw.request(method_name="withdraw",
                                              **params)
         return result

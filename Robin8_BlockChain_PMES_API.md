@@ -54,6 +54,10 @@ The API-methods:
 
 - [Get all profiles reviews](#get-all-profiles-reviews)
 
+- [Withdraw PUT tokens](#withdraw-put-tokens)
+
+- [Bulk operations](#bulk_operations)
+
 - [Standardization of an error messages](#standardization-of-an-error-messages)
 
 
@@ -881,6 +885,7 @@ The following is a description of the API-methods:
 
 ```bash
         {
+            "public_key": [string],
             "message": {
                 "cid": [integer],       # profile identifier
                 "timestamp": [string],
@@ -939,6 +944,111 @@ The following is a description of the API-methods:
         ...
     ]
 ```
+
+
+##Withdraw PUT tokens
+
+* **URL:** `/api/accounts/withdraw`
+
+* **Method:** `POST`
+
+* **URL params**
+
+    None
+
+
+* **Body params**
+    
+    Now work for the PUT tokens only.
+
+```bash
+        {
+            "public_key": [string],
+            "message": {
+                "timestamp": [string],
+                "coinid": [string],         # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
+                "amount": [string],         # amount of tokens that user send to the "address"
+                "address": [string],        # address to which user send the tokens
+                "recvWindow": [integer]     # signature of the message timeout expired after this timing. For instance, in 5000 milliseconds
+            },
+            "signature": [string]
+        }
+```
+
+* **Sample response**
+
+    `[json]`
+
+    `message` and `signature` is repeated from the user request respectively. The user could check the status of the transaction by viewing it by the `txid`.
+
+```bash
+        {
+            "public_key": [string],
+            "message": {
+                "timestamp": [string],
+                "coinid": [string],         # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
+                "amount": [string],         # amount of tokens that user send to the "address"
+                "address": [string],        # address to which user send the tokens
+                "recvWindow": [integer]     # signature of the message timeout expired after this timing. For instance, in 5000 milliseconds
+            },
+            "signature": [string],
+            "txid": [string]                # transaction identifier
+        }
+```
+
+
+##Bulk operations
+
+* **URL:** `/api/bulk`
+
+* **Method:** `POST`
+
+* **URL params**
+
+    None
+
+
+* **Body params**
+    
+    Now work for the PUT tokens for sending tokens only.
+
+    Full JSON format of the bulk operation is present [here](bulk_operations_json_format_description.js).
+
+    `txid` field shouldn't be filled by user, it will be filled by the PMES in the response.
+
+    Part of bulk operation is present bellow:
+
+```bash
+var test = {
+    "message": {                            # signed json
+        "send": [{
+            "message":{
+                    "input": "address1",    # sender addresses
+                    "output": "address2",   # receiver addresses
+                    "amount": "value",
+                    "coinid": "coinid",     # blockchain type
+                    "txid": null,           # txid will filled with response
+                    "error": null,
+                    "response": null
+                },
+                "signature": "signature",   # users signature
+                "public_key": "public_key", # users public key
+            }
+        ],
+        ...
+    },
+    "decimal": 8,
+    "signature": "signature",
+    "public_key": "public key",
+    "callbackURL": "some_url" // PMES backend reply send to this endpoint
+}
+```
+
+* **Sample response**
+
+    `[json]`
+
+    In the response, user receives filled JSON format of the bulk operation with server signature.
 
 
 ## Standardization of an error messages 

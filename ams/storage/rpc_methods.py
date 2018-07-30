@@ -20,7 +20,8 @@ from utils.models.account import Account
 client = MotorClient()
 
 
-coin_ids = settings.AVAILABLE_COIN_ID + ["PUT"]
+coin_ids = list(settings.bridges.keys())
+coin_ids.extend(["PUT"])
 
 def verify(func):
 
@@ -95,19 +96,13 @@ class StorageTable(mongo.Table):
 		account = await self.collection.find_one({"public_key":row["public_key"]})
 
 		# Create wallets
-
-		for coinid in settings.AVAILABLE_COIN_ID:
+		for coinid in coin_ids:
 			database = client[coinid]
 			wallet_collection = database[settings.WALLET]
 			await wallet_collection.insert_one({
 					"account_id": account["id"],
 					"wallet": self.account.validator[coinid](account["public_key"]) 
 				})
-			wallet = await wallet_collection.find_one({
-					"account_id": account["id"],
-					"wallet": self.account.validator[coinid](account["public_key"]) 
-				})
-
 		return account
 
 
@@ -194,7 +189,7 @@ class StorageTable(mongo.Table):
 		coinid = params.get("coinid").upper()
 
 		# Get address of content owner and check if it exists
-		if coinid in settings.AVAILABLE_COIN_ID:
+		if coinid in settings.bridges.keys():
 			self.account.blockchain.setendpoint(settings.bridges[coinid])
 		else:
 			return {"error":400, "reason": "Invalid coin ID"}
@@ -529,8 +524,8 @@ class StorageTable(mongo.Table):
 		if not account:
 			return {"error":404, "reason":"Get contents. Not found account"}
 
-		contents = {i:[] for i in settings.AVAILABLE_COIN_ID}
-		for coinid in settings.AVAILABLE_COIN_ID:
+		contents = {i:[] for i in list(settings.bridges.keys())}
+		for coinid in list(settings.bridges.keys()):
 			logging.debug(coinid)
 			database = client[coinid]
 			content_collection = database[settings.CONTENT]
@@ -543,7 +538,6 @@ class StorageTable(mongo.Table):
 	#@verify
 	async def set_contents(self, **params):
 		"""Writes users content to database
-		Writes users content to database
 		Accepts:
 		- public key (required)
 		- content (required)
@@ -1004,6 +998,7 @@ class StorageTable(mongo.Table):
 		Accepts:
 		- buyer public key
 		"""
+		logging.debug("\n\n[+] -- Get deals handler. \n")
 		if params.get("message"):
 			params = json.loads(params.get("message", "{}"))
 		
@@ -1015,14 +1010,15 @@ class StorageTable(mongo.Table):
 		if not buyer:
 			return {"error":400, "reason":"Missed public key"}
 
-		deals = {i:[] for i in settings.AVAILABLE_COIN_ID}
+		deals = {i:[] for i in list(settings.bridges.keys())}
 		client = MotorClient()
-		for coinid in settings.AVAILABLE_COIN_ID:
+		for coinid in list(settings.bridges.keys()):
 			database = client[coinid]
 			collection = database[settings.DEAL]
 			async for document in collection.find({"owner":buyer}):
 				deals[coinid].append((document["cid"],document.get("txid")))
-
+		logging.debug(deals)
+		logging.debug("\n\n")
 		return deals
 
 
