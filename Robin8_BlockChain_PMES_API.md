@@ -1,24 +1,25 @@
-# Profile Management EcoSystem API
+# Profile Management EcoSystem API documentation
 
 The API uses the REST API standard.
 
-The host you could find here: http://pdms.robin8.io.
+The host you could find here: http://pdms2.robin8.io.
 
-Commonly integer numbers storing in the blockchains.
+Only integer numbers could be stored in the blockchains.
 If you want to store float number in the blockchain, you should multiply it on some constant (for instance, `10^8` for QTUM).
+
 Therefore, variables `amount`, `balance`, `offer_price`, `price`, `buyer_price` and `seller_price` represented as `x * 10^8`. Where `x` could be `float`.
 
 Variable `timestamp` has the following format `%Y%m%d%H%M`. For instance, timestamp `201806081300` means 2018 June 8 13:00.
 
 For checking status of the transaction in the QTUM blockchain use the following site https://testnet.qtum.org.
 
-Your data is written to the blockchain when the status of the transaction changes from `Unconfirmed` to `Success`.
+Posted profile is written to the blockchain when the status of the transaction changes from `Unconfirmed` to `Success`. After that, the user could view it by executing [Get all profiles which posted user](#get-all-profiles-which-posted-user) method. The user should pay attention on the `cid` attribute because it is profile identifier.
 
 The API-methods:
 
 - [Create new account](#create-new-account)
 
-- [Get account data](#get-account-data)
+- [Get account information](#get-account-information)
 
 - [Get all news for the account](#get-all-news-for-the-account)
 
@@ -36,7 +37,7 @@ The API-methods:
 
 - [Accept buyers offer](#accept-buyers-offer)
 
-- [Reject the read access offer by either buyer or seller](#reject-the-write-access-offer-by-either-buyer-or-seller)
+- [Reject the write access offer by either buyer or seller](#reject-the-write-access-offer-by-either-buyer-or-seller)
 
 - [Reject the read access offer by either buyer or seller](#reject-the-read-access-offer-by-either-buyer-or-seller)
 
@@ -61,7 +62,7 @@ The API-methods:
 - [Standardization of an error messages](#standardization-of-an-error-messages)
 
 
-The following is a description of the API-methods:
+Descriptions of the API methods provided below::
 
 
 ## Create new account
@@ -109,7 +110,7 @@ The following is a description of the API-methods:
 
     - `amount` - an active amount of user's balance.
 
-    - `deposit` - a frozen amount. When a user posted an offer to buy some content with price is 100 tokens, these tokens will be frozen and displays as "deposit" field.
+    - `deposit` - a frozen amount. When a user posted an offer to buy some profile with price is 100 tokens, these tokens will be frozen and displays as "deposit" field.
 
     - `unconfirmed` - is the number of coins/tokens that is not confirmed in the blockchain yet. When transaction will be confirmed, this number of coins/tokens will be shown in the "amount" field.
 
@@ -143,7 +144,7 @@ The following is a description of the API-methods:
 ```
 
 
-## Get account data
+## Get account information
 
 * **URL:** `/api/accounts/[public_key]`
 
@@ -171,7 +172,9 @@ The following is a description of the API-methods:
 
     `[json]`
 
-    `balance` represented as `real_user_balance * 10^8`. Where `real_user_balance` could be `float`.
+    `balance` represented as `real_user_balance * 10^8`. Where `real_user_balance` could be `float`. 
+
+    `amount`, `deposit` and `unconfirmed` fields represented in a similar way.
 
 ```bash
     {
@@ -258,7 +261,7 @@ The following is a description of the API-methods:
 
     `public_key=[string]`
 
-    `coinid=[string]`
+    `coinid=[string]` - type of the blockchain (`ETH` - Ethereum blockchain, `QTUM` - QTUM blockchain)
 
     `price` represented as `real_price * 10^8`. Where `real_price` (price of profile) could be `float`.
 
@@ -287,10 +290,10 @@ The following is a description of the API-methods:
 ```bash
     {
 
-        "owneraddr": [string],           # owners address
-        "description": [string],         # profiles description
-        "read_price": [integer],         # read access price
-        "write_read": [integer]        # write access price
+        "owneraddr": [string],          # owners address
+        "description": [string],        # profiles description
+        "read_price": [integer],        # read access price
+        "write_read": [integer]         # write access price
     }
 ```
 
@@ -303,9 +306,9 @@ The following is a description of the API-methods:
 
 * **URL params**
 
-    `cid=[string]`
+    `cid=[string]` - profile identifier
 
-    `coinid=[string]`
+    `coinid=[string]` - type of the blockchain (`ETH` - Ethereum blockchain, `QTUM` - QTUM blockchain)
 
 * **Body params**
 
@@ -336,7 +339,7 @@ The following is a description of the API-methods:
 
 * **Description**
 
-    Return content from the blockchain by content id
+    Return profile from the blockchain by profile id
 
 
 ## Set description of profile for cid
@@ -349,7 +352,7 @@ The following is a description of the API-methods:
 
 * **URL params**
 
-    `cid=[string]`
+    `cid=[string]` - profile identifier
 
 * **Body params**
 
@@ -392,7 +395,7 @@ The following is a description of the API-methods:
 
 * **URL params**
 
-    `cid=[string]`
+    `cid=[string]` - profile identifier
 
 * **Body params**
 
@@ -558,9 +561,6 @@ The following is a description of the API-methods:
 ```
 
 
-
-
-
 ## Reject the write access offer by either buyer or seller
 
 * **URL:** `/api/blockchain/[public_key]/write-access-offer`
@@ -601,6 +601,7 @@ The following is a description of the API-methods:
         "buyer_address": [string]   # buyer address
     }
 ```
+
 
 ## Reject the read access offer by either buyer or seller
 
@@ -823,7 +824,7 @@ The following is a description of the API-methods:
             "buyer_address": [string],          # buyers address
             "cid": [integer],                   # profiles identifier
             "price": [integer],                 # offers price
-            "seller_access_string": [integer],  # content price * 10^8
+            "seller_access_string": [integer],  # profile price * 10^8
             "type": [string],                   # offers type
             "coinid": [string],                 # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
             "status": [integer],                # offer status
