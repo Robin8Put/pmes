@@ -1,0 +1,13 @@
+{
+"sell_content_fee": "7000",
+"change_owner_fee": "8000",
+"set_access_level_fee": "10000",
+"make_cid_fee": "7000",
+"set_descr_fee": "7000",
+"set_price_fee": "7000",
+"gasLimit": "250000",
+"gasPrice": "0.00000049",
+"price_per_kilobyte": "0",
+"make_offer_fee": "7000",
+"decimals":8
+}
