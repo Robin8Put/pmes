@@ -958,7 +958,7 @@ Descriptions of the API methods provided below::
 
 * **Body params**
     
-    Now work with the PUTTEST and QTUMTEST tokens only.
+    Now works with the PUTTEST and QTUMTEST tokens only.
 
 ```bash
         {
