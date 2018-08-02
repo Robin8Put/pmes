@@ -4,5 +4,5 @@ from views import MainRequestHandler
 
 
 withdraw_router = tornado.web.Application([
-        	(r"/api/withdraw/*", MainRequestHandler),
+        	(r"/api/*", MainRequestHandler),
         ], debug=True)

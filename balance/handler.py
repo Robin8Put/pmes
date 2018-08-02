@@ -3,6 +3,7 @@ import os
 import json
 import sys
 import logging
+import bson
 
 # Third-party
 from motor.motor_tornado import MotorClient
@@ -13,6 +14,26 @@ import settings
 from utils.models.account import Account
 
 
+def verify(func):
+    async def wrapper(*args, **kwargs):
+        import settings
+        with open(os.path.join(settings.BASE_DIR, "keys.json")) as f:
+            keys = json.load(f)
+
+        pubkey = keys["pubkey"]
+
+        message = kwargs.get("message")
+        signature = kwargs.get("signature")
+        try:
+            flag = Qtum.verify_message(message, signature, pubkey)
+        except:
+            flag = None
+        if not flag:
+            result =  {"error":403, "reason":"Invalid signature"}
+        else:
+            result = await func(*args, **kwargs)
+        return result
+    return wrapper
 
 
 class Abstract(object):
@@ -105,7 +126,7 @@ class Abstract(object):
 
 class Balance(Abstract):
 
-
+	#@verify
 	async def freeze(self, *args, **kwargs):
 		"""
 		Freeze users balance
@@ -127,15 +148,23 @@ class Balance(Abstract):
 
 		#super().validate(*args, **kwargs)
 		# Get data from request
-		uid = int(kwargs.get("uid",0))
+		uid = kwargs.get("uid")
 		coinid = kwargs.get("coinid")
-		amount = int(kwargs.get("amount"))
+		amount = kwargs.get("amount")
 		address = kwargs.get("address")
+
+		try:
+			amount = bson.int64.Int64(int(amount))
+		except Exception as e:
+			return {"error":403, "reason":str(e)}
+
 		# Check if required fields exists
 		if not uid and address:
 			uid = await self.get_uid_by_address(address=address, coinid=coinid)
 			if isinstance(uid, dict):
 				return uid
+
+		uid = int(uid)
 		# Connect to appropriate database
 		database = self.client[self.collection]
 		collection = database[coinid]
@@ -157,7 +186,7 @@ class Balance(Abstract):
 
 		return {i:result[i] for i in result if i != "_id"}
 
-
+	#@verify
 	async def unfreeze(self, *args, **kwargs):
 		"""
 		Unfreeze users balance
@@ -183,11 +212,19 @@ class Balance(Abstract):
 		coinid = kwargs.get("coinid")
 		amount = kwargs.get("amount")
 		address = kwargs.get("address")
+
+		try:
+			amount = bson.int64.Int64(int(amount))
+		except Exception as e:
+			return {"error":403, "reason":str(e)}
+
 		# Check if required fields exists
 		if not uid and address:
 			uid = await self.get_uid_by_address(address=address, coinid=coinid)
 			if isinstance(uid, dict):
 				return uid
+
+		uid = int(uid)
 		# Connect to appropriate database
 		database = self.client[self.collection]
 		collection = database[coinid]
@@ -207,7 +244,7 @@ class Balance(Abstract):
 		result = await collection.find_one({"uid":uid})
 		return {i:result[i] for i in result if i != "_id"}
 
-
+	#@verify
 	async def add_active(self, *args, **kwargs):
 		"""
 		Increment users balance
@@ -229,31 +266,39 @@ class Balance(Abstract):
 			kwargs = json.loads(kwargs.get("message"))
 
 		# Get data from request
-		uid = int(kwargs.get("uid", 0))
+		uid = kwargs.get("uid")
 		coinid = kwargs.get("coinid")
-		amount = int(kwargs.get("amount"))
+		amount = kwargs.get("amount")
 		address = kwargs.get("address")
+
+		try:
+			amount = bson.int64.Int64(int(amount))
+		except Exception as e:
+			return {"error":403, "reason":str(e)}
+
 		# Check if required fields exists
 		if not uid and address:
 			uid = await self.get_uid_by_address(address=address, coinid=coinid)
 			if isinstance(uid, dict):
 				return uid
+
+		uid = int(uid)
 		# Connect to appropriate database
 		database = self.client[self.collection]
 		collection = database[coinid]
 		# Check if balance exists
-		balance = await collection.find_one({"uid":uid})
+		balance = await collection.find_one({"uid":int(uid)})
 		if not balance:
 			return self.error_404(
 				"Add active. Balance with uid:%s and type:%s not found." % (uid, coinid))
 		# Increment balance
-		await collection.find_one_and_update({"uid":uid},
+		await collection.find_one_and_update({"uid":int(uid)},
 							{"$inc":{"amount_active":amount}})
 		# Return result with excluded mongo _id field
-		result = await collection.find_one({"uid":uid})
+		result = await collection.find_one({"uid":int(uid)})
 		return {i:result[i] for i in result if i != "_id"}
 
-
+	#@verify
 	async def add_frozen(self, *args, **kwargs):
 		"""
 		Increment frozen users balance
@@ -277,14 +322,22 @@ class Balance(Abstract):
 		# Get data from request
 		uid = kwargs.get("uid")
 		coinid = kwargs.get("coinid")
-		amount = int(kwargs.get("amount"))
+		amount = kwargs.get("amount")
 		txid = kwargs.get("txid")
 		address = kwargs.get("address")
+
+		try:
+			amount = bson.int64.Int64(int(amount))
+		except Exception as e:
+			return {"error":403, "reason":str(e)}
+
 		# Check if required fields exists
 		if not uid and address:
 			uid = await self.get_uid_by_address(address=address, coinid=coinid)
 			if isinstance(uid, dict):
 				return uid
+
+		uid = int(uid)
 		# Connect to appropriate database
 		database = self.client[self.collection]
 		collection = database[coinid]
@@ -303,7 +356,7 @@ class Balance(Abstract):
 		result = await collection.find_one({"uid":uid})
 		return {i:result[i] for i in result if i != "_id"}
 
-
+	#@verify
 	async def sub_active(self, *args, **kwargs):
 		"""
 		Decrement active users balance
@@ -327,13 +380,21 @@ class Balance(Abstract):
 		# Get data from request
 		uid = kwargs.get("uid")
 		coinid = kwargs.get("coinid")
-		amount = int(kwargs.get("amount"))
+		amount = kwargs.get("amount")
 		address = kwargs.get("address")
+
+		try:
+			amount = bson.int64.Int64(int(amount))
+		except Exception as e:
+			return {"error":403, "reason":str(e)}
+
 		# Check if required fields exists
 		if not uid and address:
 			uid = await self.get_uid_by_address(address=address, coinid=coinid)
 			if isinstance(uid, dict):
 				return uid
+
+		uid = int(uid)
 		# Connect to appropriate database
 		database = self.client[self.collection]
 		collection = database[coinid]
@@ -352,7 +413,7 @@ class Balance(Abstract):
 		result = await collection.find_one({"uid":uid})
 		return {i:result[i] for i in result if i != "_id"}
 
-
+	#@verify
 	async def withdraw(self, *args, **kwargs):
 		"""
 		Decrement active users balance
@@ -376,13 +437,21 @@ class Balance(Abstract):
 		# Get data from request
 		uid = kwargs.get("uid")
 		coinid = kwargs.get("coinid")
-		amount = int(kwargs.get("amount"))
+		amount = kwargs.get("amount")
 		address = kwargs.get("address")
+
+		try:
+			amount = bson.int64.Int64(int(amount))
+		except Exception as e:
+			return {"error":403, "reason":str(e)}
+
 		# Check if required fields exists
 		if not uid and address:
 			uid = await self.get_uid_by_address(address=address, coinid=coinid)
 			if isinstance(uid, dict):
 				return uid
+
+		uid = int(uid)
 		# Connect to appropriate database
 		database = self.client[self.collection]
 		collection = database[coinid]
@@ -401,10 +470,7 @@ class Balance(Abstract):
 		result = await collection.find_one({"uid":uid})
 		return {i:result[i] for i in result if i != "_id"}
 
-
-
-
-
+	#@verify
 	async def sub_frozen(self, *args, **kwargs):
 		"""
 		Decrement frozen users balance
@@ -428,13 +494,21 @@ class Balance(Abstract):
 		# Get data from request
 		uid = kwargs.get("uid")
 		coinid = kwargs.get("coinid")
-		amount = int(kwargs.get("amount"))
+		amount = kwargs.get("amount")
 		address = kwargs.get("address")
+
+		try:
+			amount = bson.int64.Int64(int(amount))
+		except Exception as e:
+			return {"error":403, "reason":str(e)}
+
 		# Check if required fields exists
 		if not uid and address:
 			uid = await self.get_uid_by_address(address=address, coinid=coinid)
 			if isinstance(uid, dict):
 				return uid
+
+		uid = int(uid)
 		# Connect to appropriate database
 		database = self.client[self.collection]
 		collection = database[coinid]
@@ -453,7 +527,7 @@ class Balance(Abstract):
 		result = await collection.find_one({"uid":uid})
 		return {i:result[i] for i in result if i != "_id"}
 
-
+	#@verify
 	async def get_active(self, *args, **kwargs):
 		"""
 		Get active users balance
@@ -482,6 +556,7 @@ class Balance(Abstract):
 			if isinstance(uid, dict):
 				return uid
 
+		uid = int(uid)
 		# Check if required fields exists
 		if not all([coinids, uid]):
 			return self.error_400("Get active. Missed required fields.")
@@ -512,7 +587,7 @@ class Balance(Abstract):
 				actives[coinid] = balance["amount_active"]
 		return actives
 
-
+	#@verify
 	async def get_frozen(self, *args, **kwargs):
 		"""
 		Get frozen users balance
@@ -542,6 +617,7 @@ class Balance(Abstract):
 			if isinstance(uid, dict):
 				return uid
 
+		uid = int(uid)
 		if not all([types, uid]):
 			return self.error_400("Get frozen. Missed required fields.")
 		if isinstance(types, list):
@@ -571,7 +647,7 @@ class Balance(Abstract):
 				actives[coinid] = balance["amount_frozen"]
 		return actives
 
-
+	#@verify
 	async def get_wallets(self, *args, **kwargs):
 		"""
 		Get users wallets by uid
@@ -602,6 +678,7 @@ class Balance(Abstract):
 			if isinstance(uid, dict):
 				return uid
 
+		uid = int(uid)
 		wallets = []
 		for coinid in self.types:
 
@@ -712,7 +789,7 @@ class Balance(Abstract):
 		if kwargs.get("message"):
 			kwargs = json.loads(kwargs.get("message", "{}"))
 
-		uid = kwargs.get("uid")
+		uid = int(kwargs.get("uid"))
 		txid = kwargs.get("txid")
 		coinid = kwargs.get("coinid")
 		public_key = kwargs.get("public_key")
@@ -734,10 +811,6 @@ class Balance(Abstract):
 					"unconfirmed": False
 			})
 		return {"result":"ok"}
-
-
-
-
 
 
 

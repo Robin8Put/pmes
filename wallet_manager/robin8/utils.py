@@ -1,4 +1,4 @@
-from utils.bip32keys.bip32addresses import Bip32Addresses
+from bip32keys.bip32addresses import Bip32Addresses
 import sha3
 import json
 

@@ -11,7 +11,7 @@ PROJ_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 if PROJ_DIR not in sys.path:
 	sys.path.append(PROJ_DIR)
 
-logging.basicConfig(filename='bridge.log',level=logging.DEBUG,
+logging.basicConfig(filename='bridge.log',level=logging.WARNING,
 					format='%(asctime)s %(message)s')
 
 

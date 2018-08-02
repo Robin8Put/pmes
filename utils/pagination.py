@@ -1,5 +1,6 @@
 from utils.tornado_components.web import SignedHTTPClient
 import settings
+import logging
 
 
 class Paginator(object):

@@ -33,6 +33,22 @@ class Account(GenesisClass):
     ident_offer = {0:"read_access", 1:"write_access"}
 
 
+    async def withdraw_fee(self, coinid):
+        fees = {
+            "BTCTEST": 0.001*pow(10,8),
+            "ETH": 0.01*pow(10,8),
+            "QTUMTEST": 0.5*pow(10,8), 
+            "PUTTEST": 50*pow(10,8),
+            "LTCTEST": 0.05*pow(10,8)
+        }
+        try:
+            fee = fees[coinid]
+        except KeyError:
+            fee = 0
+        return fee
+
+
+
     async def logsource(self, **params):
         result = await self.client_storage.request(method_name="logsource",
                                                     **params)

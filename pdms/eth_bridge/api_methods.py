@@ -155,7 +155,7 @@ class Bridge(object):
         return encoded_arr
 
 
-    #verify
+    #@verify
     async def storagecat(*args, **kwargs):
         #kwargs = json.loads(kwargs.get("message"))
         hash = args[1]
@@ -172,7 +172,7 @@ class Bridge(object):
         return data
 
 
-    #verify
+    #@verify
     async def getcid(*args, **kwargs):
         kwargs = json.loads(kwargs.get("message"))
 
@@ -184,7 +184,7 @@ class Bridge(object):
 
         return str(cid)
 
-
+    #@verify
     async def getcus(*args, **kwargs):
         kwargs = json.loads(kwargs.get("message"))
 
@@ -198,6 +198,7 @@ class Bridge(object):
             return await storagecat(cus)
         return cus
 
+    #@verify
     async def readbycid(*args, **kwargs):
         kwargs = json.loads(kwargs.get("message"))
 
@@ -212,7 +213,7 @@ class Bridge(object):
 
         return res
 
-
+    #@verify
     async def ownerbycid(*args, **kwargs):
         logging.debug("\n\n")
         logging.debug("[+] -- Owner by cid debugging. ")
@@ -234,7 +235,7 @@ class Bridge(object):
 
         return owner_hex_addr
 
-
+    #@verify
     async def descrbycid(*args, **kwargs):
         kwargs = json.loads(kwargs.get("message"))
 
@@ -250,7 +251,7 @@ class Bridge(object):
 
         return descr
 
-
+    #@verify
     async def makecid(*args, **kwargs):
         kwargs = json.loads(kwargs.get("message"))
         cus = kwargs.get("cus")
@@ -278,7 +279,7 @@ class Bridge(object):
         return {'result': result, 'cus_hash': cus_hash, 'cus': cus, 'addr': addr, 'owner_hex_addr': owneraddr,
                 'descr_hash': descr_hash}
 
-
+    #@verify
     async def setdescrforcid(*args, **kwargs):
         kwargs = json.loads(kwargs.get("message"))
 
@@ -296,7 +297,7 @@ class Bridge(object):
 
         return {'result': result, 'cid': str(cid), 'descr': descr, 'addr': addr, 'descr_hash': descr_hash}
 
-
+    #@verify
     async def changeowner(*args, **kwargs):
         kwargs = json.loads(kwargs.get("message"))
         cid = int(kwargs.get("cid"))
@@ -318,7 +319,7 @@ class Bridge(object):
         return {'result': result, 'cid': str(cid), 'new_owner': new_owner,
                 'access_string': access_string, 'prev_owner': prev_owner, 'contract_owner_hex': addr}
 
-
+    #@verify
     async def sellcontent(*args, **kwargs):
         kwargs = json.loads(kwargs.get("message"))
 
@@ -339,7 +340,7 @@ class Bridge(object):
         return {'result': result, 'cid': str(cid), 'buyer_address': buyer_address,
                 'access_string': access_string, 'content_owner': content_owner_addr, 'contract_owner_hex': addr}
 
-
+    #@verify
     async def set_read_price(*args, **kwargs):
         kwargs = json.loads(kwargs.get("message"))
 
@@ -352,6 +353,7 @@ class Bridge(object):
 
         return {'result': result, 'cid': str(cid), 'price': price}
 
+    #@verify
     async def set_write_price(*args, **kwargs):
         kwargs = json.loads(kwargs.get("message"))
 
@@ -364,7 +366,7 @@ class Bridge(object):
 
         return {'result': result, 'cid': str(cid), 'price': price}
 
-
+    #@verify
     async def get_read_price(*args, **kwargs):
 
         kwargs = json.loads(kwargs.get("message"))
@@ -375,6 +377,7 @@ class Bridge(object):
 
         return r8_sc.getReadPrice(cid)
 
+    #@verify
     async def get_write_price(*args, **kwargs):
         kwargs = json.loads(kwargs.get("message"))
         cid = int(kwargs.get("cid"))
@@ -382,7 +385,7 @@ class Bridge(object):
 
         return r8_sc.getWritePrice(cid)
 
-
+    #@verify
     async def make_offer(*args, **kwargs):
         kwargs = json.loads(kwargs.get("message"))
 
@@ -400,7 +403,7 @@ class Bridge(object):
         return {'result': result, 'cid': str(cid), 'offer_price': price,
                 'buyer_address': buyer_address, 'buyer_access_string': buyer_access_string, 'offer_type': offer_type}
 
-
+    #@verify
     async def reject_offer(*args, **kwargs):
         kwargs = json.loads(kwargs.get("message"))
 
@@ -414,6 +417,7 @@ class Bridge(object):
 
         return {'result': result, 'cid': str(cid), 'buyer_address': buyer_address}
 
+    #@verify
     async def add_review(*args, **kwargs):
         kwargs = json.loads(kwargs.get("message"))
         cid = kwargs.get("cid")
@@ -432,7 +436,7 @@ class Bridge(object):
 
         return {'result': result, 'cid': str(cid), 'buyer_address': buyer_address}
 
-
+    #@verify
     async def get_next_cid(*args, **kwargs):
         r8_sc = get_contract_handler()
 
@@ -440,6 +444,7 @@ class Bridge(object):
 
         return {'next_cid': r8_sc.nextCid()}
 
+    #@verify
     async def get_cid_offers(*args, **kwargs):
         kwargs = json.loads(kwargs.get("message"))
         handler = get_contract_handler()
@@ -451,7 +456,7 @@ class Bridge(object):
 
         return result
 
-
+    #@verify
     async def get_buyer_offers(*args, **kwargs):
 
         kwargs = json.loads(kwargs.get("message"))
@@ -465,7 +470,7 @@ class Bridge(object):
 
         return result
 
-
+    #@verify
     async def get_reviews(*args, **kwargs):
         kwargs = json.loads(kwargs.get("message"))
         handler = get_contract_handler()
@@ -478,6 +483,7 @@ class Bridge(object):
             res.append({'rating': r[0], 'buyer_address': r[1:41], 'review': r[41:][2:]})
         return res
 
+    #@verify
     async def get_all_content(*args, **kwargs):
         kwargs = json.loads(kwargs.get("message"))
         range_ = kwargs.get("range_")
@@ -506,7 +512,7 @@ class Bridge(object):
 
         return contents
 
-
+    #@verify
     async def get_single_content(*args, **kwargs):
         message = json.loads(kwargs.get("message"))
 
@@ -531,6 +537,7 @@ class Bridge(object):
 
         return data
 
+    #@verify
     async def get_users_content(*args, **kwargs):
 
         message = json.loads(kwargs.get("message"))
@@ -571,7 +578,7 @@ class Bridge(object):
 
         return container
 
-
+    #@verify
     async def get_offer(*args, **kwargs):
         kwargs = json.loads(kwargs.get("message"))
         handler = get_contract_handler()

@@ -94,9 +94,9 @@ if __name__ == '__main__':
 
     print(extend_tree(range(current_depth, depth)))
 
-    for i in range(1, 2):
-        for type in available_coins:
-            print(create_private_key(network=type, xprv=exchange_xprivate_key, uid=i))
+    # for i in range(1, 2):
+    #     for type in available_coins:
+    #         print(create_private_key(network=type, xprv=exchange_xprivate_key, uid=i))
 
     # seed = wallet.generate_mnemonic()
     #

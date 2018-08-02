@@ -55,7 +55,7 @@ The API-methods:
 
 - [Get all profiles reviews](#get-all-profiles-reviews)
 
-- [Withdraw PUT tokens](#withdraw-put-tokens)
+- [Withdraw tokens or coins](#withdraw-tokens-or-coins)
 
 - [Bulk operations](#bulk_operations)
 
@@ -108,17 +108,15 @@ Descriptions of the API methods provided below::
 
     There are the following user's balances present in the user's wallets: 
 
-    - `amount` - an active amount of user's balance.
+    - `amount_active` - an active amount of user's balance.
 
-    - `deposit` - a frozen amount. When a user posted an offer to buy some profile with price is 100 tokens, these tokens will be frozen and displays as "deposit" field.
-
-    - `unconfirmed` - is the number of coins/tokens that is not confirmed in the blockchain yet. When transaction will be confirmed, this number of coins/tokens will be shown in the "amount" field.
+    - `amount_frozen` - a frozen amount. When a user posted an offer to buy some profile with price is 100 tokens, these tokens will be frozen and displays as "amount_frozen" field.  Or the number of coins/tokens that is not confirmed in the blockchain yet.
 
     Therefore, when a buyer pays for buying profile from the seller the following steps happen:
 
-    1) buyer sends tokens to the seller and this tokens will become frozen and will be shown in the `deposit` field
+    1) buyer sends tokens to the seller and this tokens will become frozen and will be shown in the `amount_frozen` field
 
-    2) seller receive tokens and they will be shown in the `unconfirmed` field until transaction will be confirmed in the blockchain
+    2) seller receive tokens and they will be shown in the `amount_frozen` field until transaction will be confirmed in the blockchain
 
     `balance` represented as `real_user_balance * 10^8`. Where `real_user_balance` could be `float`.
 
@@ -135,10 +133,10 @@ Descriptions of the API methods provided below::
         "news_count": [integer],    # number of news about offers to buy profile (0 by default)
         "id": [integer],            # identifier of the user account
         "wallets": [string],        # list of dicts with user's wallets addresses
+            "uid": [integer]                    # users id
             "address": [string],                # wallet address to which user could refill coins/tokens
-            "amount": 0 [integer],              # an active amount of coins/tokens
-            "deposit": 0 [integer],             # a frozen amount of coins/tokens
-            "unconfirmed": 0 [integer],         # is the number of coins/tokens that is not confirmed in the blockchain yet
+            "amount_active": 0 [integer],       # an active amount of coins/tokens
+            "amount_frozen": 0 [integer],       # a frozen amount of coins/tokens or the number of coins/tokens that is not confirmed in the blockchain yet
             "coinid": [string]                  # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
     }
 ```
@@ -172,9 +170,9 @@ Descriptions of the API methods provided below::
 
     `[json]`
 
-    `balance` represented as `real_user_balance * 10^8`. Where `real_user_balance` could be `float`. 
+    `balance` represented as `real_user_balance * 10^8`. Where `real_user_balance` could be `float`.
 
-    `amount`, `deposit` and `unconfirmed` fields represented in a similar way.
+    `amount_active` and `amount_frozen` fields represented in a similar way.
 
 ```bash
     {
@@ -187,10 +185,10 @@ Descriptions of the API methods provided below::
         "news_count": [integer],    # number of news about offers to buy profile (0 by default)
         "id": [integer],            # user's identifier
         "wallets": [string],        # list of dicts with user's wallets addresses
+            "uid": [integer]                    # users id
             "address": [string],                # wallet address to which user could refill coins/tokens
-            "amount": 0 [integer],              # an active amount of coins/tokens
-            "deposit": 0 [integer],             # a frozen amount of coins/tokens
-            "unconfirmed": 0 [integer],         # is the number of coins/tokens that is not confirmed in the blockchain yet
+            "amount_active": 0 [integer],       # an active amount of coins/tokens
+            "amount_frozen": 0 [integer],       # a frozen amount of coins/tokens or the number of coins/tokens that is not confirmed in the blockchain yet
             "coinid": [string]                  # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
     }
 ```
@@ -947,7 +945,7 @@ Descriptions of the API methods provided below::
 ```
 
 
-## Withdraw PUT tokens
+## Withdraw tokens or coins
 
 * **URL:** `/api/accounts/withdraw`
 
@@ -960,14 +958,14 @@ Descriptions of the API methods provided below::
 
 * **Body params**
     
-    Now work for the PUT tokens only.
+    Now work with the PUTTEST and QTUMTEST tokens only.
 
 ```bash
         {
             "public_key": [string],
             "message": {
                 "timestamp": [string],
-                "coinid": [string],         # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
+                "coinid": [string],         # type of the cryptocurrency `PUTTEST` or `QTUMTEST`
                 "amount": [string],         # amount of tokens that user send to the "address"
                 "address": [string],        # address to which user send the tokens
                 "recvWindow": [integer]     # signature of the message timeout expired after this timing. For instance, in 5000 milliseconds

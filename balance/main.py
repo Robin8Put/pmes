@@ -16,7 +16,7 @@ sys.path.append(PROJ_DIR)
 
 import settings
 
-logging.basicConfig(filename='balance.log',level=logging.DEBUG,
+logging.basicConfig(filename='balance.log',level=logging.WARNING,
 								format='%(asctime)s %(message)s')
 
 

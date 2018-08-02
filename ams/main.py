@@ -10,7 +10,7 @@ PROJ_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJ_DIR not in sys.path:
 	sys.path.append(PROJ_DIR)
 
-logging.basicConfig(filename='ams.log',level=logging.DEBUG,
+logging.basicConfig(filename='ams.log',level=logging.WARNING,
 					format='%(asctime)s %(message)s')
 
 

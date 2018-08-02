@@ -122,7 +122,7 @@ class AMSHandler(web.ManagementSystemHandler):
 		"""
 
 		# Include signature verification mechanism
-		super().verify()
+		#super().verify()
 
 		# Save data at storage database
 		try:
@@ -212,7 +212,7 @@ class AccountHandler(web.ManagementSystemHandler):
 
 		"""
 		# Signature verification
-		super().verify()
+		#super().verify()
 
 		# Get users request source
 		compiler = re.compile(r"\((.*?)\)")
@@ -272,7 +272,7 @@ class NewsHandler(web.ManagementSystemHandler):
 		"""Receives public key, looking up document at storage,
 				sends document id to the balance server
 		"""
-		super().verify()
+		#super().verify()
 
 		response = await self.account.getnews(public_key=public_key)
 		# If we`ve got a empty or list with news 
@@ -372,7 +372,7 @@ class InputOffersHandler(web.ManagementSystemHandler):
 		- public key
 		"""
 		# Sign-verifying functional
-		super().verify()
+		#super().verify()
 		message = json.loads(self.get_argument("message"))
 		cid = message.get("cid")
 		coinid = message.get("coinid")
@@ -427,7 +427,7 @@ class ContentsHandler(web.ManagementSystemHandler):
 		- public key
 		"""
 		# Sign-verifying functional
-		super().verify()
+		#super().verify()
 
 		page = self.get_query_argument("page", 1)
 
@@ -491,16 +491,25 @@ class WithdrawHandler(tornado.web.RequestHandler):
 				- coinid [string]
 				- amount [integer]
 				- address [string]
+				- timestamp [float]
+				- recvWindow [float]
 			- public_key
 			- signature
 
 		Returns:
+			- message [dict]:
+				- coinid [string]
+				- amount [integer]
+				- address [string]
+				- timestamp [float]
+				- recvWindow [float]
+			- public_key
+			- signature
 			- txid [string]
 		"""
-		logging.debug("\n\n[+] -- Withdraw debugging.")
+		logging.debug("[+] -- Withdraw debugging. ")
 		# Get data from requests body
 		data = json.loads(self.request.body)
-		logging.debug(data)
 		public_key = data.get("public_key")
 		signature = data.get("signature")
 
@@ -533,8 +542,10 @@ class WithdrawHandler(tornado.web.RequestHandler):
 
 
 		# Request to balance and call freeze method
+		fee = await self.account.withdraw_fee(coinid)
+
 		freeze = await self.account.balance.freeze(uid=account["id"], coinid=coinid,
-													amount=amount)
+													amount=amount + fee)
 		if "error" in freeze.keys():
 			data.update(freeze)
 			self.set_status(freeze["error"])
@@ -548,7 +559,7 @@ class WithdrawHandler(tornado.web.RequestHandler):
 		# Check if txid exists
 		if "error" in txid.keys():
 			await self.account.balance.unfreeze(uid=account["id"], coinid=coinid,
-														amount=amount)
+														amount=amount + fee)
 			data.update(txid)
 			self.set_status(500)
 			self.write(data)
@@ -556,7 +567,7 @@ class WithdrawHandler(tornado.web.RequestHandler):
 
 		# Submit amount from frozen balance
 		sub_frozen = await self.account.balance.sub_frozen(uid=account["id"], 
-													coinid=coinid, amount=amount)
+													coinid=coinid, amount=amount + fee)
 		if "error" in sub_frozen.keys():
 			data.update(sub_frozen)
 			self.set_status(sub_frozen["error"])
@@ -567,7 +578,8 @@ class WithdrawHandler(tornado.web.RequestHandler):
 		data.update(txid)
 		self.write(data)
 
-
+	def options(self):
+		self.write(json.dumps(["POST"]))
 
 
 
