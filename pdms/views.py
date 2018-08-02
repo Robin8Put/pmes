@@ -362,11 +362,6 @@ class DescriptionHandler(web.ManagementSystemHandler):
 
 		# Get content owner
 		response = await self.account.blockchain.ownerbycid(cid=cid)
-		logging.debug("\n\n")
-		logging.debug("[+] -- Description debugging.")
-		logging.debug("\n\n")
-		logging.debug(cid)
-		logging.debug(response)
 		if isinstance(response, dict):
 			if "error" in response.keys():
 				error_code = response["error"]

@@ -28,6 +28,10 @@ class QtumContractHandler:
     def from_http_provider(cls, http_provider, contract_address, abi):
         return cls(AuthServiceProxy(http_provider), contract_address, abi)
 
+    @classmethod
+    def from_connection(cls, connection, contract_address, abi):
+        return cls(connection, contract_address, abi)
+
     def reload_http_provider(self, http_provider):
         self.qtum_rpc = AuthServiceProxy(http_provider)
 
@@ -77,6 +81,16 @@ class QtumContractHandler:
         self.send_params['value'] = 0  # prevent if someone occasionally forgets to zero amount
 
         return res  # currently qtum daemon doesn't return execution output
+
+    def deploy_contract(self, contract_code):
+
+        res = self.qtum_rpc.createcontract(contract_code,
+                                           self.send_params['gasLimit'],
+                                           str(self.send_params['gasPrice'] / 10**18),
+                                           self.send_params['sender'])
+
+        return res  # currently qtum daemon doesn't return execution output
+
 
     @staticmethod
     def params_to_abi(input_types, input_values):

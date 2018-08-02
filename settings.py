@@ -19,6 +19,7 @@ ethport = 8007
 balanceport = 8004
 historyport = 8005
 emailport = 8006
+withdrawport = 8011
 
 prephost = "%s:%s" % (host, prepport)
 pmeshost = "%s:%s" % (host, pmesport)
@@ -28,7 +29,7 @@ ethhost = "%s:%s" % (host, ethport)
 balancehost = "%s:%s" % (host, balanceport)
 historyhost = "%s:%s" % (host, historyport)
 emailhost = "%s:%s" % (host, emailport)
-withdrawhost = "http://localhost:8011/api/withdraw"
+withdrawhost = "%s:%s/api/" % (host, withdrawport)
 
 
 

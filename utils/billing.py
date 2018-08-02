@@ -45,7 +45,7 @@ async def upload_content_fee(*args, **kwargs):
 	logging.debug(balances)
 	if isinstance(balances, dict):
 		if "error" in balances.keys():
-			return balance
+			return balances
 	# Decrement users balance
 	common_price = int(content_fee) + int(descr_fee)
 

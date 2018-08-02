@@ -6,115 +6,136 @@ import logging
 # Third-party
 from jsonrpcserver.aio import methods
 from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
+from solc import compile_source, compile_files, link_code
 
 from robin8.qrc20_sc import Qrc20
 
-# todo: move to global settings
-available_coinid = ["BTCTEST", "LTCTEST", "PUTTEST", "QTUMTEST"]
-hosts = {
-	"BTCTEST": "http://%s:%s@%s:%s" % ("bitcoin", "bitcoin123", "190.2.148.11", "50011"),
-	"LTCTEST": "http://%s:%s@%s:%s" % ("litecoin", "litecoin123", "190.2.148.11", "50012"),
-	"QTUMTEST": "http://%s:%s@%s:%s" % ("qtum", "qtum123", "190.2.148.11", "50013"),
-	"PUTTEST": "http://%s:%s@%s:%s" % ("qtum", "qtum123", "190.2.148.11", "50013")
-}
-decimals = 8
-decimals_k = 10**decimals
+from robin8.qtum_contract_handler import QtumContractHandler
+
+from config import base_blockchains, hosts, erc20_abi, contract_addresses, qtum_hot_wallet, decimals, decimals_k, erc20_code, \
+    deploy_settings
 
 
 class AbstractWithdraw(object):
 
-	def __init__(self):
-		self.reload_connections()
+    def __init__(self):
+        self.reload_connections()
 
-	def reload_connections(self):
-		self.connections = {}
-		for coinid in available_coinid:
-			self.connections.update({coinid: AuthServiceProxy(hosts[coinid])})
+    def reload_connections(self):
+        self.connections = {}
+        for coinid, conn in hosts.items():
+            self.connections.update({coinid: AuthServiceProxy(conn)})
 
-	def error_403(self, reason):
-		return {"error": 403, "reason":"Withdraw service. " + reason}
+    def error_403(self, reason):
+        return {"error": 403, "reason":"Withdraw service. " + reason}
 
-	def error_400(self, reason):
-		return {"error": 400, "reason":"Withdraw service. " + reason}
+    def error_400(self, reason):
+        return {"error": 400, "reason":"Withdraw service. " + reason}
 
-	def error_404(self, reason):
-		return {"error": 404, "reason":"Withdraw service. " + reason}
+    def error_404(self, reason):
+        return {"error": 404, "reason":"Withdraw service. " + reason}
 
 
-	def validate(self, *args, **kwargs):
+    def validate(self, *args, **kwargs):
 
-		if not kwargs:
-			self.error_400("Validate. Missed parameters.")
-			return
+        if not kwargs:
+            self.error_400("Validate. Missed parameters.")
+            return
 
-		message = kwargs.get("message")
+        message = kwargs.get("message")
 
-		if message and isinstance(message, str):
-			kwargs = json.loads(message)
-		elif message and isinstance(message, dict):
-			kwargs = message
+        if message and isinstance(message, str):
+            kwargs = json.loads(message)
+        elif message and isinstance(message, dict):
+            kwargs = message
 
-		amount = kwargs.get("amount")
-		if amount and not isinstance(amount, int):
-			self.error_400("Validate. Not valid amount")
-			return
+        amount = kwargs.get("amount")
+        if amount and not isinstance(amount, int):
+            self.error_400("Validate. Not valid amount")
+            return
 
-		coinid = kwargs.get("coinid")
-		if coinid not in available_coinid:
-			self.error_403("Validate. Not valid coinid")
+        coinid = kwargs.get("coinid")
+        if coinid not in hosts.keys():
+            self.error_403("Validate. Not valid coinid")
+
+        total_supply = kwargs.get('total_supply')
+        if total_supply and not isinstance(amount, int):
+            self.error_400("Validate. Not valid total_supply")
+            return
+
 
 
 class Withdraw(AbstractWithdraw):
 
+    async def create_token(self, *args, **kwargs):
 
-	async def withdraw(self, *args, **kwargs):
-		"""
-		Withdraw funds to user wallet
+        token_name = kwargs.get('token_name')
+        token_symbol = kwargs.get('token_symbol')
+        total_supply = kwargs.get('total_supply')
+        token_decimals = kwargs.get('decimals')
+        blockchain = kwargs.get('blockchain')
+        is_burnable = kwargs.get('is_burnable')
+        is_mintable = kwargs.get('is_mintable')
 
-		Accepts:
-			- coinid [string] (blockchain id (example: BTCTEST, LTCTEST))
-			- address [string] withdrawal address
-			- amount [int]     withdrawal amount multiplied by decimals_k (10**8)
-		Returns dictionary with following fields:
-			- txid [string]
-		"""
+        if blockchain == 'QTUMTEST':
+            formatted_code = erc20_code.format(token_name=token_name, token_symbol=token_symbol,
+                                               token_decimals=token_decimals, total_supply=total_supply)
 
-		super().validate(*args, **kwargs)
-		super().reload_connections()
+            contract_code = compile_source(formatted_code)['<stdin>:%s' % token_name]['bin']
 
+            contract_handler = QtumContractHandler.from_http_provider(hosts['QTUMTEST'], None, '{}')
+            contract_handler.set_send_params({
+                'gasLimit': deploy_settings['gasLimit'],
+                'gasPrice': deploy_settings['gasPrice'],
+                'sender': qtum_hot_wallet
+            })
 
-		coinid = kwargs.get("coinid")
-		address = kwargs.get("address")
-		amount = int(kwargs.get("amount"))
-
-		connection = self.connections[coinid]
-
-		if coinid in ['BTCTEST', 'LTCTEST', 'QTUMTEST']:
-			try:
-				txid = connection.sendtoaddress(address, str(amount/decimals_k))
-				return {"txid": txid}
-			except Exception as e:
-				return {"error": 400, "reason": str(e)}
-		elif coinid == 'PUTTEST':
-			abi = '[{"constant":false,"inputs":[{"name":"spender","type":"address"},{"name":"value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"from","type":"address"},{"name":"to","type":"address"},{"name":"value","type":"uint256"}],"name":"transferFrom","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"who","type":"address"}],"name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"to","type":"address"},{"name":"value","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"spender","type":"address"},{"name":"value","type":"uint256"},{"name":"extraData","type":"bytes"}],"name":"approveAndCall","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"owner","type":"address"},{"name":"spender","type":"address"}],"name":"allowance","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"anonymous":false,"inputs":[{"indexed":true,"name":"owner","type":"address"},{"indexed":true,"name":"spender","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Transfer","type":"event"}]'
-
-			put_address = 'b1b3ea7bb5dd3fdc64b89d9896da63f0e14472c4'
-			handler = Qrc20.from_http_provider(
-					"http://%s:%s@%s:%s" % ("qtum", "qtum123", "190.2.148.11", "50013"),
-						put_address, abi)
-			handler.set_send_params({'sender': 'qPszipAbyhFELfkoFbsnmVu3tSkXVNm9tQ'})
-			try:
-				txid = handler.transfer(address, amount)['txid']
-				return {'txid': txid}
-			except Exception as e:
-				return {"error": 400, "reason": str(e)}
-				
+            return contract_handler.deploy_contract(contract_code)
+        else:
+            return {'error': 'Unsupported blockchain'}
 
 
-withdraw2 = Withdraw()
+    async def withdraw(self, *args, **kwargs):
+        """
+        Withdraw funds to user wallet
+
+        Accepts:
+            - coinid [string] (blockchain id (example: BTCTEST, LTCTEST))
+            - address [string] withdrawal address (in hex for tokens)
+            - amount [int]     withdrawal amount multiplied by decimals_k (10**8)
+        Returns dictionary with following fields:
+            - txid [string]
+        """
+        logging.debug("\n\n[+] -- Withdraw debugging. ")
+        super().validate(*args, **kwargs)
+        super().reload_connections()
+
+
+        coinid = kwargs.get("coinid")
+        address = kwargs.get("address")
+        amount = int(kwargs.get("amount"))
+
+        connection = self.connections[coinid]
+
+        if coinid in ['BTCTEST', 'LTCTEST', 'QTUMTEST']:
+            txid = connection.sendtoaddress(address, str(amount/decimals_k))
+        elif coinid == 'PUTTEST':
+            handler = Qrc20.from_connection(connection, contract_addresses['PUTTEST'], erc20_abi)
+            handler.set_send_params({'sender': qtum_hot_wallet})
+            txid = handler.transfer(address, amount)['txid']
+            logging.debug(txid)
+
+        return {'txid': txid}
+
+withdraw_handler = Withdraw()
 
 
 @methods.add
 async def withdraw(*args, **kwargs):
-	request = await withdraw2.withdraw(*args, **kwargs)
-	return request
+    request = await withdraw_handler.withdraw(*args, **kwargs)
+    return request
+
+@methods.add
+async def create_token(*args, **kwargs):
+    request = await withdraw_handler.create_token(*args, **kwargs)
+    return request

@@ -150,7 +150,7 @@ class StorageTable(mongo.Table):
 		return news
 
 
-
+	#@verify
 	async def insert_news(self, **params):
 		"""Inserts news for account
 		Accepts:
@@ -396,7 +396,7 @@ class StorageTable(mongo.Table):
 							"cid":cid})
 		return {"result": "ok"}
 
-
+	#@verify
 	async def update_offer(self, **params):
 		"""Updates offer after transaction confirmation
 		Accepts:
@@ -433,7 +433,7 @@ class StorageTable(mongo.Table):
 		return {i:updated[i] for i in updated if i != "_id"}
 
 
-
+	#@verify
 	async def mailed_confirm(self, **params):
 		"""Sends mail to user after offer receiveing
 		Accepts:
@@ -720,7 +720,7 @@ class StorageTable(mongo.Table):
 		return {"result":"ok"}
 
 
-
+	#@verify
 	async def update_review(self, **params):
 		"""Update review after transaction confirmation
 		Accepts:
@@ -943,7 +943,7 @@ class StorageTable(mongo.Table):
 
 		return {i:updated[i] for i in updated if i != "_id"}
 
-
+	#@verify
 	async def change_owner(self, **params):
 		if params.get("message"):
 			params = json.loads(params.get("message", "{}"))
@@ -967,7 +967,7 @@ class StorageTable(mongo.Table):
 
 		return {i:content[i] for i in content if i != "_id"}
 
-
+	#@verify
 	async def share_content(self, **params):
 		if params.get("message"):
 			params = json.loads(params.get("message", "{}"))
@@ -1021,7 +1021,7 @@ class StorageTable(mongo.Table):
 		logging.debug("\n\n")
 		return deals
 
-
+	#@verify
 	async def log_source(self, **params):
 		""" Logging users request sources
 		"""

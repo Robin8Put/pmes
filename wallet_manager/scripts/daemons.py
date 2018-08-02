@@ -17,10 +17,10 @@ if __name__ == '__main__':
     #print(btc.help())
     #print(btc.getbalance('mmqZrqV1b55LymW22psvQNSyDuS33t6FbT'))
     #print(ltc.getbalance('mmqZrqV1b55LymW22psvQNSyDuS33t6FbT'))
-    print(ltc.listunspent())
-    print(btc.listunspent())
-
-    print(btc.sendtoaddress("mzf3cMX48ZofXj4AgGFudgWMhnz29965mV", "0.1"))
+    # print(ltc.listunspent())
+    # print(btc.listunspent())
+    #
+    # print(btc.sendtoaddress("mzf3cMX48ZofXj4AgGFudgWMhnz29965mV", "0.1"))
 
     #print(ltc.dumpprivkey('mmqZrqV1b55LymW22psvQNSyDuS33t6FbT'))
     # for i in range(0, 1):
