@@ -17,8 +17,8 @@ There are the following modules in the src folder:
     - `doVerify` --- verify message with signature and public_key
     - `encryptProfile` --- encrypt profile with private key using sha256
     - `decryptProfile` --- decrypt profile with private key using sha256
-    - `encryptPassword` --- encrypt password with private key using sha256
-    - `decryptPassword` --- decrypt password with private key using sha256
+    - `encryptPassword` --- is part of assymetric encryption algorithm. It encrypts sha256 of private_key (hash of the private_key)
+    - `decryptPassword` --- is part of assymetric encryption algorithm. It decrypts "encrypted" string using sha256 with password. When decrypt private key encrypted with `encryptPassword` user receives sha256 of private_key (hash of the private_key)
     - `decryptProfileByHash` --- decrypt profile with password hash using sha256
 - `walletInfo` --- library for generate public / private keys and sign / verify messages
     - `getTxHistory` --- return transaction history by address
@@ -31,6 +31,8 @@ There are the following modules in the src folder:
     - `generateCreateContractTx` --- generate transactions for creating contracts
 
 `index.html` import all these modules.
+
+Details about assymetric encryption algorithm is [here](asymmetric_algorithm.pdf)
 
 ## Encryption details
 
