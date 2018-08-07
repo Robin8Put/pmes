@@ -2,7 +2,7 @@
 
 The API uses the REST API standard.
 
-The host you could find here: http://pdms2.robin8.io.
+The host you could find here: http://190.2.149.83.
 
 Only integer numbers could be stored in the blockchains.
 If you want to store float number in the blockchain, you should multiply it on some constant (for instance, `10^8` for QTUM).
@@ -14,6 +14,8 @@ Variable `timestamp` has the following format `%Y%m%d%H%M`. For instance, timest
 For checking status of the transaction in the QTUM blockchain use the following site https://testnet.qtum.org.
 
 Posted profile is written to the blockchain when the status of the transaction changes from `Unconfirmed` to `Success`. After that, the user could view it by executing [Get all profiles which posted user](#get-all-profiles-which-posted-user) method. The user should pay attention on the `cid` attribute because it is profile identifier.
+
+To meet the nginx demands user should add `/` at the end of the URLs as presented in the documentation below.
 
 The API-methods:
 
@@ -59,15 +61,17 @@ The API-methods:
 
 - [Bulk operations](#bulk_operations)
 
+- [Refill wallet with test coins or tokens](#refill-wallet-with-test-coins-or-tokens)
+
 - [Standardization of an error messages](#standardization-of-an-error-messages)
 
 
-Descriptions of the API methods provided below::
+Descriptions of the API methods provided below:
 
 
 ## Create new account
 
-* **URL:** `/api/accounts`
+* **URL:** `/api/accounts/`
 
 * **Method:** `POST`
 
@@ -137,14 +141,14 @@ Descriptions of the API methods provided below::
             "address": [string],                # wallet address to which user could refill coins/tokens
             "amount_active": 0 [integer],       # an active amount of coins/tokens
             "amount_frozen": 0 [integer],       # a frozen amount of coins/tokens or the number of coins/tokens that is not confirmed in the blockchain yet
-            "coinid": [string]                  # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
+            "coinid": [string]                  # type of the cryptocurrency `PUTTEST` or `QTUMTEST`
     }
 ```
 
 
 ## Get account information
 
-* **URL:** `/api/accounts/[public_key]`
+* **URL:** `/api/accounts/[public_key]/`
 
 * **Method:** `GET`
 
@@ -189,14 +193,14 @@ Descriptions of the API methods provided below::
             "address": [string],                # wallet address to which user could refill coins/tokens
             "amount_active": 0 [integer],       # an active amount of coins/tokens
             "amount_frozen": 0 [integer],       # a frozen amount of coins/tokens or the number of coins/tokens that is not confirmed in the blockchain yet
-            "coinid": [string]                  # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
+            "coinid": [string]                  # type of the cryptocurrency `PUTTEST` or `QTUMTEST`
     }
 ```
 
 
 ## Get all news for the account
 
-* **URL:** `/api/accounts/[public_key]/news`
+* **URL:** `/api/accounts/[public_key]/news/`
 
 * **Method:** `GET`
 
@@ -247,11 +251,9 @@ Descriptions of the API methods provided below::
     News about actions with user profile.
 
 
-
-
 ## Post profile to the blockchain
 
-* **URL:** `/api/blockchain/[public_key]/[coinid]/profile`
+* **URL:** `/api/blockchain/[public_key]/[coinid]/profile/`
 
 * **Method:** `POST`
 
@@ -298,7 +300,7 @@ Descriptions of the API methods provided below::
 
 ## Get profile from the blockchain by cid
 
-* **URL:** `/api/blockchain/[cid]/[coinid]/profile`
+* **URL:** `/api/blockchain/[cid]/[coinid]/profile/`
 
 * **Method:** `GET`
 
@@ -344,7 +346,7 @@ Descriptions of the API methods provided below::
 
 **in progress**
 
-* **URL:** `/api/blockchain/[cid]/description`
+* **URL:** `/api/blockchain/[cid]/description/`
 
 * **Method:** `PUT`
 
@@ -361,9 +363,9 @@ Descriptions of the API methods provided below::
         "public_key": [string],
         "message": {
             "timestamp": [string],
-            "cid": [integer],
-            "description": [string],
-            "coinid": [string]
+            "cid": [integer],           # profile'ss cid 
+            "description": [string],    # profile's new description
+            "coinid": [string]          # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
         },
         "signature": [string]
     }
@@ -375,8 +377,8 @@ Descriptions of the API methods provided below::
 
 ```bash
     {
-        "cid": [integer],         # profiles cid 
-        "description": [string],  # profiles new description
+        "cid": [integer],         # profile's cid 
+        "description": [string],  # profile's new description
         "owneraddr": [string],    # owner address
         "coinid": [string]        # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
     }
@@ -387,7 +389,7 @@ Descriptions of the API methods provided below::
 
 **in progress**
 
-* **URL:** `/api/blockchain/[cid]/price`
+* **URL:** `/api/blockchain/[cid]/price/`
 
 * **Method:** `PUT`
 
@@ -430,7 +432,7 @@ Descriptions of the API methods provided below::
 
 ## Make a profiles write access offer for owner
 
-* **URL:** `/api/blockchain/[public_key]/write-access-offer`
+* **URL:** `/api/blockchain/[public_key]/write-access-offer/`
 
 * **Method:** `POST`
 
@@ -473,7 +475,7 @@ Descriptions of the API methods provided below::
 
 ## Make a profiles read access offer for owner
 
-* **URL:** `/api/blockchain/[public_key]/read-access-offer`
+* **URL:** `/api/blockchain/[public_key]/read-access-offer/`
 
 * **Method:** `POST`
 
@@ -517,7 +519,7 @@ Descriptions of the API methods provided below::
 
 ## Accept buyers offer
 
-* **URL:** `/api/blockchain/[public_key]/deal`
+* **URL:** `/api/blockchain/[public_key]/deal/`
 
 * **Method:** `POST`
 
@@ -561,7 +563,7 @@ Descriptions of the API methods provided below::
 
 ## Reject the write access offer by either buyer or seller
 
-* **URL:** `/api/blockchain/[public_key]/write-access-offer`
+* **URL:** `/api/blockchain/[public_key]/write-access-offer/`
 
 * **Method:** `PUT`
 
@@ -603,7 +605,7 @@ Descriptions of the API methods provided below::
 
 ## Reject the read access offer by either buyer or seller
 
-* **URL:** `/api/blockchain/[public_key]/read-access-offer`
+* **URL:** `/api/blockchain/[public_key]/read-access-offer/`
 
 * **Method:** `PUT`
 
@@ -645,12 +647,11 @@ Descriptions of the API methods provided below::
 
 ## Get all PMES profiles from the blockchain
 
-* **URL:** `/api/blockchain/profile?page=`
+* **URL:** `/api/blockchain/profile?page=[page]/`
 
 * **Method:** `GET`
 
 * **URL params**
-
 
     "page": [integer]
 
@@ -685,7 +686,7 @@ Descriptions of the API methods provided below::
 
 ## Get all profiles which posted user
 
-* **URL:** `/api/accounts/[public_key]/profiles?page=`
+* **URL:** `/api/accounts/[public_key]/profiles?page=[page]/`
 
 * **Method:** `GET`
 
@@ -734,7 +735,7 @@ Descriptions of the API methods provided below::
 
 ## Get all offers which made user
 
-* **URL:** `/api/accounts/[public_key]/output-offers`
+* **URL:** `/api/accounts/[public_key]/output-offers/`
 
 * **Method:** `GET`
 
@@ -785,7 +786,7 @@ Descriptions of the API methods provided below::
 
 ## Get all offers by cid
 
-* **URL:** `/api/accounts/[public_key]/input-offers`
+* **URL:** `/api/accounts/[public_key]/input-offers/`
 
 * **Method:** `GET`
 
@@ -834,7 +835,7 @@ Descriptions of the API methods provided below::
 
 ## Get all purchased read access profiles
 
-* **URL:** `/api/accounts/[public_key]/deals`
+* **URL:** `/api/accounts/[public_key]/deals/`
 
 * **Method:** `GET`
 
@@ -871,7 +872,7 @@ Descriptions of the API methods provided below::
 
 ## Make review for purchased profile
 
-* **URL:** `/api/accounts/[public_key]/review`
+* **URL:** `/api/accounts/[public_key]/review/`
 
 * **Method:** `POST`
 
@@ -913,7 +914,7 @@ Descriptions of the API methods provided below::
 
 ## Get all profiles reviews
 
-* **URL:** `/api/accounts/[cid]/[coinid]/reviews`
+* **URL:** `/api/accounts/[cid]/[coinid]/reviews/`
 
 * **Method:** `GET`
 
@@ -947,7 +948,7 @@ Descriptions of the API methods provided below::
 
 ## Withdraw tokens or coins
 
-* **URL:** `/api/accounts/withdraw`
+* **URL:** `/api/accounts/withdraw/`
 
 * **Method:** `POST`
 
@@ -998,14 +999,13 @@ Descriptions of the API methods provided below::
 
 ## Bulk operations
 
-* **URL:** `/api/bulk`
+* **URL:** `/api/bulk/`
 
 * **Method:** `POST`
 
 * **URL params**
 
     None
-
 
 * **Body params**
     
@@ -1048,6 +1048,28 @@ Descriptions of the API methods provided below::
     `[json]`
 
     In the response, user receives filled JSON format of the bulk operation with server signature.
+
+
+## Refill wallet with test coins or tokens
+
+* **URL:** `/api/accounts/[uid]/balance/`
+
+* **Method:** `POST`
+
+* **URL params**
+
+    `uid: [integer]` - created account id
+
+* **Body params**
+
+    `amount` represented as `amount * 10^8`. Where `amount` could be `float`.
+
+```bash
+{
+    "amount": [integer],     # refilling amount * 10^8
+    "coinid": [string],      # type of the cryptocurrency `PUTTEST` or `QTUMTEST`
+}
+```
 
 
 ## Standardization of an error messages 

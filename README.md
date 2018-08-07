@@ -24,7 +24,7 @@ The Profile Management EcoSystem provides the following functionality:
 - refill PUT wallet with tokens by wallet address
 - withdraw PUT tokens
 
-View API details [here](Robin8_BlockChain_PMES_API.md).
+View **API details** [here](Robin8_BlockChain_PMES_API.md).
 
 This repository contains the following modules:
 
