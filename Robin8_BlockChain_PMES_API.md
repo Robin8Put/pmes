@@ -2,7 +2,7 @@
 
 The API uses the REST API standard.
 
-The host you could find here: http://pdms2.robin8.io.
+The host you could find here: http://190.2.149.83.
 
 Only integer numbers could be stored in the blockchains.
 If you want to store float number in the blockchain, you should multiply it on some constant (for instance, `10^8` for QTUM).
