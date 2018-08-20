@@ -1061,9 +1061,10 @@ Descriptions of the API methods provided below:
 * **URL params**
 
     `address: [string]` - users address
+
     `coinid: [string]` - blockchain type   
 
-* ** Body params**
+* **Body params**
     
     None
 
