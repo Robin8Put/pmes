@@ -1062,7 +1062,7 @@ Descriptions of the API methods provided below:
 
     `address: [string]` - users address
 
-    `coinid: [string]` - blockchain type   
+    `coinid: [string]` - type of the cryptocurrency `PUTTEST` or `QTUMTEST`  
 
 * **Body params**
     
