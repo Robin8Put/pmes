@@ -1064,6 +1064,13 @@ Descriptions of the API methods provided below:
 
     `coinid: [string]` - blockchain type `QTUM` or `ETH` 
 
+```bash
+{
+    "address": [string],     # users address
+    "coinid": [string],      # blockchain type `QTUM` or `ETH` 
+}
+```
+
 * **Body params**
 
     None
