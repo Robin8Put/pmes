@@ -4,7 +4,7 @@ from time import sleep
 from daemon import Daemon
 from Parsing import ParsingBlock
 
-from_block = 184086
+from_block = 188790
 db_host = "localhost"
 db_name = "balance"
 coinid = "QTUMTEST"

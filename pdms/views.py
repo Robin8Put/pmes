@@ -6,14 +6,14 @@ import sys
 #Third-party
 import tornado
 from jsonrpcserver.aio import methods
+from qtum_utils.qtum import Qtum
+from bip32keys.r8_ethereum.r8_eth import R8_Ethereum  
+from tornado_components import web 
+from tornado_components.web import SignedTornadoClient
 
 # Locals
-from utils.tornado_components import web 
-from utils.bip32keys.r8_ethereum.r8_eth import R8_Ethereum  
-from utils.qtum_utils.qtum import Qtum
-from utils import billing
-from utils.tornado_components.web import SignedTornadoClient
 from utils.models.account import Account
+from utils import billing
 from utils.pagination import Paginator
 import settings
 
@@ -134,8 +134,9 @@ class ContentHandler(web.ManagementSystemHandler):
 
 		Verified: True
 		"""
-		logging.debug("[+] -- Get single content\n\n")
-		#super().verify()
+		if settings.SIGNATURE_VERIFICATION:
+			super().verify()
+
 		message = json.loads(self.get_argument("message", "{}"))
 
 		public_key = message.get("public_key")
@@ -206,13 +207,16 @@ class ContentHandler(web.ManagementSystemHandler):
 
 		Verified: True
 		"""
-
-		#super().verify()
 		logging.debug("[+] -- Post content debugging. ")
+		if settings.SIGNATURE_VERIFICATION:
+			super().verify()
 
 		# Define genesis variables
-		owneraddr = self.account.validator[coinid](public_key)    # Define owner address
 		if coinid in settings.bridges.keys():     # Define bridge url
+			owneraddr = self.account.validator[coinid](public_key)    # Define owner address
+			logging.debug("\n\n          Owner address")
+			logging.debug(coinid)
+			logging.debug(owneraddr)
 			self.account.blockchain.setendpoint(settings.bridges[coinid])
 		else:
 			self.set_status(400)
@@ -222,6 +226,8 @@ class ContentHandler(web.ManagementSystemHandler):
 
 		# Check if account exists
 		account = await self.account.getaccountdata(public_key=public_key)
+		logging.debug("\n            Users account ")
+		logging.debug(account)
 		if "error" in account.keys():
 			self.set_status(account["error"])
 			self.write(account)
@@ -268,14 +274,18 @@ class ContentHandler(web.ManagementSystemHandler):
 				"write_price":write_access
 				}
 		response = await self.account.blockchain.makecid(**data)
+		logging.debug("\n     Bridge makecid")
+		logging.debug(response)
 		if "error" in response.keys():
 			self.set_status(400)
 			self.write(response)
 			raise tornado.web.Finish
 
 		# Write cid to database
-		await self.account.setuserscontent(public_key=public_key,hash=response["cus_hash"],
+		db_content = await self.account.setuserscontent(public_key=public_key,hash=response["cus_hash"],
 							coinid=coinid, txid=response["result"]["txid"],access="content")
+		logging.debug("\n               Database content")
+		logging.debug(db_content)
 
 
 		response = {i:data[i] for i in data if i != "cus"}
@@ -334,7 +344,8 @@ class DescriptionHandler(web.ManagementSystemHandler):
 
 		"""
 
-		#super().verify()
+		if settings.SIGNATURE_VERIFICATION:
+			super().verify()
 
 		try:
 			body = json.loads(self.request.body)
@@ -351,6 +362,11 @@ class DescriptionHandler(web.ManagementSystemHandler):
 			message = body["message"]
 		descr = message.get("description")
 		coinid = message.get("coinid")
+
+		if not coinid in settings.bridges.keys():
+			self.set_status(400)
+			self.write({"error":400, "reason":"Unknown coin id"})
+			raise tornado.web.Finish
 
 		# Check if all required data exists
 		if not all([public_key, descr, coinid]):
@@ -447,7 +463,8 @@ class PriceHandler(web.ManagementSystemHandler):
 		Verified: True
 
 		""" 
-		super().verify()
+		if settings.SIGNATURE_VERIFICATION:
+			super().verify()
 
 		try:
 			body = json.loads(self.request.body)
@@ -569,14 +586,18 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 		Verified: True
 
 		"""
+		logging.debug("\n\n[+] -- Write access offer. ")
+		if settings.SIGNATURE_VERIFICATION:
+			super().verify()
 
-		super().verify()
 		try:
 			body = json.loads(self.request.body)
 		except:
 			self.set_status(400)
 			self.write({"error":400, "reason":"Unexpected data format. JSON required"})
 			raise tornado.web.Finish
+		logging.debug("\n     Body")
+		logging.debug(body)
 
 		# Get data from signed message
 		if isinstance(body["message"], str):
@@ -614,6 +635,8 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 
 		# Check if public key exists
 		account = await self.account.getaccountdata(public_key=public_key)
+		logging.debug("\n           Account")
+		logging.debug(account)
 		if "error" in account.keys():
 			# If account does not exist
 			self.set_status(account["error"])
@@ -621,7 +644,9 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 			raise tornado.web.Finish
 
 		#Get buyers balance
-		balances = await self.account.balance.get_wallets(coinid=coinid, uid=account["id"])
+		balances = await self.account.balance.get_wallets(uid=account["id"])
+		logging.debug("\n             Balances")
+		logging.debug(balances)
 
 		# Check if current content belongs to current user
 		if owneraddr == buyer_address:
@@ -634,7 +659,11 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 		for w in balances["wallets"]:
 			if "PUTTEST" in w.values():
 				balance = w 
+		logging.debug("\n          Balance")
+		logging.debug(balance)
 		difference = int(balance["amount_active"]) - int(write_price)
+		logging.debug("\n              Difference")
+		logging.debug(difference)
 
 		if difference < 0:
 			# If Insufficient funds
@@ -651,6 +680,8 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 			"buyer_access_string":buyer_access_string
 		}
 		response = await self.account.blockchain.makeoffer(**offer_data)
+		logging.debug("\n             Bridge make offer")
+		logging.debug(response)
 		try:
 			response["error"]
 		except:
@@ -660,11 +691,15 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 			self.write(response)
 			raise tornado.web.Finish
 
-		await self.account.insertoffer(cid=cid, txid=response["result"]["txid"], 
+		new_offer = await self.account.insertoffer(cid=cid, txid=response["result"]["txid"], 
 											coinid=coinid, public_key=public_key)
+		logging.debug("\n    Database new offer")
+		logging.debug(new_offer)
 
 		# Send e-mail to seller
 		seller = await self.account.getaccountbywallet(wallet=owneraddr)
+		logging.debug("\n             Seller account")
+		logging.debug(seller)
 		if "error" in seller.keys():
 			self.set_status(seller["error"])
 			self.write(seller)
@@ -681,8 +716,10 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 
 		# Freeze price at balance
 		coinid = "PUTTEST"
-		await self.account.balance.freeze(uid=account["id"],coinid=coinid, 
-													amount=write_price)
+		frozen_balance = await self.account.balance.freeze(uid=account["id"],
+												coinid=coinid, amount=write_price)
+		logging.debug("\n      Frozen balance")
+		logging.debug(frozen_balance)
 		# Set fee
 		fee = await billing.set_make_offer_fee(buyer_address=buyer_address)
 		if "error" in fee.keys():
@@ -703,7 +740,9 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 			- buyer public key
 			- buyer address
 		"""
-		super().verify()
+		if settings.SIGNATURE_VERIFICATION:
+			super().verify()
+
 		# Check if message contains required data
 		try:
 			body = json.loads(self.request.body)
@@ -810,7 +849,9 @@ class ReadAccessOfferHandler(web.ManagementSystemHandler):
 		Returns:
 			- offer parameters as dictionary
 		"""
-		super().verify()
+		if settings.SIGNATURE_VERIFICATION:
+			super().verify()
+
 		try:
 			body = json.loads(self.request.body)
 		except:
@@ -937,7 +978,9 @@ class ReadAccessOfferHandler(web.ManagementSystemHandler):
 			- buyer public key
 			- buyer address
 		"""
-		super().verify()
+		if settings.SIGNATURE_VERIFICATION:
+			super().verify()
+
 		# Check if message contains required data
 		try:
 			body = json.loads(self.request.body)
@@ -1044,7 +1087,10 @@ class DealHandler(web.ManagementSystemHandler):
 			- buyer public key
 			- seller public key
 		"""
-		super().verify()
+		logging.debug("[+] -- Deal debugging. ")
+		if settings.SIGNATURE_VERIFICATION:
+			super().verify()
+
 		# Check if message contains required data
 		try:
 			body = json.loads(self.request.body)
@@ -1052,6 +1098,8 @@ class DealHandler(web.ManagementSystemHandler):
 			self.set_status(400)
 			self.write({"error":400, "reason":"Unexpected data format. JSON required"})
 			raise tornado.web.Finish
+		logging.debug("\n         Body")
+		logging.debug(body)
 			
 		if isinstance(body["message"], str):
 			message = json.loads(body["message"])
@@ -1085,6 +1133,8 @@ class DealHandler(web.ManagementSystemHandler):
 
 		# Check if accounts exists
 		seller_account = await self.account.getaccountdata(public_key=public_key)
+		logging.debug("\n          Seller account")
+		logging.debug(seller_account)
 
 		try:
 			error_code = seller_account["error"]
@@ -1096,6 +1146,8 @@ class DealHandler(web.ManagementSystemHandler):
 			raise tornado.web.Finish
 
 		buyer_account = await self.account.getaccountdata(public_key=buyer_pubkey)
+		logging.debug("\n           Buyer account")
+		logging.debug(buyer_account)
 		try:
 			error_code = buyer_account["error"]
 		except:
@@ -1107,6 +1159,7 @@ class DealHandler(web.ManagementSystemHandler):
 
 		# Check if content belongs to current account
 		owneraddr = await self.account.blockchain.ownerbycid(cid=cid)
+		
 		
 		if owneraddr != self.account.validator[coinid](public_key):
 			self.set_status(403)
@@ -1127,6 +1180,8 @@ class DealHandler(web.ManagementSystemHandler):
 		get_price = await self.account.blockchain.getoffer(buyer_address=buyer_address,
 															cid=cid)
 		price = get_price["price"]
+		logging.debug("\n          Price")
+		logging.debug(price)
 
 		for w in balances["wallets"]:
 			if "PUTTEST" in w.values():
@@ -1137,6 +1192,7 @@ class DealHandler(web.ManagementSystemHandler):
 		if difference >= 0:
 
 			if access_type == "write_access":
+				logging.debug("\n          Write access")
 				# Fee
 				fee = await billing.change_owner_fee(cid=cid, new_owner=buyer_pubkey)
 				if "error" in fee.keys():
@@ -1153,12 +1209,17 @@ class DealHandler(web.ManagementSystemHandler):
 				}
 
 				response = await self.account.blockchain.changeowner(**chownerdata)
+				logging.debug("\n         Bridge change owner")
+				logging.debug(response)
 
-				await self.account.changeowner(cid=cid, 
+				new_owner = await self.account.changeowner(cid=cid, 
 										public_key=buyer_account["public_key"], 
 										coinid=coinid)
+				logging.debug("\n Database new owner")
+				logging.debug(new_owner)
 
 			elif access_type == "read_access":
+				logging.debug("\n          Read access")
 
 				# Fee
 				fee = await billing.sell_content_fee(cid=cid, new_owner=buyer_pubkey)
@@ -1176,27 +1237,33 @@ class DealHandler(web.ManagementSystemHandler):
 				}
 
 				response = await self.account.blockchain.sellcontent(**selldata)
+				logging.debug("\n        Bridge sell content")
 
 				# Write cid to database
-				await self.account.setuserscontent(public_key=buyer_account["public_key"], 
+				check = await self.account.setuserscontent(public_key=buyer_account["public_key"], 
 											hash=None,coinid=coinid, cid=cid,
 											txid=response["result"]["txid"],
 											access="deal")
+				logging.debug(check)
 
 			
 			# Increment and decrement balances of seller and buyer
 			coinid = "PUTTEST"
-			await self.account.balance.unfreeze(uid=buyer_account["id"],
+			unfreeze = await self.account.balance.unfreeze(uid=buyer_account["id"],
 													amount=price, coinid=coinid)
+			logging.debug("\n          Unfreeze buyer")
+			logging.debug(unfreeze)
 
-			await self.account.balance.sub_active(uid=buyer_account["id"], 
+			sub_active = await self.account.balance.sub_active(uid=buyer_account["id"], 
 												coinid=coinid, amount=price)
-
-			await self.account.balance.add_frozen(uid=seller_account["id"], 
+			logging.debug("\n            Sub active")
+			logging.debug(sub_active)
+			add_frozen = await self.account.balance.add_frozen(uid=seller_account["id"], 
 												amount=price, coinid=coinid)
-
+			logging.debug("\n               Add frozen")
+			logging.debug(add_frozen)
 			# Write entry with txid to database
-			await self.account.balance.registerdeal(uid=seller_account["id"],
+			new_deal = await self.account.balance.registerdeal(uid=seller_account["id"],
 													public_key=seller_account["public_key"], 
 													txid=response["result"]["txid"],
 													coinid=coinid, cid=cid)
@@ -1231,6 +1298,8 @@ class ReviewsHandler(web.ManagementSystemHandler):
 	async def get(self, cid, coinid):
 		"""Receives all contents reviews
 		"""
+		if settings.SIGNATURE_VERIFICATION:
+			super().verify()
 
 		if coinid in settings.bridges.keys():
 			self.account.blockchain.setendpoint(settings.bridges[coinid])
@@ -1278,6 +1347,9 @@ class ReviewHandler(web.ManagementSystemHandler):
 	async def post(self, public_key):
 		"""Writes contents review
 		"""
+		if settings.SIGNATURE_VERIFICATION:
+			super().verify()
+
 		try:
 			body = json.loads(self.request.body)
 		except:
@@ -1330,7 +1402,9 @@ class DealsHandler(web.ManagementSystemHandler):
 		self.account = Account()
 
 	async def get(self, public_key):
-		logging.debug("\n\n[+] -- Deals handler \n")
+		if settings.SIGNATURE_VERIFICATION:
+			super().verify()
+
 		cids = await self.account.getdeals(buyer=public_key)
 		if "error" in cids.keys():
 			self.set_status(cids["error"])
@@ -1353,9 +1427,6 @@ class DealsHandler(web.ManagementSystemHandler):
 				container.extend(contents)
 			except:
 				continue
-		logging.debug("\n")
-		logging.debug(container)
-		logging.debug("\n\n")
 
 		self.write(json.dumps(container))
 

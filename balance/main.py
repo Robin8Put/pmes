@@ -8,15 +8,11 @@ import tornado.wsgi
 import wsgiref.simple_server
 
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PROJ_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-sys.path.append(BASE_DIR)
-sys.path.append(PROJ_DIR)
 
 import settings
 
-logging.basicConfig(filename='balance.log',level=logging.WARNING,
+logging.basicConfig(filename='balance.log',level=logging.DEBUG,
 								format='%(asctime)s %(message)s')
 
 

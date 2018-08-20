@@ -8,12 +8,13 @@ from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
 from BalanceCli import ClientBalance, TablePars
 from StorgCli import ClientStorge
 from settings_file import *
+import settings
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utils.qtum_utils.qtum import Qtum
 
-from_i = 184065
+from qtum_utils.qtum import Qtum
+
+from_i = 188780
 coin_id = "QTUM"
 db_host = "localhost"
 db_name = "balance"
@@ -24,7 +25,7 @@ class SearchTransaction():
         self.qtum = AuthServiceProxy(qtum_host)
         self.from_block = from_block
         self.client = self.conection_stor()
-        self.balance = ClientBalance(balance_server)
+        self.balance = ClientBalance(settings.balanceurl)
         self.db = TablePars(db_host, db_name)
         self.coinid_put = "PUTTEST"
 

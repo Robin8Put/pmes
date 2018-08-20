@@ -4,36 +4,29 @@ import json
 import sys
 import logging
 import bson
+import asyncio
 
 # Third-party
-from motor.motor_tornado import MotorClient
 from jsonrpcserver.aio import methods
-import settings
 
 # Locals
+from qtum_utils.qtum import Qtum
 from utils.models.account import Account
+import settings
 
 
 def verify(func):
-    async def wrapper(*args, **kwargs):
-        import settings
-        with open(os.path.join(settings.BASE_DIR, "keys.json")) as f:
-            keys = json.load(f)
-
-        pubkey = keys["pubkey"]
-
-        message = kwargs.get("message")
-        signature = kwargs.get("signature")
-        try:
-            flag = Qtum.verify_message(message, signature, pubkey)
-        except:
-            flag = None
-        if not flag:
-            result =  {"error":403, "reason":"Invalid signature"}
-        else:
-            result = await func(*args, **kwargs)
-        return result
-    return wrapper
+	async def wrapper(*args, **kwargs):
+		message = kwargs.get("message")
+		if message and isinstance(message, str):
+			kwargs = json.loads(message)
+		elif message and isinstance(message, dict):
+			kwargs = message
+		elif not message:
+			pass
+		result = await func(*args, **kwargs)
+		return result
+	return wrapper
 
 
 class Abstract(object):
@@ -47,22 +40,22 @@ class Abstract(object):
 	def __init__(self):
 		# Set database parameters
 
-		self.client = MotorClient()
+		self.client = settings.DB_CLIENT
 
-		self.collection = settings.BALANCE
+		self.collection = settings.TREE
 
 		self.types = settings.AVAILABLE_COIN_ID
 
 		self.account = Account()
 
 
-	def error_403(self, reason):
+	async def error_403(self, reason):
 		return {"error": 403, "reason":"Balance service. " + reason}
 
-	def error_400(self, reason):
+	async def error_400(self, reason):
 		return {"error": 400, "reason":"Balance service. " + reason}
 
-	def error_404(self, reason):
+	async def error_404(self, reason):
 		return {"error": 404, "reason":"Balance service. " + reason}
 
 
@@ -85,28 +78,8 @@ class Abstract(object):
 		return counter["id"]
 
 
-	def validate(self, *args, **kwargs):
 
-		if not kwargs:
-			self.error_400("Validate. Missed parameters.")
-			return
 
-		message = kwargs.get("message")
-
-		if message and isinstance(message, str):
-			kwargs = json.loads(message)
-		elif message and isinstance(message, dict):
-			kwargs = message
-
-		coinid = kwargs.get("coinid")
-		if coinid and coinid.upper() not in self.types:
-			self.error_403("Validate. Not valid coinid")
-			return
-
-		amount = kwargs.get("amount")
-		if amount and not isinstance(amount, int):
-			self.error_400("Validate. Not valid amount")
-			return
 
 	async def get_uid_by_address(self, *args, **kwargs):
 
@@ -126,7 +99,7 @@ class Abstract(object):
 
 class Balance(Abstract):
 
-	#@verify
+	@verify
 	async def freeze(self, *args, **kwargs):
 		"""
 		Freeze users balance
@@ -143,20 +116,27 @@ class Balance(Abstract):
 			- amount_frozen [integer] (frozen users amount)
 		"""
 
-		if kwargs.get("message"):
-			kwargs = json.loads(kwargs.get("message"))
-
-		#super().validate(*args, **kwargs)
 		# Get data from request
-		uid = kwargs.get("uid")
+		uid = kwargs.get("uid", 0)
 		coinid = kwargs.get("coinid")
 		amount = kwargs.get("amount")
 		address = kwargs.get("address")
 
 		try:
-			amount = bson.int64.Int64(int(amount))
-		except Exception as e:
-			return {"error":403, "reason":str(e)}
+			uid = int(uid)
+		except:
+			return self.error_400("User id must be integer. ")
+
+		try:
+			amount = int(amount)
+		except:
+			return self.error_400("Amount must be integer. ")
+
+		try:
+			assert amount > 0
+		except:
+			return self.error_400("Amount must be positive integer. ")
+
 
 		# Check if required fields exists
 		if not uid and address:
@@ -164,29 +144,35 @@ class Balance(Abstract):
 			if isinstance(uid, dict):
 				return uid
 
-		uid = int(uid)
 		# Connect to appropriate database
 		database = self.client[self.collection]
 		collection = database[coinid]
+
 		# Check if balance exists
 		balance = await collection.find_one({"uid":uid})
 		if not balance:
 			return self.error_404(
 				"Freeze. Balance with uid:%s and type:%s not found." % (uid, coinid))
+
 		# Check if amount is enough
-		difference = int(balance["amount_active"]) - int(amount) 
+		difference = int(balance["amount_active"]) - int(amount)
 		if difference < 0:
 			return self.error_403("Freeze. Insufficient amount in the account")
 		# Decrement active amount and increment frozen amount
+		amount_frozen = int(balance["amount_frozen"]) + int(amount) 
 		await collection.find_one_and_update({"uid":uid},
-						{"$inc":{"amount_active":-amount, "amount_frozen":amount}})
+						{"$set":{"amount_active":str(difference), 
+									"amount_frozen":str(amount_frozen)}})
 		
 		# Return updated balance with excluded mongo _id field
 		result = await collection.find_one({"uid":uid})
+		result["amount_frozen"] = int(result["amount_frozen"])
+		result["amount_active"] = int(result["amount_active"])
+		del result["_id"]
 
-		return {i:result[i] for i in result if i != "_id"}
+		return result
 
-	#@verify
+	@verify
 	async def unfreeze(self, *args, **kwargs):
 		"""
 		Unfreeze users balance
@@ -202,21 +188,26 @@ class Balance(Abstract):
 			- amount_active [integer] (activae users amount)
 			- amount_frozen [integer] (frozen users amount)
 		"""
-		super().validate(*args, **kwargs)
-
-		if kwargs.get("message"):
-			kwargs = json.loads(kwargs.get("message"))
-
 		# Get data from request
-		uid = kwargs.get("uid")
+		uid = kwargs.get("uid",0)
 		coinid = kwargs.get("coinid")
 		amount = kwargs.get("amount")
 		address = kwargs.get("address")
 
 		try:
-			amount = bson.int64.Int64(int(amount))
-		except Exception as e:
-			return {"error":403, "reason":str(e)}
+			uid = int(uid)
+		except:
+			return self.error_400("User id must be integer. ")
+
+		try:
+			amount = int(amount)
+		except:
+			return self.error_400("Amount must be integer. ")
+
+		try:
+			assert amount > 0
+		except:
+			return self.error_400("Amount must be positive integer. ")
 
 		# Check if required fields exists
 		if not uid and address:
@@ -224,7 +215,6 @@ class Balance(Abstract):
 			if isinstance(uid, dict):
 				return uid
 
-		uid = int(uid)
 		# Connect to appropriate database
 		database = self.client[self.collection]
 		collection = database[coinid]
@@ -234,17 +224,24 @@ class Balance(Abstract):
 			return self.error_404(
 				"Unfreeze. Balance with uid:%s and type:%s not found." % (uid, coinid))
 		# Check if amount is enough
-		difference = balance["amount_frozen"] - amount 
+		difference = int(balance["amount_frozen"]) - amount 
 		if difference < 0:
 			return self.error_403("Unreeze. Insufficient frozen amount in the account")
 		# Decrement active amount and increment frozen amount
-		await collection.find_one_and_update({"uid":uid},{"$inc":{"amount_frozen":-amount}})
-		await collection.find_one_and_update({"uid":uid},{"$inc":{"amount_active":amount}})
+		amount_active = int(balance["amount_active"]) + int(amount) 
+		await collection.find_one_and_update({"uid":uid},
+						{"$set":{"amount_active":str(amount_active), 
+								"amount_frozen":str(difference)}})
 		# Return updated balance with excluded mongo _id field
 		result = await collection.find_one({"uid":uid})
-		return {i:result[i] for i in result if i != "_id"}
 
-	#@verify
+		result["amount_frozen"] = int(result["amount_frozen"])
+		result["amount_active"] = int(result["amount_active"])
+		del result["_id"]
+
+		return result
+
+	@verify
 	async def add_active(self, *args, **kwargs):
 		"""
 		Increment users balance
@@ -260,21 +257,27 @@ class Balance(Abstract):
 			- amount_active [integer] (activae users amount)
 			- amount_frozen [integer] (frozen users amount)
 		"""
-		super().validate(*args, **kwargs)
-
-		if kwargs.get("message"):
-			kwargs = json.loads(kwargs.get("message"))
 
 		# Get data from request
-		uid = kwargs.get("uid")
+		uid = kwargs.get("uid",0)
 		coinid = kwargs.get("coinid")
 		amount = kwargs.get("amount")
 		address = kwargs.get("address")
 
 		try:
-			amount = bson.int64.Int64(int(amount))
-		except Exception as e:
-			return {"error":403, "reason":str(e)}
+			uid = int(uid)
+		except:
+			return self.error_400("User id must be integer. ")
+
+		try:
+			amount = int(amount)
+		except:
+			return self.error_400("Amount must be integer. ")
+
+		try:
+			assert amount > 0
+		except:
+			return self.error_400("Amount must be positive integer. ")
 
 		# Check if required fields exists
 		if not uid and address:
@@ -282,23 +285,29 @@ class Balance(Abstract):
 			if isinstance(uid, dict):
 				return uid
 
-		uid = int(uid)
 		# Connect to appropriate database
 		database = self.client[self.collection]
 		collection = database[coinid]
+
 		# Check if balance exists
 		balance = await collection.find_one({"uid":int(uid)})
 		if not balance:
 			return self.error_404(
 				"Add active. Balance with uid:%s and type:%s not found." % (uid, coinid))
 		# Increment balance
+		difference = int(balance["amount_active"]) + int(amount)
 		await collection.find_one_and_update({"uid":int(uid)},
-							{"$inc":{"amount_active":amount}})
+							{"$set":{"amount_active":str(difference)}})
 		# Return result with excluded mongo _id field
 		result = await collection.find_one({"uid":int(uid)})
-		return {i:result[i] for i in result if i != "_id"}
 
-	#@verify
+		result["amount_frozen"] = int(result["amount_frozen"])
+		result["amount_active"] = int(result["amount_active"])
+		del result["_id"]
+
+		return result
+
+	@verify
 	async def add_frozen(self, *args, **kwargs):
 		"""
 		Increment frozen users balance
@@ -314,22 +323,29 @@ class Balance(Abstract):
 			- amount_active [integer] (activae users amount)
 			- amount_frozen [integer] (frozen users amount)
 		"""
-		super().validate(*args, **kwargs)
-
-		if kwargs.get("message"):
-			kwargs = json.loads(kwargs.get("message"))
 
 		# Get data from request
-		uid = kwargs.get("uid")
+		uid = kwargs.get("uid",0)
 		coinid = kwargs.get("coinid")
 		amount = kwargs.get("amount")
 		txid = kwargs.get("txid")
 		address = kwargs.get("address")
 
 		try:
-			amount = bson.int64.Int64(int(amount))
-		except Exception as e:
-			return {"error":403, "reason":str(e)}
+			uid = int(uid)
+		except:
+			return self.error_400("User id must be integer. ")
+
+		try:
+			amount = int(amount)
+		except:
+			return self.error_400("Amount must be integer. ")
+
+		try:
+			assert amount > 0
+		except:
+			return self.error_400("Amount must be positive integer. ")
+
 
 		# Check if required fields exists
 		if not uid and address:
@@ -337,26 +353,34 @@ class Balance(Abstract):
 			if isinstance(uid, dict):
 				return uid
 
-		uid = int(uid)
 		# Connect to appropriate database
 		database = self.client[self.collection]
 		collection = database[coinid]
+
 		# Check if balance exists
 		balance = await collection.find_one({"uid":uid})
 		if not balance:
 			return self.error_404(
 				"Add frozen. Balance with uid:%s and type:%s not found." % (uid, coinid))
+
 		# Increment balance
-		await collection.find_one_and_update({"uid":uid},{"$inc":{"amount_frozen":amount}})
+		difference = int(balance["amount_frozen"]) + int(amount)
+		await collection.find_one_and_update({"uid":uid},
+								{"$set":{"amount_frozen":str(difference)}})
 		# Set txid if exists
 		if txid:
 			await collection.find_one_and_update({"uid":uid},
 										{"$set":{"txid":txid}})
 		# Return result with excluded mongo _id field
 		result = await collection.find_one({"uid":uid})
-		return {i:result[i] for i in result if i != "_id"}
 
-	#@verify
+		result["amount_frozen"] = int(result["amount_frozen"])
+		result["amount_active"] = int(result["amount_active"])
+		del result["_id"]
+
+		return result
+
+	@verify
 	async def sub_active(self, *args, **kwargs):
 		"""
 		Decrement active users balance
@@ -372,21 +396,27 @@ class Balance(Abstract):
 			- amount_active [integer] (activae users amount)
 			- amount_frozen [integer] (frozen users amount)
 		"""
-		super().validate()
-
-		if kwargs.get("message"):
-			kwargs = json.loads(kwargs.get("message"))
 
 		# Get data from request
-		uid = kwargs.get("uid")
+		uid = kwargs.get("uid",0)
 		coinid = kwargs.get("coinid")
 		amount = kwargs.get("amount")
 		address = kwargs.get("address")
 
 		try:
-			amount = bson.int64.Int64(int(amount))
-		except Exception as e:
-			return {"error":403, "reason":str(e)}
+			uid = int(uid)
+		except:
+			return self.error_400("User id must be integer. ")
+
+		try:
+			amount = int(amount)
+		except:
+			return self.error_400("Amount must be integer. ")
+
+		try:
+			assert amount > 0
+		except:
+			return self.error_400("Amount must be positive integer. ")
 
 		# Check if required fields exists
 		if not uid and address:
@@ -394,26 +424,35 @@ class Balance(Abstract):
 			if isinstance(uid, dict):
 				return uid
 
-		uid = int(uid)
 		# Connect to appropriate database
 		database = self.client[self.collection]
 		collection = database[coinid]
+
 		# Check if balance exists
 		balance = await collection.find_one({"uid":uid})
 		if not balance:
 			return self.error_404(
 				"Sub active. Balance with uid:%s and type:%s not found." % (uid, coinid))
+
 		# Check if balance is enough
 		difference = int(balance["amount_active"]) - int(amount)
 		if difference < 0:
 			return self.error_400("Sub active. Balance is not enough.")
+
 		# Increment balance
-		await collection.find_one_and_update({"uid":uid},{"$inc":{"amount_active":-amount}})
+		await collection.find_one_and_update({"uid":uid},
+							{"$set":{"amount_active":str(difference)}})
+
 		# Return result with excluded mongo _id field
 		result = await collection.find_one({"uid":uid})
-		return {i:result[i] for i in result if i != "_id"}
 
-	#@verify
+		result["amount_frozen"] = int(result["amount_frozen"])
+		result["amount_active"] = int(result["amount_active"])
+		del result["_id"]
+
+		return result
+
+	@verify
 	async def withdraw(self, *args, **kwargs):
 		"""
 		Decrement active users balance
@@ -429,21 +468,27 @@ class Balance(Abstract):
 			- amount_active [integer] (activae users amount)
 			- amount_frozen [integer] (frozen users amount)
 		"""
-		super().validate()
-
-		if kwargs.get("message"):
-			kwargs = json.loads(kwargs.get("message"))
 
 		# Get data from request
-		uid = kwargs.get("uid")
+		uid = kwargs.get("uid",0)
 		coinid = kwargs.get("coinid")
 		amount = kwargs.get("amount")
 		address = kwargs.get("address")
 
 		try:
-			amount = bson.int64.Int64(int(amount))
-		except Exception as e:
-			return {"error":403, "reason":str(e)}
+			uid = int(uid)
+		except:
+			return self.error_400("User id must be integer. ")
+
+		try:
+			amount = int(amount)
+		except:
+			return self.error_400("Amount must be integer. ")
+
+		try:
+			assert amount > 0
+		except:
+			return self.error_400("Amount must be positive integer. ")
 
 		# Check if required fields exists
 		if not uid and address:
@@ -451,26 +496,35 @@ class Balance(Abstract):
 			if isinstance(uid, dict):
 				return uid
 
-		uid = int(uid)
 		# Connect to appropriate database
 		database = self.client[self.collection]
 		collection = database[coinid]
+	
 		# Check if balance exists
 		balance = await collection.find_one({"uid":uid})
 		if not balance:
 			return self.error_404(
 				"Sub active. Balance with uid:%s and type:%s not found." % (uid, coinid))
+	
 		# Check if balance is enough
 		difference = int(balance["amount_active"]) - int(amount)
 		if difference < 0:
 			return self.error_400("Sub active. Balance is not enough.")
+	
 		# Increment balance
-		await collection.find_one_and_update({"uid":uid},{"$inc":{"amount_active":-amount}})
+		await collection.find_one_and_update({"uid":uid},
+							{"$set":{"amount_active":str(difference)}})
+	
 		# Return result with excluded mongo _id field
 		result = await collection.find_one({"uid":uid})
-		return {i:result[i] for i in result if i != "_id"}
 
-	#@verify
+		result["amount_frozen"] = int(result["amount_frozen"])
+		result["amount_active"] = int(result["amount_active"])
+		del result["_id"]
+
+		return result
+
+	@verify
 	async def sub_frozen(self, *args, **kwargs):
 		"""
 		Decrement frozen users balance
@@ -486,21 +540,28 @@ class Balance(Abstract):
 			- amount_active [integer] (activae users amount)
 			- amount_frozen [integer] (frozen users amount)
 		"""
-		super().validate()
-
-		if kwargs.get("message"):
-			kwargs = json.loads(kwargs.get("message"))
 
 		# Get data from request
-		uid = kwargs.get("uid")
+		uid = kwargs.get("uid",0)
 		coinid = kwargs.get("coinid")
 		amount = kwargs.get("amount")
 		address = kwargs.get("address")
 
 		try:
-			amount = bson.int64.Int64(int(amount))
-		except Exception as e:
-			return {"error":403, "reason":str(e)}
+			uid = int(uid)
+		except:
+			return self.error_400("User id must be integer. ")
+
+		try:
+			amount = int(amount)
+		except:
+			return self.error_400("Amount must be integer. ")
+
+		try:
+			assert amount > 0
+		except:
+			return self.error_400("Amount must be positive integer. ")
+
 
 		# Check if required fields exists
 		if not uid and address:
@@ -508,7 +569,6 @@ class Balance(Abstract):
 			if isinstance(uid, dict):
 				return uid
 
-		uid = int(uid)
 		# Connect to appropriate database
 		database = self.client[self.collection]
 		collection = database[coinid]
@@ -522,12 +582,18 @@ class Balance(Abstract):
 		if difference < 0:
 			return self.error_400("Sub frozen. Balance is not enough.")
 		# Increment balance
-		await collection.find_one_and_update({"uid":uid},{"$inc":{"amount_frozen":-amount}})
+		await collection.find_one_and_update({"uid":uid},
+							{"$set":{"amount_frozen":str(difference)}})
 		# Return result with excluded mongo _id field
 		result = await collection.find_one({"uid":uid})
-		return {i:result[i] for i in result if i != "_id"}
 
-	#@verify
+		result["amount_frozen"] = int(result["amount_frozen"])
+		result["amount_active"] = int(result["amount_active"])
+		del result["_id"]
+
+		return result
+
+	@verify
 	async def get_active(self, *args, **kwargs):
 		"""
 		Get active users balance
@@ -541,22 +607,22 @@ class Balance(Abstract):
 				type [string] (blockchain type): amount
 			}
 		"""
-		super().validate(*args, **kwargs)
-
-		if kwargs.get("message"):
-			kwargs = json.loads(kwargs.get("message"))
 
 		# Get daya from request
 		coinids = kwargs.get("coinids")
-		uid = kwargs.get("uid")
+		uid = kwargs.get("uid",0)
 		address = kwargs.get("address")
+
+		try:
+			uid = int(uid)
+		except:
+			return self.error_400("User id must be integer. ")
 
 		if not uid and address:
 			uid = await self.get_uid_by_address(address=address, coinid=coinid)
 			if isinstance(uid, dict):
 				return uid
 
-		uid = int(uid)
 		# Check if required fields exists
 		if not all([coinids, uid]):
 			return self.error_400("Get active. Missed required fields.")
@@ -571,7 +637,7 @@ class Balance(Abstract):
 					return self.error_404(
 						"Get active. Balance with uid:%s and type:%s not found" % (uid, coinid))
 				# Collect actives
-				actives[coinid] = balance["amount_active"]
+				actives[coinid] = int(balance["amount_active"])
 
 		if isinstance(coinids, str):
 			actives = {}
@@ -584,10 +650,10 @@ class Balance(Abstract):
 					return self.error_404(
 						"Get active. Balance with uid:%s and type:%s not found" % (uid, coinid))
 				# Collect actives
-				actives[coinid] = balance["amount_active"]
+				actives[coinid] = int(balance["amount_active"])
 		return actives
 
-	#@verify
+	@verify
 	async def get_frozen(self, *args, **kwargs):
 		"""
 		Get frozen users balance
@@ -612,12 +678,16 @@ class Balance(Abstract):
 		address = kwargs.get("address")
 		# Check if required fields exists
 
+		try:
+			uid = int(uid)
+		except:
+			return self.error_400("User id must be integer. ")
+
 		if not uid and address:
 			uid = await self.get_uid_by_address(address=address, coinid=coinid)
 			if isinstance(uid, dict):
 				return uid
 
-		uid = int(uid)
 		if not all([types, uid]):
 			return self.error_400("Get frozen. Missed required fields.")
 		if isinstance(types, list):
@@ -631,7 +701,7 @@ class Balance(Abstract):
 					return self.error_404(
 						"Get frozen. Balance with uid:%s and type:%s not found" % (uid, coinid))
 				# Collect actives
-				actives[coinid] = balance["amount_frozen"]
+				actives[coinid] = int(balance["amount_frozen"])
 
 		if isinstance(coinids, str):
 			actives = {}
@@ -644,8 +714,27 @@ class Balance(Abstract):
 					return self.error_404(
 						"Get frozen. Balance with uid:%s and type:%s not found" % (uid, coinid))
 				# Collect actives
-				actives[coinid] = balance["amount_frozen"]
+				actives[coinid] = int(balance["amount_frozen"])
 		return actives
+
+
+	async def collect_wallets(self, uid):
+		"""
+		Asynchronous generator
+		"""
+		for coinid in self.types:
+			await asyncio.sleep(0.5)
+			# Connect to appropriate database
+			database = self.client[self.collection]
+			collection = database[coinid]
+			# Get wallets
+			wallet = await collection.find_one({"uid":int(uid)})
+
+			wallet["amount_active"] = int(wallet["amount_active"])
+			wallet["amount_frozen"] = int(wallet["amount_frozen"])
+			del wallet["_id"]
+			yield wallet
+
 
 	#@verify
 	async def get_wallets(self, *args, **kwargs):
@@ -665,32 +754,20 @@ class Balance(Abstract):
 					},
 				]
 		"""
-		super().validate(*args, **kwargs)
-
-		if kwargs.get("message"):
-			kwargs = json.loads(kwargs.get("message"))
-
-		uid = kwargs.get("uid")
+		uid = kwargs.get("uid",0)
 		address = kwargs.get("address")
+
+		try:
+			uid = int(uid)
+		except:
+			return self.error_400("User id must be integer. ")
 
 		if not uid and address:
 			uid = await self.get_uid_by_address(address=address, coinid=coinid)
 			if isinstance(uid, dict):
 				return uid
 
-		uid = int(uid)
-		wallets = []
-		for coinid in self.types:
-
-			# Connect to appropriate database
-			database = self.client[self.collection]
-			collection = database[coinid]
-			# Get wallets
-			wallet = await collection.find_one({"uid":int(uid)})
-			if not wallet:
-				return self.error_404(
-					f"Get wallets. Not found wallet with coinid {coinid} and uid {uid}")
-			wallets.append({i:wallet[i] for i in wallet if i != "_id"})
+		wallets = [i async for i in self.collect_wallets(uid)]
 
 		return {"wallets":wallets}
 
@@ -716,7 +793,6 @@ class Balance(Abstract):
 		Verified: True
 
 		"""
-		logging.debug("[+] -- Confirm balance debugging. ")
 		# Get data from request
 		if kwargs.get("message"):
 			kwargs = json.loads(kwargs.get("message", "{}"))
@@ -726,6 +802,7 @@ class Balance(Abstract):
 		buyer_address = kwargs.get("buyer_address")
 		cid = kwargs.get("cid")
 		address = kwargs.get("buyer_address")
+
 		
 		# Check if required fields exists
 		if not all([coinid, cid, buyer_address, txid]):
@@ -738,10 +815,8 @@ class Balance(Abstract):
 		self.account.blockchain.setendpoint(settings.bridges[coinid])
 		offer = await self.account.blockchain.getoffer(cid=cid, 
 											buyer_address=buyer_address)
-		logging.debug("\n[+] -- Offer price")
 		# Get offers price for updating balance
 		amount = int(offer["price"])
-		logging.debug(amount)
 
 		coinid = "PUTTEST"
 		# Get sellers account
@@ -749,31 +824,38 @@ class Balance(Abstract):
 		history_collection = history_database[coinid]
 		history = await history_collection.find_one({"txid":txid})
 
-		account = await self.account.getaccountdata(public_key=history["public_key"])
-		if not account:
+		try:
+			account = await self.account.getaccountdata(public_key=history["public_key"])
+		except:
 			return self.error_404("Confirm balance. Not found current deal.")
-		logging.debug("\n[+] -- Account")
 
 		# Connect to balance database
 		database = self.client[self.collection]
 		balance_collection = database[coinid]
 
 		# Try to update balance if exists
+		balance = await balance_collection.find_one({"uid":account["id"]})
+		# Decrement unconfirmed
+		submitted = int(balance["amount_frozen"]) - int(amount)
+		if submitted < 0:
+			return self.error_400("Not enough frozen amount.")
+
+		decremented = await balance_collection.find_one_and_update(
+		                        {"uid":account["id"]}, 
+		                        {"$set":{"amount_frozen": str(submitted)}})
+
+		difference = int(balance["amount_active"]) + int(amount)
 		updated = await balance_collection.find_one_and_update(
 		                        {"uid":account["id"]}, 
-		                        {"$inc":{"amount_active":int(amount)}})
-		logging.debug("\n[+] -- Updated sellers account. ")
-		logging.debug(updated)
+		                        {"$set":{"amount_active":str(difference)}})
 		if not updated:
 		    return {"error":404, 
 		            "reason":"Confirm balance. Not found current transaction id"}
 
-		# Decrement unconfirmed
-		decremented = await balance_collection.find_one_and_update(
-		                        {"uid":account["id"]}, 
-		                        {"$inc":{"amount_frozen": -amount}})
-		logging.debug("\n[+] -- Decremented account. ")
-		logging.debug(decremented)
+		# Delete transaction id field
+		await history_collection.find_one_and_update({"txid":txid}, 
+												{"$unset":{"txid":1}})
+
 
 		if int(account["level"]) == 2:
 		    await self.account.updatelevel(**{"id":account["id"], "level":3})

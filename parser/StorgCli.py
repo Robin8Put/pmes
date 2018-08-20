@@ -1,11 +1,12 @@
 from jsonrpcclient.http_client import HTTPClient
 from settings_file import *
+import settings
 
 
 class ClientStorge():
     def __init__(self, sotrg_host=None):
         self.history_host = sotrg_host if sotrg_host else storghost
-        self.client = HTTPClient(self.history_host)
+        self.client = HTTPClient(settings.storageurl)
 
     def insert_offer(self, cid=None, buyer_addr=None, price=None, coin_id=None):
         if cid and buyer_addr and price:

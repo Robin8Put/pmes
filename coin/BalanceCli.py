@@ -1,19 +1,15 @@
 import os
 import sys
 
-import pymongo
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from utils.tornado_components.web import SignedHTTPClient
+from tornado_components.web import SignedHTTPClient
+import settings
 
 
 class ClientBalance():
     """ Client for balance
     """
     def __init__(self, host=None):
-        self.host = host
-        self.client = SignedHTTPClient(self.host)
+        self.client = SignedHTTPClient(host)
 
     def inc_balance(self, address=None, amount=0, coinid=None):
         # increment for uid
@@ -55,7 +51,7 @@ class ClientBalance():
 class TablePars():
     def __init__(self, host=None, db_name=None):
         # Set database parameters
-        self.client = pymongo.MongoClient(host)
+        self.client = settings.SYNC_DB_CLIENT
         self.database = self.client[db_name]
 
     def check_address(self, address=None, coinid=None):

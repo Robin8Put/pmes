@@ -3,11 +3,10 @@ import sys
 from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
 from BalanceCli import ClientBalance, TablePars
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import settings
 
-from utils.tornado_components.web import SignedHTTPClient
 
-balance_server = "http://localhost:8004/api/balance"
+
 qtum_server = "http://%s:%s@127.0.0.1:8333" % ("qtumuser", "qtum2018")
 coin_id = "QTUMTEST"
 
@@ -21,7 +20,7 @@ class ParsingBlock():
         self.to_block = to_block
         self.coinid = coin_id
         self.qtum = AuthServiceProxy(qtum_server)
-        self.client = ClientBalance(balance_server)
+        self.client = ClientBalance(settings.balanceurl)
         self.db = TablePars(db_host, db_name)
 
     def block_hash_num(self, block=None):

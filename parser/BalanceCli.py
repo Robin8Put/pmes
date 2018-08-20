@@ -2,18 +2,16 @@ import os
 import sys
 from settings_file import *
 import pymongo
+import settings
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-
-from utils.tornado_components.web import SignedHTTPClient
+from tornado_components.web import SignedHTTPClient
 
 
 class ClientBalance():
     """ Client for balance
     """
     def __init__(self, host=None):
-        self.host = host if host else balance_server
+        self.host = host if host else settings.balanceurl
         self.client = SignedHTTPClient(self.host)
 
     def inc_balance(self, address=None, amount=0, coinid=None):
@@ -56,7 +54,7 @@ class ClientBalance():
 class TablePars():
     def __init__(self, host=None, db_name=None):
         # Set database parameters
-        self.client = pymongo.MongoClient(host)
+        self.client = settings.SYNC_DB_CLIENT
         self.database = self.client[db_name]
 
     def check_address(self, address=None, coinid=None):
@@ -70,3 +68,8 @@ class TablePars():
 
     def find(self):
         return self.database["ETH"].find().count()
+
+
+if __name__ == '__main__':
+    client = ClientBalance()
+    client.confirm_balance()

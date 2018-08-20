@@ -1,5 +1,6 @@
-import pymongo
+
 import time
+import settings
 
 
 class Table(object):
@@ -19,7 +20,7 @@ class Table(object):
         else:
             self.collection = collection
 
-        self.client = pymongo.MongoClient("localhost")
+        self.client = settings.SYNC_DB_CLIENT
 
         self.database = self.client[self.db_name]
 

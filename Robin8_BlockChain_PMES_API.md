@@ -61,6 +61,8 @@ The API-methods:
 
 - [Bulk operations](#bulk_operations)
 
+- [Get transactions history by address](#get-transactions-history-by-address)
+
 - [Refill wallet with test coins or tokens](#refill-wallet-with-test-coins-or-tokens)
 
 - [Standardization of an error messages](#standardization-of-an-error-messages)
@@ -653,7 +655,7 @@ Descriptions of the API methods provided below:
 
 * **URL params**
 
-    "page": [integer]
+    `page: [integer]`
 
 * **Body params**
 
@@ -692,7 +694,7 @@ Descriptions of the API methods provided below:
 
 * **URL params**
 
-    "page": [integer]
+    `page: [integer]`
 
 * **Body params**
 
@@ -1048,6 +1050,34 @@ Descriptions of the API methods provided below:
     `[json]`
 
     In the response, user receives filled JSON format of the bulk operation with server signature.
+
+
+## Get transactions history by address
+
+* **URL:** `/api/accounts/withdraw/`
+
+* **Method:** `GET`
+
+* **URL params** 
+
+    `address: [string]` - users address
+
+    `coinid: [string]` - blockchain type `QTUM` or `ETH` 
+
+```bash
+{
+    "address": [string],     # users address
+    "coinid": [string],      # blockchain type `QTUM` or `ETH` 
+}
+```
+
+* **Body params**
+
+    None
+
+* **Sample response**
+
+    `[json]`
 
 
 ## Refill wallet with test coins or tokens
