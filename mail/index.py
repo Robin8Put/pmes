@@ -7,10 +7,7 @@ import sys
 import os
 import logging
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-if not BASE_DIR in sys.path:
-    sys.path.append(BASE_DIR)
 
 import settings
 

@@ -7,9 +7,10 @@ from web3.middleware import geth_poa_middleware
 from BalanceCli import ClientBalance
 from StorgCli import ClientStorge
 from settings_file import *
+import settings
 
 
-from_i = 2620000
+from_i = 2754475
 coin_id = "ETH"
 
 
@@ -18,7 +19,7 @@ class SearchTransaction():
         self.web3 = Web3(IPCProvider(ipc_provider))
         self.from_block = from_block
         self.client = self.conection_stor()
-        self.balance = ClientBalance(balance_server)
+        self.balance = ClientBalance(settings.balanceurl)
         #self.web3.personal.unlockAccount('0xe630f8dd65f9be1ef2588da43c83b697a270d12e', "eth2018")
         self.web3.middleware_stack.inject(geth_poa_middleware, layer=0)
 
@@ -144,7 +145,7 @@ class SearchTransaction():
         tx_hash = data[0]
         cid = data[1]
         address = data[2]
-        result = self.balance.confirm_balance(txid=tx_hash, cid=cid, buyer_address=address, coin_id=coin_id)
+        result = self.balance.confirm_balance(txid=tx_hash, cid=cid, buyer_address=address, coinid=coin_id)
 
     def update_review(self, data):
         txid = data[0]

@@ -1,5 +1,0 @@
-{"message":{"method_name":[{"message":{"param1":"value","param2":"value","txid":null},"signature":"signature","public_key":"public_key"},{"message":{"param1":"value","param2":"value","txid":null},"signature": "signature","public_key":"public_key"},{"message":{"param1":"value","param2":"value","txid":null},"signature":"signature","public_key":"public_key"}],"method_name2":[{"message":{"param1":"value","param2":"value",
-"txid": null},"signature":"signature","public_key":"public_key"},{"message":{"param1":"value","param2":"value","txid":null},"signature":"signature","public_key":"public_key"},{"message":{"param1":"value",
-"param2":"value","txid":null},"signature":"signature","public_key":"public_key"}],"send":[{"message":{"input":"address1","output":"address2","amount":"value","coinid":"coinid","txid":null},
-"signature":"signature","public_key":"public_key"}]},"decimal":8,"signature":"signature","public_key":"public key","callbackURL":"callbackURL"}
-

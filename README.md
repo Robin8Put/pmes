@@ -30,8 +30,8 @@ This repository contains the following modules:
 
 1. [**ams**](ams) - Account Management System - module that manages user's accounts. Has registration and authorization functionalities
 2. [**balance**](balance) - module that implements work with the blockchain wallets. For instance, adding wallets, view/increment/decrement wallet's balance
-2. [**billing**](billing) - module that contains fee estimation details
-4. [**bip32keys**](utils/bip32keys) - utilities used for simplifying communications with crypto-algorithms
+2. **billing** - module that contains fee estimation details
+4. [**bip32keys**](ams/utils/bip32keys) - utilities used for simplifying communications with crypto-algorithms
 4. [**coin**](coin) - module that parses blockchain transactions to find PMES wallets and synchronize amount of money in blockchain with wallets in PMES
 3. [**history**](history) - module that saves logs about actions and history of transactions
 5. [**mail**](mail) - module that saves and sends emails

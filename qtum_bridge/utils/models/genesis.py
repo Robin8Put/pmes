@@ -1,0 +1,4 @@
+
+
+class GenesisClass(object):
+	pass

@@ -25,19 +25,19 @@ from pymongo import MongoClient
 from jsonrpcclient.http_client import HTTPClient
 
 
-create_account_url = "http://localhost:8000/api/accounts"
-get_account_url = "http://localhost:8000/api/accounts/%s"
-get_account_profiles_url = "http://localhost:8000/api/accounts/%s/profiles"
-post_data_url = "http://localhost:8000/api/blockchain/%s/%s/profile"
-put_descr_url = "http://localhost:8000/api/blockchain/%s/description"
-put_write_price_url = "http://localhost:8000/api/blockchain/%s/price"
-post_writeaccess_offer_url = "http://localhost:8000/api/blockchain/%s/write-access-offer"
-post_readaccess_offer_url = "http://localhost:8000/api/blockchain/%s/read-access-offer"
-get_output_offers_url = "http://localhost:8000/api/accounts/%s/output-offers"
-post_QTUM_deal_url = "http://localhost:8000/api/blockchain/%s/deal"
-post_QTUM_review_url = "http://localhost:8000/api/blockchain/%s/review"
-get_account_shared_profiles_url = "http://localhost:8000/api/blockchain/%s/deals"
-get_single_content_url = "http://localhost:8000/api/blockchain/%s/%s/profile"
+create_account_url = "http://190.2.149.83/api/accounts/"
+get_account_url = "http://190.2.149.83/api/accounts/%s/"
+get_account_profiles_url = "http://190.2.149.83/api/accounts/%s/profiles/"
+post_data_url = "http://190.2.149.83/api/blockchain/%s/%s/profile/"
+put_descr_url = "http://190.2.149.83/api/blockchain/%s/description/"
+put_write_price_url = "http://190.2.149.83/api/blockchain/%s/price/"
+post_writeaccess_offer_url = "http://190.2.149.83/api/blockchain/%s/write-access-offer/"
+post_readaccess_offer_url = "http://190.2.149.83/api/blockchain/%s/read-access-offer/"
+get_output_offers_url = "http://190.2.149.83/api/accounts/%s/output-offers/"
+post_QTUM_deal_url = "http://190.2.149.83/api/blockchain/%s/deal/"
+post_QTUM_review_url = "http://190.2.149.83/api/blockchain/%s/review/"
+get_account_shared_profiles_url = "http://190.2.149.83/api/blockchain/%s/deals/"
+get_single_content_url = "http://190.2.149.83/api/blockchain/%s/%s/profile/"
 
 
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
@@ -60,9 +60,10 @@ def post_buyer():
 		"message": message,
 		"public_key": public_key
 	}
+	print(create_account_url)
 	response = requests.post(create_account_url, data=json.dumps(data))
 
-	pprint(response.json())
+	pprint(response.text)
 
 	with open("currentbuyer.json", "w") as current:
 		current.write(json.dumps({"public_key":public_key, "id":response.json()["id"]}))
@@ -131,8 +132,10 @@ def get_sellers_account():
 	with open("currentseller.json") as file:
 		public_key = json.load(file)["public_key"]
 
+
+	print(get_account_url % public_key)
 	response = requests.get(get_account_url % public_key)
-	pprint(response.json())	
+	pprint(response.text)	
 
 
 def get_buyers_profiles():
@@ -210,13 +213,14 @@ def incqtum(amount):
 	with open("currentbuyer.json") as file:
 		buyer_id = json.load(file)["id"]
 
-	url1 = "http://localhost:8000/api/accounts/%s/balance" % seller_id
-	url2 = "http://localhost:8000/api/accounts/%s/balance" % buyer_id
+	url1 = "http://190.2.149.83/api/accounts/%s/balance/" % seller_id
+	url2 = "http://190.2.149.83/api/accounts/%s/balance/" % buyer_id
 
-	requests.post(url1, data=json.dumps({"amount":amount, "coinid": "QTUM"}))
-	requests.post(url2, data=json.dumps({"amount":amount, "coinid": "QTUM"}))
+	r1 = requests.post(url1, data=json.dumps({"amount":amount, "coinid": "PUTTEST"}))
+	r2 = requests.post(url2, data=json.dumps({"amount":amount, "coinid": "PUTTEST"}))
 
-	print("Done")
+	print(r1.text)
+	print(r2.text)
 
 
 def inceth(amount):
@@ -247,7 +251,7 @@ def put_QTUM_description(cid=None):
 
 	message = {
 		"description":description,
-		"coinid": "ETH"
+		"coinid": "QTUM"
 	}
 
 	data = {
@@ -257,7 +261,7 @@ def put_QTUM_description(cid=None):
 
 	response = requests.put(put_descr_url % cid, data=json.dumps(data))
 
-	pprint(response.json())
+	print(response.text)
 
 
 def put_QTUM_write_price(cid=None):
@@ -412,7 +416,7 @@ def post_QTUM_writeaccess_offer(cid=None):
 
 	with open("currentoffer.json", "w") as file:
 		offer = response.json()
-		offer["coinid"] = "QTUM"
+		offer["coinid"] = "ETH"
 		file.write(json.dumps(offer))
 
 	pprint(offer)
@@ -449,10 +453,11 @@ def get_QTUM_buyers_offers():
 		buyer = json.load(file)
 
 	url = get_output_offers_url % buyer["public_key"]
+	print(url)
 
 	response = requests.get(url)
 
-	pprint(response.json())
+	pprint(response.text)
 
 
 
@@ -528,7 +533,7 @@ def post_QTUM_deal():
 		"buyer_pubkey":buyer["public_key"],
 		"seller_access_string":"seller access string",
 		"access_type": offer["offer_type"],
-		"coinid": "QTUM"
+		"coinid": "ETH"
 	}
 
 	data = {"message":message}
@@ -597,10 +602,8 @@ def get_single_content():
 
 
 
-def make_review_by_buyer():
-	profile = get_buyers_profiles()[-1]
-	cid = int(profile["cid"])
-	print(cid)
+def make_review_by_buyer(cid):
+
 	with open("currentbuyer.json") as file:
 		buyer = json.load(file)
 
@@ -608,23 +611,21 @@ def make_review_by_buyer():
 		"cid":cid,
 		"review":"cool review",
 		"rating":5,
-		"coinid":"QTUM"
+		"coinid":"ETH"
 	}
 	data = {"message":message}
 
-	url = "http://localhost:8000/api/blockchain/%s/review" % buyer["public_key"]
+	url = "http://190.2.149.83/api/blockchain/%s/review/" % buyer["public_key"]
 
 	response = requests.post(url, data=json.dumps(data))
 	print("\n\n")
 	pprint(response.json())
 
 
-def get_all_reviews():
-	profile = get_buyers_profiles()[-1]
-	print(profile)
-	cid = int(profile["cid"])
+def get_all_reviews(cid):
 
-	url = "http://localhost:8000/api/blockchain/%s/%s/reviews" % (cid, "QTUM")
+
+	url = "http://190.2.149.83/api/blockchain/%s/%s/reviews/" % (cid, "ETH")
 
 	response = requests.get(url)
 
@@ -632,7 +633,7 @@ def get_all_reviews():
 
 
 def get_all_content():
-	url = "http://localhost:8000/api/blockchain/profile"
+	url = "http://190.2.149.83/api/blockchain/profile/"
 
 	response = requests.get(url)
 
@@ -649,6 +650,35 @@ def get_sellers_news():
 
 	pprint(response.json())
 
+def withdrawQTUM():
+	with open("currentseller.json") as file:
+		seller = json.load(file)
+
+	url = "http://190.2.149.83/api/accounts/withdraw"
+
+	address = "qKoyDjof6F7sRFJcf9pq3TgA1ewW46rPD4"
+
+	data = {
+		"public_key": seller["public_key"],
+		"signature":"signature",
+		"message":{
+			"coinid":"PUTTEST",
+			"amount":10**8,
+			"address":address,
+			"timestamp":"timestamp",
+			"recvWindow":5000
+		}
+	}
+
+	response = requests.post(url, data=json.dumps(data))
+	print(response.text)
+
+
+def test():
+	response = requests.get("http://190.2.149.83/api/accounts/test")
+	print(response.text)
+
+
 
 #########################################################################################
 
@@ -656,18 +686,21 @@ def get_sellers_news():
 
 
 if __name__ == '__main__':
+	from threading import Thread
 	
 	#incqtum(5000 * 10**8)
 
 	#update_QTUM_cid()
 
+	
 	#post_buyer()
 	#post_seller()
 	#delete_currents()
-
-	#get_buyers_account()
+	for i in range(2):
+		t = Thread(target=get_buyers_account)
+		t.start()
 	#get_sellers_account()
-
+	
 	#get_buyers_profiles()
 	#get_sellers_profiles()
 
@@ -675,13 +708,13 @@ if __name__ == '__main__':
 
 	#post_data_to_qtum()
 
-	#put_QTUM_description(cid=5)
+	#put_QTUM_description(cid=115)
 
-	#put_QTUM_write_price()
+	#put_QTUM_write_price(115)
 	#put_QTUM_read_price()
 
-	#post_QTUM_writeaccess_offer(cid=7)
-	#post_QTUM_readaccess_offer()
+	#post_QTUM_writeaccess_offer(cid=105)
+	#post_QTUM_readaccess_offer(cid=119)
 
 	#get_QTUM_buyers_offers()
 	#get_QTUM_input_offers()
@@ -691,16 +724,21 @@ if __name__ == '__main__':
 
 	#post_QTUM_deal()
 
-	#get_single_content()
+	#get_single_content(cid=106)
 
-	#make_review_by_buyer()
+	#make_review_by_buyer(105)
 
-	#get_all_reviews()
-
+	#get_all_reviews(105)
+	
 	#get_all_content()
 
 	#get_sellers_news()
 
+	#withdrawQTUM()
+
+	#for i in range(1000):
+	#	t = Thread(target=test)
+	#	t.start()
 
 
 

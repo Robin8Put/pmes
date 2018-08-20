@@ -4,12 +4,10 @@ from web3.middleware import geth_poa_middleware
 from time import sleep
 from binascii import unhexlify
 from pprint import pprint
-import pymongo
 from BalanceCli import ClientBalance, TablePars
 import settings
 import os
 
-balance_host = settings.balancehost
 home = os.path.expanduser("~")
 eth_host = "{}/.ethereum/rinkeby/geth.ipc".format(home)
 coin_id_eth = "ETH"
@@ -28,7 +26,7 @@ class Parsing():
         self.coin_id = coin_id
         self.connect.middleware_stack.inject(geth_poa_middleware, layer=0)
         self.db = TablePars(db_host, db_name)
-        self.balance = ClientBalance(balance_host)
+        self.balance = ClientBalance(settings.balanceurl)
 
     def get_transaction_in_block(self, block=None):
         # get list transaction in block
@@ -98,7 +96,7 @@ class Parsing():
 def start(from_block, host, coin_id):
     while True:
         try:
-            pars = Parsing(from_block, host, coin_id, db_host, db_name, balance_host=balance_host)
+            pars = Parsing(from_block, host, coin_id, db_host, db_name, balance_host=settings.balanceurl)
             best_block = pars.get_block_count()
             if best_block >= from_block:
                 pars.decode_raw_transaction()

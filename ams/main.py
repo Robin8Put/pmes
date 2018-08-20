@@ -5,20 +5,18 @@ import logging
 # Third-party
 import tornado.ioloop
 
-PROJ_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-if PROJ_DIR not in sys.path:
-	sys.path.append(PROJ_DIR)
 
-logging.basicConfig(filename='ams.log',level=logging.WARNING,
+logging.basicConfig(filename='ams.log',level=logging.DEBUG,
 					format='%(asctime)s %(message)s')
 
 
 if __name__ == '__main__':
 	import settings
+	print(f"\n\n[+] -- AMS Server started on {settings.pmesport} port.")
 	from urls import ams_router
 	# Define port
-	ams_router.listen(settings.amsport)
+	ams_router.listen(settings.pmesport)
 	# Start server
 	tornado.ioloop.IOLoop.current().start()
 	
