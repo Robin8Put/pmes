@@ -1054,19 +1054,26 @@ Descriptions of the API methods provided below:
 
 ## Get transactions history by address
 
-* **URL:** `/api/accounts/withdraw/[address]/[coinid]/`
+* **URL:** `/api/accounts/withdraw/`
 
 * **Method:** `GET`
 
-* **URL params**
+* **URL params** 
+
+    None
+
+* **Body params**
 
     `address: [string]` - users address
 
-    `coinid: [string]` - type of the cryptocurrency `PUTTEST` or `QTUMTEST`  
+    `coinid: [string]` - blockchain type `QTUM` or `ETH` 
 
-* **Body params**
-    
-    None
+```bash
+{
+    "address": [string],     # users address
+    "coinid": [string],      # blockchain type `QTUM` or `ETH` 
+}
+```
 
 * **Sample response**
 
