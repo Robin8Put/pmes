@@ -1058,16 +1058,12 @@ Descriptions of the API methods provided below:
 
 * **Method:** `GET`
 
-* **URL params** 
-
-    `address: [string]` - users address
-
-    `coinid: [string]` - blockchain type `QTUM` or `ETH` 
+* **URL params**
 
 ```bash
 {
     "address": [string],     # users address
-    "coinid": [string],      # blockchain type `QTUM` or `ETH` 
+    "coinid": [string],      # blockchain type `QTUMTEST` or `PUTTEST` 
 }
 ```
 
