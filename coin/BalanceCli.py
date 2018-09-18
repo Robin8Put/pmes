@@ -61,7 +61,7 @@ class TablePars():
         if result:
             return result
         else:
-            return None
+            return {"error": 404}
 
     def find(self):
         return self.database["ETH"].find().count()

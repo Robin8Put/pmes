@@ -208,8 +208,8 @@ class ContentHandler(web.ManagementSystemHandler):
 		Verified: True
 		"""
 		logging.debug("[+] -- Post content debugging. ")
-		if settings.SIGNATURE_VERIFICATION:
-			super().verify()
+		#if settings.SIGNATURE_VERIFICATION:
+		#	super().verify()
 
 		# Define genesis variables
 		if coinid in settings.bridges.keys():     # Define bridge url
@@ -657,7 +657,7 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 
 		# Get difference with balance and price
 		for w in balances["wallets"]:
-			if "PUTTEST" in w.values():
+			if "PUT" in w.values():
 				balance = w 
 		logging.debug("\n          Balance")
 		logging.debug(balance)
@@ -715,7 +715,7 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 
 
 		# Freeze price at balance
-		coinid = "PUTTEST"
+		coinid = "PUT"
 		frozen_balance = await self.account.balance.freeze(uid=account["id"],
 												coinid=coinid, amount=write_price)
 		logging.debug("\n      Frozen balance")
@@ -813,7 +813,7 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 		
 		# Undeposit balance
 		price = await self.account.blockchain.getwriteprice(cid=cid)
-		coinid = "PUTTEST"
+		coinid = "PUT"
 		await self.account.balance.unfreeze(uid=buyer["id"],coinid=coinid, 
 													amount=price)
 
@@ -907,7 +907,7 @@ class ReadAccessOfferHandler(web.ManagementSystemHandler):
 
 		# Get difference with balance and price
 		for w in balances["wallets"]:
-			if "PUTTEST" in w.values():
+			if "PUT" in w.values():
 				balance = w 
 		difference = int(balance["amount_active"]) - int(read_price)
 		if difference < 0:
@@ -953,7 +953,7 @@ class ReadAccessOfferHandler(web.ManagementSystemHandler):
 
 
 		# Freeze price at balance
-		coinid = "PUTTEST"
+		coinid = "PUT"
 		await self.account.balance.freeze(uid=account["id"],coinid=coinid, 
 																amount=read_price)
 
@@ -1052,7 +1052,7 @@ class ReadAccessOfferHandler(web.ManagementSystemHandler):
 		
 
 		price = await self.account.blockchain.getwriteprice(cid=cid)
-		coinid = "PUTTEST"
+		coinid = "PUT"
 		await self.account.balance.unfreeze(uid=buyer["id"],coinid=coinid, 
 																		amount=price)
 
@@ -1184,7 +1184,7 @@ class DealHandler(web.ManagementSystemHandler):
 		logging.debug(price)
 
 		for w in balances["wallets"]:
-			if "PUTTEST" in w.values():
+			if "PUT" in w.values():
 				balance = w
 
 		difference = int(balance["amount_frozen"]) - int(price)
@@ -1248,7 +1248,7 @@ class DealHandler(web.ManagementSystemHandler):
 
 			
 			# Increment and decrement balances of seller and buyer
-			coinid = "PUTTEST"
+			coinid = "PUT"
 			unfreeze = await self.account.balance.unfreeze(uid=buyer_account["id"],
 													amount=price, coinid=coinid)
 			logging.debug("\n          Unfreeze buyer")

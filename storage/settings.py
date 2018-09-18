@@ -101,6 +101,7 @@ NEWS = "news"
 WALLET = "wallet"
 BALANCE = "balance"
 TREE = "Tree"
+TXS = "txs"
 
 QTUM = "QTUM"
 ETH = "ETH"
@@ -111,7 +112,7 @@ DEAL = "deal"
 SOURCE = "source"
 HISTORY = "history"
 
-AVAILABLE_COIN_ID = ["BTCTEST", "LTCTEST", "ETH", "QTUMTEST", "PUTTEST"]
+AVAILABLE_COIN_ID = ["BTC", "LTC", "ETH", "QTUM", "PUT"]
 
 AVAILABLE_COIN_TYPES = ["ETH", "QTUM"]
 

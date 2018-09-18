@@ -27,7 +27,7 @@ async def upload_content_fee(*args, **kwargs):
 	cus = kwargs.get("cus")
 	owneraddr = kwargs.get("owneraddr")
 	description = kwargs.get("description")
-	coinid = kwargs.get("coinid", "PUTTEST")
+	coinid = kwargs.get("coinid", "PUT")
 
 	#Check if required fields exists
 	if not all([cus, owneraddr, description]):
@@ -70,7 +70,7 @@ async def update_description_fee(*args, **kwargs):
 	cid = kwargs.get("cid")
 	description = kwargs.get("description")
 	owneraddr = kwargs.get("owneraddr")
-	coinid = kwargs.get("coinid", "PUTTEST")
+	coinid = kwargs.get("coinid", "PUT")
 
 
 	if not all([cid, description, owneraddr]):
@@ -151,7 +151,7 @@ async def sell_content_fee(*args, **kwargs):
 	"""
 	cid = kwargs.get("cid")
 	new_owner = kwargs.get("new_owner")
-	coinid = kwargs.get("coinid", "PUTTEST")
+	coinid = kwargs.get("coinid", "PUT")
 
 
 	if not all([cid, new_owner]):
@@ -192,7 +192,7 @@ async def set_price_fee(*args, **kwargs):
 	cid = kwargs.get("cid")
 	price = kwargs.get("price")
 	owneraddr = kwargs.get("owneraddr")
-	coinid = kwargs.get("coinid", "PUTTEST")
+	coinid = kwargs.get("coinid", "PUT")
 
 	if not all([cid, price, owneraddr]):
 		return {"error":400, "reason":"Missed required fields"}
@@ -233,7 +233,7 @@ async def set_make_offer_fee(*args, **kwargs):
 	"""
 	"""
 	buyer_address = kwargs.get("buyer_address")
-	coinid = kwargs.get("coinid", "PUTTEST")
+	coinid = kwargs.get("coinid", "PUT")
 
 	user = await client_storage.request(method_name="getaccountbywallet",
 	                wallet=buyer_address)

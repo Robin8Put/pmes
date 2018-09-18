@@ -35,51 +35,49 @@ balancehost = "%s:%s" % (balance, balanceport)
 emailhost = "%s:%s" % (email, emailport)
 withdrawhost = "%s:%s/api/" % (withdraw, withdrawport)
 
-
-
 ENDPOINTS = {
-	#Public API requests
+    # Public API requests
 
-	# POST new account
-	"ams": r"/api/accounts/",           
-	#GET accounts data
-	"account": r"/api/accounts/([a-zA-Z0-9]+?)/",  
-	# GET blockchain content
-	"contents": r"/api/accounts/([a-zA-Z0-9]+?)/profiles/", 
-	# GET all contents reviews
-	"reviews": r"/api/blockchain/([a-zA-Z0-9]+?)/([a-zA-Z0-9]+?)/reviews/",
-	# POST contents review
-	"review": r"/api/blockchain/([a-zA-Z0-9]+?)/review/",
-	# POST, PUT deal
-	"deal": r"/api/blockchain/([a-zA-Z0-9]+?)/deal/", 
-	# GET deals
-	"deals": r"/api/blockchain/([a-zA-Z0-9]+?)/deals/",
-	# GET all users offers
-	"output_offers": r"/api/accounts/([a-zA-Z0-9]+?)/output-offers/",  
-	# GET all users offers
-	"input_offers": r"/api/accounts/([a-zA-Z0-9]+?)/input-offers/", 
-	# POST/PUT right access offer
-	"write-access-offer": r"/api/blockchain/([a-zA-Z0-9]+?)/write-access-offer/",
-	# POST/PUT read access offer
-	"read-access-offer": r"/api/blockchain/([a-zA-Z0-9]+?)/read-access-offer/",
-	# GET news
-	"news": r"/api/accounts/([a-zA-Z0-9]+?)/news/",   
-	# GET all content
-	"allcontent": r"/api/blockchain/profile/",  
-	# GET/POST content description
-	"description": r"/api/blockchain/([0-9]+)/description/",  
-	# GET/POST content price
-	"price": r"/api/blockchain/([0-9]+)/price/",  
-	# GET/POST blockchain content
-	"content": r"/api/blockchain/([a-zA-Z0-9]+?)/([a-zA-Z0-9]+?)/profile/",    
+    # POST new account
+    "ams": r"/api/accounts/",
+    # GET accounts data
+    "account": r"/api/accounts/([a-zA-Z0-9]+?)/",
+    # GET blockchain content
+    "contents": r"/api/accounts/([a-zA-Z0-9]+?)/profiles/",
+    # GET all contents reviews
+    "reviews": r"/api/blockchain/([a-zA-Z0-9]+?)/([a-zA-Z0-9]+?)/reviews/",
+    # POST contents review
+    "review": r"/api/blockchain/([a-zA-Z0-9]+?)/review/",
+    # POST, PUT deal
+    "deal": r"/api/blockchain/([a-zA-Z0-9]+?)/deal/",
+    # GET deals
+    "deals": r"/api/blockchain/([a-zA-Z0-9]+?)/deals/",
+    # GET all users offers
+    "output_offers": r"/api/accounts/([a-zA-Z0-9]+?)/output-offers/",
+    # GET all users offers
+    "input_offers": r"/api/accounts/([a-zA-Z0-9]+?)/input-offers/",
+    # POST/PUT right access offer
+    "write-access-offer": r"/api/blockchain/([a-zA-Z0-9]+?)/write-access-offer/",
+    # POST/PUT read access offer
+    "read-access-offer": r"/api/blockchain/([a-zA-Z0-9]+?)/read-access-offer/",
+    # GET news
+    "news": r"/api/accounts/([a-zA-Z0-9]+?)/news/",
+    # GET all content
+    "allcontent": r"/api/blockchain/profile/",
+    # GET/POST content description
+    "description": r"/api/blockchain/([0-9]+)/description/",
+    # GET/POST content price
+    "price": r"/api/blockchain/([0-9]+)/price/",
+    # GET/POST blockchain content
+    "content": r"/api/blockchain/([a-zA-Z0-9]+?)/([a-zA-Z0-9]+?)/profile/",
 
-	"withdraw": r"/api/accounts/withdraw/",
-	"history": r"/api/history",
-	"balance": r"/api/balance",
-	"bridge": r"/api/bridge",
-	"storage": r"/api/storage",
-	"email": r"/api/email",
-	"bulk": r"/api/bulk"
+    "withdraw": r"/api/accounts/withdraw/",
+    "history": r"/api/history",
+    "balance": r"/api/balance",
+    "bridge": r"/api/bridge",
+    "storage": r"/api/storage",
+    "email": r"/api/email",
+    "bulk": r"/api/bulk"
 }
 
 storageurl = "%s%s" % (storagehost, ENDPOINTS["storage"])
@@ -90,10 +88,9 @@ bridgeurl = "%s%s" % (bridgehost, ENDPOINTS["bridge"])
 
 ethurl = "%s%s" % (ethhost, ENDPOINTS["bridge"])
 
-historyurl = "%s%s" % (historyhost, ENDPOINTS["history"]) 
+historyurl = "%s%s" % (historyhost, ENDPOINTS["history"])
 
 emailurl = "%s%s" % (emailhost, ENDPOINTS["email"])
-
 
 DBNAME = "pmes"
 ACCOUNTS = "accounts"
@@ -115,7 +112,7 @@ AVAILABLE_COIN_ID = ["BTCTEST", "LTCTEST", "ETH", "QTUMTEST", "PUTTEST"]
 
 AVAILABLE_COIN_TYPES = ["ETH", "QTUM"]
 
-#qtum_settings_file = os.path.join(BASE_DIR, "pdms/qtum_bridge/qtum_settings.json")
+# qtum_settings_file = os.path.join(BASE_DIR, "pdms/qtum_bridge/qtum_settings.json")
 
 bridges = {"ETH": ethurl, "QTUM": bridgeurl}
 
@@ -123,7 +120,6 @@ DEBUG = True
 
 # Pagination page limit
 LIMIT = 6
-
 
 SIGNATURE_VERIFICATION = False
 

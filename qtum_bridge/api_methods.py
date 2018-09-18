@@ -10,7 +10,7 @@ import logging
 import json
 import os
 import settings
-from jsonrpclcient.tornado_client import TornadoClient
+from jsonrpcclient.tornado_client import TornadoClient
 from tornado_components.web import RobustTornadoClient, SignedTornadoClient
 from config import storage_type, storage_host, storage_port, storage_download_time_limit, \
                     contract_owner, contract_owner_hex, contract_address, blockchain_type, \
@@ -263,7 +263,7 @@ class Bridge(object):
     async def makecid(*args, **kwargs):
         kwargs = json.loads(kwargs.get("message"))
         cus = kwargs.get("cus")
-        owneraddr = kwargs.get("owneraddr")
+        owneraddr = "0x" + kwargs.get("owneraddr")
         description = kwargs.get("description")
         read_price = int(kwargs.get("read_price", 0))
         write_price = int(kwargs.get("write_price", 0))
