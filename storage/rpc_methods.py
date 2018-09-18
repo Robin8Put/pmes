@@ -1040,6 +1040,87 @@ class StorageTable(mongo.Table):
 		return {"result": "ok"}
 
 
+	#@verify
+	async def log_transaction(self, **params):
+		"""Writing transaction to database
+		"""
+		if params.get("message"):
+			params = json.loads(params.get("message", "{}"))
+		
+		if not params:
+			return {"error":400, "reason":"Missed required fields"}
+
+		coinid = params.get("coinid")
+
+		if not coinid in ["QTUM", "PUT"]:
+			return {"error":400, "reason": "Missed or invalid coinid"}
+
+		database = client[settings.TXS]
+		source_collection = database[coinid]
+
+		await source_collection.find_one_and_update({"txid":params.get("txid")},{"$set":{
+				"blocknumber":params.get("blocknumber"),
+				"blockhash":params.get("blockhash"),
+				"gasLimit":params.get("gasLimit"),
+				"gasPrice":params.get("gasPrice"),
+			}})
+		return {"success":True}
+
+
+	async def save_transaction(self, **params):
+		"""
+		"""
+		if params.get("message"):
+			params = json.loads(params.get("message", "{}"))
+		
+		if not params:
+			return {"error":400, "reason":"Missed required fields"}
+
+		coinid = params.get("coinid")
+
+		if not coinid in ["QTUM", "PUT"]:
+			return {"error":400, "reason": "Missed or invalid coinid"}
+
+		database = client[settings.TXS]
+		source_collection = database[coinid]
+
+		await source_collection.insert_one({
+				"txid":params.get("txid"),
+				"address":params.get("address"),
+				"amount":params.get("amount")
+			})
+		return {"success":True}
+
+
+	#@verify
+	async def get_transactions(self, **params):
+
+		if params.get("message"):
+			params = json.loads(params.get("message", "{}"))
+		
+		if not params:
+			return {"error":400, "reason":"Missed required fields"}
+
+		if not params.get("address"):
+			return {"error":400, "reason":"Missed address field. "}
+
+		coinid = params.get("coinid")
+		address = params.get("address")
+
+		if not coinid in ["QTUM", "PUT"]:
+			return {"error":400, "reason":"Missed or invalid coinid. "}
+
+		if not address:
+			return {"error":400, "reason":"Missed address field. "}
+
+		database = client[settings.TXS]
+		source_collection = database[coinid]
+
+		result = [{i:t[i] for i in t if i != "_id"} 
+					async for t in source_collection.find({"address":address})]
+
+		return {"txs":result}
+
 
 
 table = StorageTable(dbname=settings.DBNAME, collection=settings.ACCOUNTS)
@@ -1253,4 +1334,19 @@ async def sharecontent(**params):
 @methods.add 
 async def logsource(**params):
 	result = await table.log_source(**params)
+	return result
+
+@methods.add 
+async def log_transaction(**params):
+	result = await table.log_transaction(**params)
+	return result
+
+@methods.add 
+async def get_transactions(**params):
+	result = await table.get_transactions(**params)
+	return result
+
+@methods.add 
+async def save_transaction(**params):
+	result = await table.save_transaction(**params)
 	return result

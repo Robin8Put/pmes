@@ -1,13 +1,15 @@
-#import logging
+# import logging
 import sys
 from time import sleep
 from daemon import Daemon
 from Parsing import ParsingBlock
 
-from_block = 188790
-db_host = "localhost"
-db_name = "balance"
-coinid = "QTUMTEST"
+import settings
+
+from_block = 217717
+db_host = settings.dbhost
+db_name = settings.BALANCE
+coinid = settings.QTUM
 
 
 def server_w(from_i):
@@ -16,17 +18,18 @@ def server_w(from_i):
             data = ParsingBlock(db_host=db_host, db_name=db_name)
             best_block = data.get_block_count()
             if best_block >= from_i:
-                pars = ParsingBlock(from_block=from_i, db_host=db_host, db_name=db_name)
-                #logging.critical(from_i)
-                decode_raw_transaction = pars.decode_raw_transaction()
                 print(from_i)
+                pars = ParsingBlock(from_block=from_i, db_host=db_host, db_name=db_name)
+                # logging.critical(from_i)
+                decode_raw_transaction = pars.decode_raw_transaction()
                 from_i += 1
             else:
                 sleep(1)
         except Exception as e:
             print(e)
-            #logging.warning("\n[+] -- Error while connecting to blockchain.\n")
+            # logging.warning("\n[+] -- Error while connecting to blockchain.\n")
             sleep(10)
+
 
 server_w(from_block)
 

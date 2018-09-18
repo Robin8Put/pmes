@@ -8,7 +8,7 @@ import tornado.ioloop
 
 
 
-logging.basicConfig(filename='pdms.log',level=logging.WARNING,
+logging.basicConfig(filename='pdms.log',level=logging.DEBUG,
 					format='%(asctime)s %(message)s')
 
 

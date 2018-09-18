@@ -30,14 +30,14 @@ class BalanceHandler(tornado.web.RequestHandler):
 	It has to be removed before production
 	"""
 
-	async def set_default_headers(self):
+	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
 		self.set_header('Cache-Control', "no-store")
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
 		self.set_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
 
 
-	async def initialize(self):
+	def initialize(self):
 		self.account = Account()
 
 
@@ -71,7 +71,7 @@ class BalanceHandler(tornado.web.RequestHandler):
 
 		self.write(balance)
 
-	async def options(self, uid):
+	def options(self, uid):
 		self.write(json.dumps(["GET", "POST"]))
 
 
@@ -84,16 +84,15 @@ class AMSHandler(web.ManagementSystemHandler):
 
 	"""
 
-	async def set_default_headers(self):
+	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
 		self.set_header('Cache-Control', "no-store")
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
 		self.set_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
 
-	async def initialize(self):
+	def initialize(self):
 		self.account = Account()
 
-	
 	async def post(self):
 		"""Creates new account
 
@@ -120,7 +119,7 @@ class AMSHandler(web.ManagementSystemHandler):
 		Verified: True
 
 		"""
-
+		logging.debug("\n\n[+] -- Account debugging. ")
 		# Include signature verification mechanism
 		if settings.SIGNATURE_VERIFICATION:
 			super().verify()
@@ -136,6 +135,8 @@ class AMSHandler(web.ManagementSystemHandler):
 
 		# Create account
 		new_account = await self.account.createaccount(**data)
+		logging.debug("\n\n [+] -- New account debugging.")
+		logging.debug(new_account["id"])
 		if "error" in new_account.keys():
 			# Raise error if the one does exist
 			self.set_status(new_account["error"])
@@ -165,7 +166,7 @@ class AMSHandler(web.ManagementSystemHandler):
 		self.write(new_account)
 
 
-	async def options(self):
+	def options(self):
 		self.write(json.dumps(["POST"]))
 
 
@@ -179,14 +180,14 @@ class AccountHandler(web.ManagementSystemHandler):
 
 	"""
 
-	async def set_default_headers(self):
+	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
 		self.set_header('Cache-Control', "no-store")
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
 		self.set_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
 
 
-	async def initialize(self):
+	def initialize(self):
 		self.account = Account()
 
 	async def get(self, public_key):
@@ -227,7 +228,11 @@ class AccountHandler(web.ManagementSystemHandler):
 		await self.account.logsource(public_key=public_key, source=source)
 
 		# Get account
+		logging.debug("\n\n [+] -- Get account data.")
 		response = await self.account.getaccountdata(public_key=public_key)
+		logging.debug("\n")
+		logging.debug(response)
+		logging.debug("\n")
 		if "error" in response.keys():
 			self.set_status(response["error"])
 			self.write(response)
@@ -244,7 +249,7 @@ class AccountHandler(web.ManagementSystemHandler):
 		# Filter wallets
 		response.update({"wallets":json.dumps(
 					[i for i in wallets["wallets"] 
-					if i.get("coinid") not in ["BTCTEST", "LTCTEST", "ETH"]])})
+					if i.get("coinid") not in ["BTC", "LTC", "ETH"]])})
 		# Return account data
 		self.write(response)
 
@@ -257,14 +262,14 @@ class AccountHandler(web.ManagementSystemHandler):
 class NewsHandler(web.ManagementSystemHandler):
 
 
-	async def set_default_headers(self):
+	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
 		self.set_header('Cache-Control', "no-store")
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
 		self.set_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
 
 
-	async def initialize(self):
+	def initialize(self):
 		self.account = Account()
 
 
@@ -293,14 +298,14 @@ class NewsHandler(web.ManagementSystemHandler):
 				self.write(response)
 				raise tornado.web.Finish
 
-	async def options(self, public_key):
+	def options(self, public_key):
 		self.write(json.dumps(["GET"]))
 
 
 class OutputOffersHandler(web.ManagementSystemHandler):
 	"""Allows to retrieve all users output offers. 
 	"""
-	async def set_default_headers(self):
+	def set_default_headers(self):
 		self.set_header("Access-Control-Allow-Origin", "*")
 		self.set_header('Cache-Control', "no-store")
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
@@ -327,7 +332,7 @@ class OutputOffersHandler(web.ManagementSystemHandler):
 				continue
 
 
-	async def initialize(self):
+	def initialize(self):
 		self.account = Account()
 
 
@@ -485,7 +490,7 @@ class ContentsHandler(web.ManagementSystemHandler):
 		self.write(json.dumps(["GET"]))
 
 
-class WithdrawHandler(tornado.web.RequestHandler):
+class WithdrawHandler(web.ManagementSystemHandler):
 	"""
 	"""
 	def initialize(self):
@@ -495,42 +500,50 @@ class WithdrawHandler(tornado.web.RequestHandler):
 		self.set_header("Access-Control-Allow-Origin", "*")
 		self.set_header('Cache-Control', "no-store")
 		self.set_header("Access-Control-Allow-Headers", "Content-Type")
-		self.set_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
+		self.set_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
 	
 
 	async def get(self):
 		"""
 		"""
+		# Sign-verifying functional
+		if settings.SIGNATURE_VERIFICATION:
+			super().verify()
+
 		address = self.get_query_argument("address", None)
 		coinid = self.get_query_argument("coinid", None)
 
-		if not all([address, coinid in ["QTUM", "ETH"]]):
-			self.set_status(400)
-			self.write({"error":400, "reason":"Missed required fields."})
+		#eth_token = "15QZDMQC1BB9YN5QQKMEW9MDZBBQECJ8ZH"
+
+		#endpoints = {
+		#	"QTUMTEST": f"https://testnet.qtum.org/insight-api/txs/?address={address}",
+		#	"PUTTEST": f"https://testnet.qtum.org/insight-api/txs/?address={address}",
+		#	"ETH": f"http://api.etherscan.io/api?\
+		#					module=account&\
+		#					action=txlist&\
+		#					address={address}&\
+		#					startblock=0&\
+		#					endblock=99999999&\
+		#					sort=asc&\
+		#					apikey={eth_token}"
+		#}
+
+		#client = AsyncHTTPClient()
+
+		#try:
+		#	response = await client.fetch(endpoints[coinid])
+		#	self.write(response.body)
+		#except Exception as e:
+		#	response = {"error":501, "reason":str(e)}
+		#	self.write(response)
+
+		txs = await self.account.get_transactions(address=address, coinid=coinid)
+		if "error" in txs.keys():
+			self.set_status(txs["error"])
+			self.write(txs)
 			raise tornado.web.Finish
 
-		eth_token = "15QZDMQC1BB9YN5QQKMEW9MDZBBQECJ8ZH"
-
-		endpoints = {
-			"QTUM": f"https://testnet.qtum.org/insight-api/txs/?address={address}",
-			"ETH": f"http://api.etherscan.io/api?\
-							module=account&\
-							action=txlist&\
-							address={address}&\
-							startblock=0&\
-							endblock=99999999&\
-							sort=asc&\
-							apikey={eth_token}"
-		}
-
-		client = AsyncHTTPClient()
-
-		try:
-			response = await client.fetch(endpoints[coinid])
-			self.write(response.body)
-		except Exception as e:
-			response = {"error":501, "reason":str(e)}
-			self.write(response)
+		self.write(txs)
 
 
 	async def post(self):
@@ -562,6 +575,10 @@ class WithdrawHandler(tornado.web.RequestHandler):
 			- signature
 			- txid [string]
 		"""
+		# Sign-verifying functional
+		if settings.SIGNATURE_VERIFICATION:
+			super().verify()
+
 		logging.debug("\n\n[+] -- Withdraw debugging")
 		# Get data from requests body
 		data = json.loads(self.request.body)
@@ -604,17 +621,17 @@ class WithdrawHandler(tornado.web.RequestHandler):
 
 		freeze = await self.account.balance.freeze(uid=account["id"], coinid=coinid,
 													amount=amount + fee)
+		logging.debug("\n           Frozen balance")
+		logging.debug(freeze)
 		if "error" in freeze.keys():
 			data.update(freeze)
 			self.set_status(freeze["error"])
 			self.write(data)
 			raise tornado.web.Finish
-		logging.debug("\n           Frozen balance")
-		logging.debug(freeze)
 
 		# Request to withdraw server
 		txid = await self.account.withdraw(amount=amount, coinid=coinid, 
-							address=self.account.withdraw_address[coinid](address))
+							address=address)
 		logging.debug("\n      Withdraw server response")
 		logging.debug(txid)
 
@@ -628,20 +645,21 @@ class WithdrawHandler(tornado.web.RequestHandler):
 			raise tornado.web.Finish
 
 		# Add balance to recepient
-		add_active = await self.account.balance.add_active(address=address, coinid=coinid,
-															amount=amount)
-		if "error" in add_active.keys():
-			await self.account.balance.unfreeze(uid=account["id"], coinid=coinid,
-														amount=amount + fee)
-			data.update(add_active)
-			self.set_status(add_active["error"])
-			self.write(data)
-			raise tornado.web.Finish
+		#add_active = await self.account.balance.add_active(address=address, coinid=coinid,
+		#													amount=amount)
+		#if "error" in add_active.keys():
+		#	await self.account.balance.unfreeze(uid=account["id"], coinid=coinid,
+		#												amount=amount + fee)
+		#	data.update(add_active)
+		#	self.set_status(add_active["error"])
+		#	self.write(data)
+		#	raise tornado.web.Finish
 
 		# Submit amount from frozen balance
 		sub_frozen = await self.account.balance.sub_frozen(uid=account["id"], 
 													coinid=coinid, amount=amount + fee)
 		if "error" in sub_frozen.keys():			
+		
 			data.update(sub_frozen)
 			self.set_status(sub_frozen["error"])
 			self.write(data)
@@ -649,13 +667,15 @@ class WithdrawHandler(tornado.web.RequestHandler):
 		logging.debug("\n               Sub frozen")
 		logging.debug(sub_frozen)
 
+		await self.account.save_transaction(txid=txid.get("txid"), coinid=coinid,
+													amount=amount, address=address)
 
 		# Return txid
 		data.update(txid)
 		self.write(data)
 
 	def options(self):
-		self.write(json.dumps(["POST"]))
+		self.write(json.dumps(["GET", "POST"]))
 
 
 

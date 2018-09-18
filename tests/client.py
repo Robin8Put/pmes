@@ -23,12 +23,14 @@ import string
 from pprint import pprint
 from pymongo import MongoClient
 from jsonrpcclient.http_client import HTTPClient
+from bip32keys.bip32keys import Bip32Keys
 
+domain = "pdms2.robin8.io"
 
-create_account_url = "http://190.2.149.83/api/accounts/"
-get_account_url = "http://190.2.149.83/api/accounts/%s/"
-get_account_profiles_url = "http://190.2.149.83/api/accounts/%s/profiles/"
-post_data_url = "http://190.2.149.83/api/blockchain/%s/%s/profile/"
+create_account_url = f"http://{domain}/api/accounts/"
+get_account_url = f"http://{domain}/api/accounts/%s/"
+get_account_profiles_url = "http://pdms2.robin8.io/api/accounts/%s/profiles/"
+post_data_url = f"http://{domain}/api/blockchain/%s/%s/profile/"
 put_descr_url = "http://190.2.149.83/api/blockchain/%s/description/"
 put_write_price_url = "http://190.2.149.83/api/blockchain/%s/price/"
 post_writeaccess_offer_url = "http://190.2.149.83/api/blockchain/%s/write-access-offer/"
@@ -49,16 +51,25 @@ def post_buyer():
 	with open("generated.json") as keys:
 		keys_list = json.load(keys)
 
-	public_key = random.choice(keys_list)["public_key"]
+	keys = random.choice(keys_list)
+	print(keys)
+	print(keys["private_key"])
 	
+	private_key = "f33c9fe7a642f37d894ffaddf373cc7246a03e6adaa9fc9bb762c6cdb4675584"
+	public_key = "04bdb68a06cabf12759a80796a280515389b8b43b0415bea40b6ccf963db08b0496f4a369f23d4471e0de1aba0cd158a056ea7bc14b8c30f4f32f82b54d2c9ff92"
 
-	message = {
-				"device_id": "device_id"
-			}
+
+	message = json.dumps({
+				"device_id":"device_id"
+			})
+	print(message)
 		
 	data = {
-		"message": message,
-		"public_key": public_key
+		"signature": Bip32Keys.sign_message(message, private_key),
+		"public_key": public_key,
+		"message":{
+				"device_id":"device_id"
+			}
 	}
 	print(create_account_url)
 	response = requests.post(create_account_url, data=json.dumps(data))
@@ -66,7 +77,8 @@ def post_buyer():
 	pprint(response.text)
 
 	with open("currentbuyer.json", "w") as current:
-		current.write(json.dumps({"public_key":public_key, "id":response.json()["id"]}))
+		current.write(json.dumps({"private_key":keys["private_key"], 
+			"public_key":keys["public_key"]}))
 
 
 def post_seller():
@@ -121,11 +133,22 @@ def delete_currents():
 
 
 def get_buyers_account():
-	with open("currentbuyer.json") as file:
-		public_key = json.load(file)["public_key"]
+	private_key = "f33c9fe7a642f37d894ffaddf373cc7246a03e6adaa9fc9bb762c6cdb4675584"
+	public_key = "04bdb68a06cabf12759a80796a280515389b8b43b0415bea40b6ccf963db08b0496f4a369f23d4471e0de1aba0cd158a056ea7bc14b8c30f4f32f82b54d2c9ff92"
 
-	response = requests.get(get_account_url % public_key)
-	pprint(response.json())	
+	print(public_key)
+	print(private_key)
+
+	message = json.dumps({"timestamp": "timestamp"})
+
+	signature = Bip32Keys.sign_message(message, private_key)
+
+	params = {"message":message, 
+							"signature":signature, "public_key":public_key}
+
+	print(params)
+	response = requests.get(get_account_url % public_key, params=params)
+	pprint(response.text)	
 
 
 def get_sellers_account():
@@ -139,12 +162,22 @@ def get_sellers_account():
 
 
 def get_buyers_profiles():
-	with open("currentbuyer.json") as file:
-		public_key = json.load(file)["public_key"]
+	private_key = "2d06c610b488d1bc5316f08f668db4b29bf804d0eca312b08a57c74cec5d3e80"
+	public_key = "047495b687b6bb1a9d959ca1ae121d90f4445e662ab6d56eaf844692dd64e2a011a99f113679c020be51340a0472c4e99d81dff9f89cde92fb92e43c22ac2fd25c"
 
-	response = requests.get(get_account_profiles_url % public_key)
+	print(public_key)
+	print(private_key)
+
+	message = json.dumps({"timestamp": "timestamp"})
+
+	signature = Bip32Keys.sign_message(message, private_key)
+
+	params = {"message":message, 
+							"signature":signature, "public_key":public_key}
+
+	print(params)
+	response = requests.get(get_account_profiles_url % public_key, params=params)
 	pprint(response.json())	
-	return(response.json())
 	
 
 def get_buyers_shared_profiles():
@@ -183,8 +216,8 @@ def update_ETH_cid():
 
 
 def post_data_to_qtum():
-	with open("currentseller.json") as file:
-		public_key = json.load(file)["public_key"]
+	#with open("currentbuyer.json") as file:
+	public_key = "04022ee41f93c4eece6187dea829e0c8c870eb27c29a9e0165cfcce23263965edda9ae729fa821dd6931e7cfa51a703e208212758dfce81cfa31fff3e7a85f091c"
 
 
 
@@ -199,7 +232,7 @@ def post_data_to_qtum():
 		"message":message
 	}
 
-	url = post_data_url % (public_key, "ETH") 
+	url = post_data_url % (public_key, "QTUM") 
 	pprint(url)
 	response = requests.post(url, data=json.dumps(data))
 
@@ -213,14 +246,14 @@ def incqtum(amount):
 	with open("currentbuyer.json") as file:
 		buyer_id = json.load(file)["id"]
 
-	url1 = "http://190.2.149.83/api/accounts/%s/balance/" % seller_id
-	url2 = "http://190.2.149.83/api/accounts/%s/balance/" % buyer_id
+	url1 = f"http://{domain}/api/accounts/%s/balance/" % seller_id
+	#url2 = "http://pdms2.robin8.io/api/accounts/%s/balance/" % buyer_id
 
-	r1 = requests.post(url1, data=json.dumps({"amount":amount, "coinid": "PUTTEST"}))
-	r2 = requests.post(url2, data=json.dumps({"amount":amount, "coinid": "PUTTEST"}))
+	r1 = requests.post(url1, data=json.dumps({"amount":amount, "coinid": "PUT"}))
+	#r2 = requests.post(url2, data=json.dumps({"amount":amount, "coinid": "PUT"}))
 
 	print(r1.text)
-	print(r2.text)
+	#print(r2.text)
 
 
 def inceth(amount):
@@ -651,26 +684,36 @@ def get_sellers_news():
 	pprint(response.json())
 
 def withdrawQTUM():
-	with open("currentseller.json") as file:
-		seller = json.load(file)
 
-	url = "http://190.2.149.83/api/accounts/withdraw"
 
-	address = "qKoyDjof6F7sRFJcf9pq3TgA1ewW46rPD4"
+	url = "http://pdms2.robin8.io/api/accounts/withdraw/"
 
-	data = {
-		"public_key": seller["public_key"],
-		"signature":"signature",
-		"message":{
-			"coinid":"PUTTEST",
-			"amount":10**8,
+	address = "QWccdw336HTVw2PqunRZJTRPNYV7Ee4y18"
+
+	private_key = "f33c9fe7a642f37d894ffaddf373cc7246a03e6adaa9fc9bb762c6cdb4675584"
+	public_key = "04bdb68a06cabf12759a80796a280515389b8b43b0415bea40b6ccf963db08b0496f4a369f23d4471e0de1aba0cd158a056ea7bc14b8c30f4f32f82b54d2c9ff92"
+
+	message = {
+			"coinid":"QTUM",
+			"amount":(10**8)/100,
 			"address":address,
 			"timestamp":"timestamp",
 			"recvWindow":5000
 		}
-	}
 
-	response = requests.post(url, data=json.dumps(data))
+	print(message)
+
+	signature = Bip32Keys.sign_message(json.dumps(message), private_key)
+
+	d = json.dumps({
+		"public_key": public_key,
+		"signature":signature,
+		"message":message
+	})
+
+	print(d)
+
+	response = requests.post(url, data=d)
 	print(response.text)
 
 
@@ -688,7 +731,7 @@ def test():
 if __name__ == '__main__':
 	from threading import Thread
 	
-	#incqtum(5000 * 10**8)
+	#incqtum(100*(10**8))
 
 	#update_QTUM_cid()
 
@@ -696,9 +739,9 @@ if __name__ == '__main__':
 	#post_buyer()
 	#post_seller()
 	#delete_currents()
-	for i in range(2):
-		t = Thread(target=get_buyers_account)
-		t.start()
+	#get_buyers_account()
+	#	t.start()
+	
 	#get_sellers_account()
 	
 	#get_buyers_profiles()
@@ -706,7 +749,7 @@ if __name__ == '__main__':
 
 	#get_buyers_shared_profiles()
 
-	#post_data_to_qtum()
+	post_data_to_qtum()
 
 	#put_QTUM_description(cid=115)
 

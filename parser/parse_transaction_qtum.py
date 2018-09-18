@@ -1,23 +1,20 @@
-import sys
-import os
 import codecs
 from time import sleep
 from eth_abi import  decode_abi
-from jsonrpcclient.http_client import HTTPClient
 from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
 from BalanceCli import ClientBalance, TablePars
 from StorgCli import ClientStorge
 from settings_file import *
 import settings
 
-
-
 from qtum_utils.qtum import Qtum
 
-from_i = 188780
-coin_id = "QTUM"
-db_host = "localhost"
-db_name = "balance"
+from_i = 203750
+coin_id = "QTUMTEST"
+db_host = settings.dbhost
+db_name = settings.BALANCE
+coin_id_put = "PUTTEST"
+mainnet_status = False
 
 
 class SearchTransaction():
@@ -27,7 +24,7 @@ class SearchTransaction():
         self.client = self.conection_stor()
         self.balance = ClientBalance(settings.balanceurl)
         self.db = TablePars(db_host, db_name)
-        self.coinid_put = "PUTTEST"
+        self.coinid_put = coin_id_put
 
     def abi_to_params(self, abi, output_types):
         decode_hex = codecs.getdecoder("hex_codec")
@@ -39,6 +36,9 @@ class SearchTransaction():
         signatures = {'8c3ce5d7': ['makeCid({0[0]}, {0[1]}, {0[2]}, {0[3]}, {0[4]})',
                                    ['string', 'address', 'string', 'uint256', 'uint256'],
                                    self.new_cid],
+                      """'a9059cbb': ["",
+                                     ['address', 'uint'],
+                                     self.balance_put, []]"""
 
                       '65d72416': ['newOffer({0[0]}, {0[1]}, {0[2]}, {0[3]}, {0[4]})',
                                    ['uint256', 'address', 'uint256', 'uint256', 'string'],
@@ -54,11 +54,8 @@ class SearchTransaction():
 
                       '41309af4': ["newReview({0[0]}, {0[1]}, {0[2]}, {0[3]})",
                                    ["uint256", "address", "string"],
-                                   self.update_review],
+                                   self.update_review]
 
-                      'a9059cbb': ["",
-                                   ['address', 'uint'],
-                                   self.balance_put]
 
                       }
         list_data = []
@@ -79,6 +76,8 @@ class SearchTransaction():
                         decode = self.abi_to_params(data, signatures_list_type)
                         new_decode = self.change_decode(signatures_list_type, decode)
                         data_write = [txid] + new_decode
+                        if len(signatures_list) > 3:
+                            data_write += asm_split[:3]
                         method = signatures_list[2]
                         method_call = method(data_write)
                         list_data += data
@@ -166,11 +165,21 @@ class SearchTransaction():
     def balance_put(self, data):
         txid = data[0]
         address = data[1]
-        address = Qtum.hex_to_qtum_address(address, mainnet=False)
-        ammount = data[2]
-        data = self.db.check_address(address, self.coinid_put)
-        if data:
-            update_data_1 = self.balance.inc_balance(address, ammount, self.coinid_put)
+        address = Qtum.hex_to_qtum_address(address, mainnet=mainnet_status)
+        amount = data[2]
+        gasLimit = data[4]
+        gasPrice = data[5]
+        result = self.db.check_address(address, self.coinid_put)
+        if result:
+            update_data_1 = self.balance.inc_balance(address, amount, self.coinid_put)
+            self.client.log_transaction(**{"coinid": self.coinid_put,
+                                           "blocknumber": self.from_block,
+                                           "blockhash": self.block_hash_num(),
+                                           "vin": [],
+                                           "vout": [{address: amount}],
+                                           "txid": txid,
+                                           "gasLimit": gasLimit,
+                                           "gasPrice": gasPrice})
 
     def new_cid(self, data):
         tx_hash = data[0]
@@ -207,14 +216,19 @@ class SearchTransaction():
 
 def run(from_i, address_smart_contract, db_name, db_host):
     while True:
-        pars = SearchTransaction(from_i, db_name=db_name, db_host=db_host)
-        getlastblock = pars.qtum.getblockcount()
-        if getlastblock >= from_i:
-            result = pars.decode_raw_transaction(address_smart_contract)
-            print(from_i)
-            from_i += 1
-        else:
-            sleep(1)
+        try:
+            pars = SearchTransaction(from_i, db_name=db_name, db_host=db_host)
+            getlastblock = pars.qtum.getblockcount()
+            if getlastblock >= from_i:
+                result = pars.decode_raw_transaction(address_smart_contract)
+                print(from_i)
+                from_i += 1
+            else:
+                sleep(1)
+        except Exception as e:
+            print(e)
+            #logging.warning("\n[+] -- Error while connecting to blockchain.\n")
+            sleep(10)
 
 
 if __name__ == "__main__":

@@ -222,6 +222,16 @@ class Account(GenesisClass):
                                              **params)
         return result
 
+    async def get_transactions(self, **params):
+        result = await self.client_storage.request(method_name="get_transactions",
+                                             **params)
+        return result
+
+    async def save_transaction(self, **params):
+        result = await self.client_storage.request(method_name="save_transaction",
+                                             **params)
+        return result
+
     async def withdraw(self, **params):
         result = await self.client_withdraw.request(method_name="withdraw",
                                              **params)

@@ -1,11 +1,11 @@
 from jsonrpcclient.http_client import HTTPClient
-from settings_file import *
+from settings import *
 import settings
 
 
 class ClientStorge():
     def __init__(self, sotrg_host=None):
-        self.history_host = sotrg_host if sotrg_host else storghost
+        self.history_host = sotrg_host if sotrg_host else storageurl
         self.client = HTTPClient(settings.storageurl)
 
     def insert_offer(self, cid=None, buyer_addr=None, price=None, coin_id=None):
@@ -85,3 +85,10 @@ class ClientStorge():
                 print("Erorr from updatereview")
         else:
             return {2: "Missing parameter"}
+
+    def log_transaction(self, **kwargs):
+        try:
+            request = self.client.request(method_name="log_transaction", **kwargs)
+            return request
+        except:
+            print("Erorr from log_transaction")

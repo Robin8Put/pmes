@@ -8,7 +8,7 @@ import tornado.ioloop
 import settings
 
 
-logging.basicConfig(filename='bridge.log',level=logging.WARNING,
+logging.basicConfig(filename='bridge.log',level=logging.DEBUG,
 					format='%(asctime)s %(message)s')
 
 

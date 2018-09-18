@@ -4,6 +4,7 @@ from pywallet.utils import (
     Wallet, HDPrivateKey, HDKey
 )
 
+
 def create_private_key(network, xprv, uid, path=0):
     assert xprv is not None
     assert uid is not None
@@ -31,13 +32,13 @@ def create_private_key(network, xprv, uid, path=0):
     else:
         wallet_obj = Wallet.deserialize(xprv, network=network.upper())
 
-
     child_wallet = wallet_obj.get_child(uid, is_prime=False)
 
     net = get_network(network)
     res['private_key'] = child_wallet.export_to_wif()
 
     return res
+
 
 def create_address(network, xpub, uid, path=0):
     assert xpub is not None
@@ -48,7 +49,7 @@ def create_address(network, xpub, uid, path=0):
         "uid": uid,
     }
 
-    if network == 'ethereum' or network.upper() == 'ETH':
+    if network == 'ethereum' or network.upper() in ['ETH', 'ETHRINKEBY', 'ETHROPSTEN']:
         acct_pub_key = HDKey.from_b58check(xpub)
         keys = HDKey.from_path(
             acct_pub_key, '{change}/{index}'.format(change=path, index=uid))
@@ -71,9 +72,11 @@ def create_address(network, xpub, uid, path=0):
 
     return res
 
-available_coins = ["BTCTEST", "LTCTEST", "ETH", "QTUMTEST", "PUTTEST"]
+
+available_coins = ["BTCTEST", "LTCTEST", "ETH", "QTUMTEST", "PUTTEST", "ETHRINKEBY"]
 exchange_xpublic_key = "tpubD6NzVbkrYhZ4XFMXfJoNyB8JEpvkCQPNLZRfuhQaSsSurHrMqVKwHvbpD3wHQFTa5U3SBDDPHRhDLmkYfu59Upee8kVSLX8VeKXz4xhBa7z"
 exchange_xprivate_key = "tprv8ZgxMBicQKsPdnKjmf8nZmUBfoQp35CTmFptdBNH2beX1obbD6WM7Ryx2vFTMoYxSvWYRHzJ6cKKwTFZ5r7TYGmFiwZp2f6dmavRCf7vAXo"
+
 
 def extend_tree(rng):
     res = []
@@ -87,24 +90,12 @@ def extend_tree(rng):
     return res
 
 
+def generate_new_tree(network):
+    seed = wallet.generate_mnemonic()
+    w = wallet.create_wallet(network=network, seed=seed, children=1)
+    return {'mnemonic': seed, 'xprivate_key': w['xprivate_key'], 'xpublic_key': w['xpublic_key']}
+
 if __name__ == '__main__':
-
-    current_depth = 1 # max uid from balance database + 1
-    depth = 2       # max uid from mainexchange server + 100
-
-    print(extend_tree(range(current_depth, depth)))
-
-    # for i in range(1, 2):
-    #     for type in available_coins:
-    #         print(create_private_key(network=type, xprv=exchange_xprivate_key, uid=i))
-
-    # seed = wallet.generate_mnemonic()
-    #
-    # # create bitcoin wallet
-    # w = wallet.create_wallet(network="BTCTEST", seed=seed, children=1)
-    #
-    # print(w)
-
-
-
-
+    print(create_address('QTUMTEST', 'tpubD6NzVbkrYhZ4YJJMroCyRuDhQMF4uqn7p2aZYk4i3KPh86dHd7Cgm3TdQ4oCPftH8TdVZ4dHYRKCvLujDCwoamKadFmU4MGqAKZVueiVEvR', 0))
+    #print(create_private_key('QTUM', 'xprv9s21ZrQH143K41ZUuj7bpxQyjxyx9j7jRCdQLdamksvVNN5NSEj2hxnoKmjGFcSY6k3TyXZo78s7bXE4Jf38bXysgyPoE2qTx5fcowFQviv', 0))
+    #print(generate_new_tree('BTCTEST'))

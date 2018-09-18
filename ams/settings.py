@@ -111,7 +111,7 @@ DEAL = "deal"
 SOURCE = "source"
 HISTORY = "history"
 
-AVAILABLE_COIN_ID = ["BTCTEST", "LTCTEST", "ETH", "QTUMTEST", "PUTTEST"]
+AVAILABLE_COIN_ID = ["BTC", "LTC", "ETH", "QTUM", "PUT"]
 
 AVAILABLE_COIN_TYPES = ["ETH", "QTUM"]
 
@@ -125,7 +125,7 @@ DEBUG = True
 LIMIT = 6
 
 
-SIGNATURE_VERIFICATION = False
+SIGNATURE_VERIFICATION = True
 
 DB_CLIENT = MotorClient(*dbhost)
 SYNC_DB_CLIENT = MongoClient(*dbhost)

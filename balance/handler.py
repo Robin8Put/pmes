@@ -42,7 +42,7 @@ class Abstract(object):
 
 		self.client = settings.DB_CLIENT
 
-		self.collection = settings.TREE
+		self.collection = settings.BALANCE
 
 		self.types = settings.AVAILABLE_COIN_ID
 
@@ -125,17 +125,17 @@ class Balance(Abstract):
 		try:
 			uid = int(uid)
 		except:
-			return self.error_400("User id must be integer. ")
+			return await self.error_400("User id must be integer. ")
 
 		try:
 			amount = int(amount)
 		except:
-			return self.error_400("Amount must be integer. ")
+			return await self.error_400("Amount must be integer. ")
 
 		try:
 			assert amount > 0
 		except:
-			return self.error_400("Amount must be positive integer. ")
+			return await self.error_400("Amount must be positive integer. ")
 
 
 		# Check if required fields exists
@@ -151,13 +151,13 @@ class Balance(Abstract):
 		# Check if balance exists
 		balance = await collection.find_one({"uid":uid})
 		if not balance:
-			return self.error_404(
+			return await self.error_404(
 				"Freeze. Balance with uid:%s and type:%s not found." % (uid, coinid))
 
 		# Check if amount is enough
 		difference = int(balance["amount_active"]) - int(amount)
 		if difference < 0:
-			return self.error_403("Freeze. Insufficient amount in the account")
+			return await self.error_403("Freeze. Insufficient amount in the account")
 		# Decrement active amount and increment frozen amount
 		amount_frozen = int(balance["amount_frozen"]) + int(amount) 
 		await collection.find_one_and_update({"uid":uid},
@@ -197,17 +197,17 @@ class Balance(Abstract):
 		try:
 			uid = int(uid)
 		except:
-			return self.error_400("User id must be integer. ")
+			return await self.error_400("User id must be integer. ")
 
 		try:
 			amount = int(amount)
 		except:
-			return self.error_400("Amount must be integer. ")
+			return await self.error_400("Amount must be integer. ")
 
 		try:
 			assert amount > 0
 		except:
-			return self.error_400("Amount must be positive integer. ")
+			return await self.error_400("Amount must be positive integer. ")
 
 		# Check if required fields exists
 		if not uid and address:
@@ -221,12 +221,12 @@ class Balance(Abstract):
 		# Check if balance exists
 		balance = await collection.find_one({"uid":uid})
 		if not balance:
-			return self.error_404(
+			return await self.error_404(
 				"Unfreeze. Balance with uid:%s and type:%s not found." % (uid, coinid))
 		# Check if amount is enough
 		difference = int(balance["amount_frozen"]) - amount 
 		if difference < 0:
-			return self.error_403("Unreeze. Insufficient frozen amount in the account")
+			return await self.error_403("Unreeze. Insufficient frozen amount in the account")
 		# Decrement active amount and increment frozen amount
 		amount_active = int(balance["amount_active"]) + int(amount) 
 		await collection.find_one_and_update({"uid":uid},
@@ -267,17 +267,17 @@ class Balance(Abstract):
 		try:
 			uid = int(uid)
 		except:
-			return self.error_400("User id must be integer. ")
+			return await self.error_400("User id must be integer. ")
 
 		try:
 			amount = int(amount)
 		except:
-			return self.error_400("Amount must be integer. ")
+			return await self.error_400("Amount must be integer. ")
 
 		try:
 			assert amount > 0
 		except:
-			return self.error_400("Amount must be positive integer. ")
+			return await self.error_400("Amount must be positive integer. ")
 
 		# Check if required fields exists
 		if not uid and address:
@@ -334,17 +334,17 @@ class Balance(Abstract):
 		try:
 			uid = int(uid)
 		except:
-			return self.error_400("User id must be integer. ")
+			return await self.error_400("User id must be integer. ")
 
 		try:
 			amount = int(amount)
 		except:
-			return self.error_400("Amount must be integer. ")
+			return await self.error_400("Amount must be integer. ")
 
 		try:
 			assert amount > 0
 		except:
-			return self.error_400("Amount must be positive integer. ")
+			return await self.error_400("Amount must be positive integer. ")
 
 
 		# Check if required fields exists
@@ -360,7 +360,7 @@ class Balance(Abstract):
 		# Check if balance exists
 		balance = await collection.find_one({"uid":uid})
 		if not balance:
-			return self.error_404(
+			return await self.error_404(
 				"Add frozen. Balance with uid:%s and type:%s not found." % (uid, coinid))
 
 		# Increment balance
@@ -406,17 +406,17 @@ class Balance(Abstract):
 		try:
 			uid = int(uid)
 		except:
-			return self.error_400("User id must be integer. ")
+			return await self.error_400("User id must be integer. ")
 
 		try:
 			amount = int(amount)
 		except:
-			return self.error_400("Amount must be integer. ")
+			return await self.error_400("Amount must be integer. ")
 
 		try:
 			assert amount > 0
 		except:
-			return self.error_400("Amount must be positive integer. ")
+			return await self.error_400("Amount must be positive integer. ")
 
 		# Check if required fields exists
 		if not uid and address:
@@ -431,13 +431,13 @@ class Balance(Abstract):
 		# Check if balance exists
 		balance = await collection.find_one({"uid":uid})
 		if not balance:
-			return self.error_404(
+			return await self.error_404(
 				"Sub active. Balance with uid:%s and type:%s not found." % (uid, coinid))
 
 		# Check if balance is enough
 		difference = int(balance["amount_active"]) - int(amount)
 		if difference < 0:
-			return self.error_400("Sub active. Balance is not enough.")
+			return await self.error_400("Sub active. Balance is not enough.")
 
 		# Increment balance
 		await collection.find_one_and_update({"uid":uid},
@@ -478,17 +478,17 @@ class Balance(Abstract):
 		try:
 			uid = int(uid)
 		except:
-			return self.error_400("User id must be integer. ")
+			return await self.error_400("User id must be integer. ")
 
 		try:
 			amount = int(amount)
 		except:
-			return self.error_400("Amount must be integer. ")
+			return await self.error_400("Amount must be integer. ")
 
 		try:
 			assert amount > 0
 		except:
-			return self.error_400("Amount must be positive integer. ")
+			return await self.error_400("Amount must be positive integer. ")
 
 		# Check if required fields exists
 		if not uid and address:
@@ -503,13 +503,13 @@ class Balance(Abstract):
 		# Check if balance exists
 		balance = await collection.find_one({"uid":uid})
 		if not balance:
-			return self.error_404(
+			return await self.error_404(
 				"Sub active. Balance with uid:%s and type:%s not found." % (uid, coinid))
 	
 		# Check if balance is enough
 		difference = int(balance["amount_active"]) - int(amount)
 		if difference < 0:
-			return self.error_400("Sub active. Balance is not enough.")
+			return await self.error_400("Sub active. Balance is not enough.")
 	
 		# Increment balance
 		await collection.find_one_and_update({"uid":uid},
@@ -550,17 +550,17 @@ class Balance(Abstract):
 		try:
 			uid = int(uid)
 		except:
-			return self.error_400("User id must be integer. ")
+			return await self.error_400("User id must be integer. ")
 
 		try:
 			amount = int(amount)
 		except:
-			return self.error_400("Amount must be integer. ")
+			return await self.error_400("Amount must be integer. ")
 
 		try:
 			assert amount > 0
 		except:
-			return self.error_400("Amount must be positive integer. ")
+			return await self.error_400("Amount must be positive integer. ")
 
 
 		# Check if required fields exists
@@ -575,12 +575,12 @@ class Balance(Abstract):
 		# Check if balance exists
 		balance = await collection.find_one({"uid":uid})
 		if not balance:
-			return self.error_404(
+			return await self.error_404(
 				"Sub frozen. Balance with uid:%s and type:%s not found." % (uid, coinid))
 		# Check if balance is enough
 		difference = int(balance["amount_frozen"]) - int(amount)
 		if difference < 0:
-			return self.error_400("Sub frozen. Balance is not enough.")
+			return await self.error_400("Sub frozen. Balance is not enough.")
 		# Increment balance
 		await collection.find_one_and_update({"uid":uid},
 							{"$set":{"amount_frozen":str(difference)}})
@@ -616,7 +616,7 @@ class Balance(Abstract):
 		try:
 			uid = int(uid)
 		except:
-			return self.error_400("User id must be integer. ")
+			return await self.error_400("User id must be integer. ")
 
 		if not uid and address:
 			uid = await self.get_uid_by_address(address=address, coinid=coinid)
@@ -625,7 +625,7 @@ class Balance(Abstract):
 
 		# Check if required fields exists
 		if not all([coinids, uid]):
-			return self.error_400("Get active. Missed required fields.")
+			return await self.error_400("Get active. Missed required fields.")
 		if isinstance(coinids, list):
 			actives = {}
 			for coinid in coinids:
@@ -634,7 +634,7 @@ class Balance(Abstract):
 				# Get current balance
 				balance = await collection.find_one({"uid":uid})
 				if not balance:
-					return self.error_404(
+					return await self.error_404(
 						"Get active. Balance with uid:%s and type:%s not found" % (uid, coinid))
 				# Collect actives
 				actives[coinid] = int(balance["amount_active"])
@@ -647,7 +647,7 @@ class Balance(Abstract):
 				# Get current balance
 				balance = await collection.find_one({"uid":uid})
 				if not balance:
-					return self.error_404(
+					return await self.error_404(
 						"Get active. Balance with uid:%s and type:%s not found" % (uid, coinid))
 				# Collect actives
 				actives[coinid] = int(balance["amount_active"])
@@ -681,7 +681,7 @@ class Balance(Abstract):
 		try:
 			uid = int(uid)
 		except:
-			return self.error_400("User id must be integer. ")
+			return await self.error_400("User id must be integer. ")
 
 		if not uid and address:
 			uid = await self.get_uid_by_address(address=address, coinid=coinid)
@@ -689,7 +689,7 @@ class Balance(Abstract):
 				return uid
 
 		if not all([types, uid]):
-			return self.error_400("Get frozen. Missed required fields.")
+			return await self.error_400("Get frozen. Missed required fields.")
 		if isinstance(types, list):
 			actives = {}
 			for coinid in coinids:
@@ -698,7 +698,7 @@ class Balance(Abstract):
 				# Get current balance
 				balance = await collection.find_one({"uid":uid})
 				if not balance:
-					return self.error_404(
+					return await self.error_404(
 						"Get frozen. Balance with uid:%s and type:%s not found" % (uid, coinid))
 				# Collect actives
 				actives[coinid] = int(balance["amount_frozen"])
@@ -711,7 +711,7 @@ class Balance(Abstract):
 				# Get current balance
 				balance = await collection.find_one({"uid":uid})
 				if not balance:
-					return self.error_404(
+					return await self.error_404(
 						"Get frozen. Balance with uid:%s and type:%s not found" % (uid, coinid))
 				# Collect actives
 				actives[coinid] = int(balance["amount_frozen"])
@@ -722,13 +722,19 @@ class Balance(Abstract):
 		"""
 		Asynchronous generator
 		"""
+		logging.debug(self.types)
+		logging.debug(uid)
 		for coinid in self.types:
+			logging.debug(coinid)
 			await asyncio.sleep(0.5)
 			# Connect to appropriate database
 			database = self.client[self.collection]
+			logging.debug(database)
 			collection = database[coinid]
+			logging.debug(collection)
 			# Get wallets
 			wallet = await collection.find_one({"uid":int(uid)})
+			logging.debug(wallet)
 
 			wallet["amount_active"] = int(wallet["amount_active"])
 			wallet["amount_frozen"] = int(wallet["amount_frozen"])
@@ -754,13 +760,18 @@ class Balance(Abstract):
 					},
 				]
 		"""
+		logging.debug("\n [+] -- Get wallets debugging.")
+		if kwargs.get("message"):
+			kwargs = json.loads(kwargs.get("message"))
+		logging.debug(kwargs)
 		uid = kwargs.get("uid",0)
 		address = kwargs.get("address")
+		coinid = kwargs.get("coinid")
 
 		try:
 			uid = int(uid)
 		except:
-			return self.error_400("User id must be integer. ")
+			return await self.error_400("User id must be integer. ")
 
 		if not uid and address:
 			uid = await self.get_uid_by_address(address=address, coinid=coinid)
@@ -809,7 +820,7 @@ class Balance(Abstract):
 		    return {"error":400, "reason": "Confirm balance. Missed required fields"}
 
 		if not coinid in settings.bridges.keys():
-			return self.error_400("Confirm balance. Invalid coinid: %s" % coinid)
+			return await self.error_400("Confirm balance. Invalid coinid: %s" % coinid)
 
 		# Get offers price	
 		self.account.blockchain.setendpoint(settings.bridges[coinid])
@@ -827,7 +838,7 @@ class Balance(Abstract):
 		try:
 			account = await self.account.getaccountdata(public_key=history["public_key"])
 		except:
-			return self.error_404("Confirm balance. Not found current deal.")
+			return await self.error_404("Confirm balance. Not found current deal.")
 
 		# Connect to balance database
 		database = self.client[self.collection]
@@ -838,7 +849,7 @@ class Balance(Abstract):
 		# Decrement unconfirmed
 		submitted = int(balance["amount_frozen"]) - int(amount)
 		if submitted < 0:
-			return self.error_400("Not enough frozen amount.")
+			return await self.error_400("Not enough frozen amount.")
 
 		decremented = await balance_collection.find_one_and_update(
 		                        {"uid":account["id"]}, 
@@ -878,7 +889,7 @@ class Balance(Abstract):
 		cid = kwargs.get("cid")
 
 		if not all([uid, txid, coinid]):
-			return self.error_400("Register deal. Missed required fields.")
+			return await self.error_400("Register deal. Missed required fields.")
 
 		# Database "Balance", collection "PUTTEST"
 		database = self.client[settings.HISTORY]

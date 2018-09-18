@@ -2,7 +2,7 @@ import binascii
 import codecs
 from time import sleep
 from eth_abi import decode_abi
-from web3 import Web3, IPCProvider
+from web3 import Web3, IPCProvider, HTTPProvider
 from web3.middleware import geth_poa_middleware
 from BalanceCli import ClientBalance
 from StorgCli import ClientStorge
@@ -10,13 +10,14 @@ from settings_file import *
 import settings
 
 
-from_i = 2754475
-coin_id = "ETH"
+from_i = 2898740
+coin_id = settings.ETH
 
 
 class SearchTransaction():
-    def __init__(self, from_block=0, ipc_provider=ipc_provider):
-        self.web3 = Web3(IPCProvider(ipc_provider))
+    def __init__(self, from_block=0, provider=http_provider):
+        #self.web3 = Web3(IPCProvider(provider))
+        self.web3 = Web3(HTTPProvider(provider))
         self.from_block = from_block
         self.client = self.conection_stor()
         self.balance = ClientBalance(settings.balanceurl)

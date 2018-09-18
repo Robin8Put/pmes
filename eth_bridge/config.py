@@ -1,7 +1,7 @@
 import json
 import logging
 
-with open('eth_settings.json') as f:
+with open('eth_settings_mainnet.json') as f:
     config = json.load(f)
 
 blockchain = config['blockchain']
