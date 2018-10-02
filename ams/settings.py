@@ -122,7 +122,7 @@ bridges = {"ETH": ethurl, "QTUM": bridgeurl}
 DEBUG = True
 
 # Pagination page limit
-LIMIT = 6
+LIMIT = 20
 
 
 SIGNATURE_VERIFICATION = True

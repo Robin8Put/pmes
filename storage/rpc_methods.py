@@ -164,11 +164,13 @@ class StorageTable(mongo.Table):
 		Returns:
 			- dict with result
 		"""
+		logging.debug("\n\n [+] -- Setting news debugging.  ")
 		if params.get("message"):
 			params = json.loads(params.get("message", "{}"))
 		
 		if not params:
 			return {"error":400, "reason":"Missed required fields"}
+		logging.debug("   ***      Params")
 		event_type = params.get("event_type")
 		cid = params.get("cid")
 
@@ -185,6 +187,14 @@ class StorageTable(mongo.Table):
 		offer_type = int(params.get("offer_type", -1))
 
 		coinid = params.get("coinid").upper()
+
+		try:
+			coinid = coinid.replace("TEST", "")
+		except:
+			pass
+
+		logging.debug("\n **   Coinid")
+		logging.debug(coinid)
 
 		# Get address of content owner and check if it exists
 		if coinid in settings.bridges.keys():
@@ -220,6 +230,9 @@ class StorageTable(mongo.Table):
 				"account_id": seller["id"],
 				"event_type": event_type,
 				"coinid":coinid}
+
+		logging.debug("\n **  Inserting row")
+		logging.debug(row)
 		
 		# Update counter inside accounts table
 		database = client[settings.DBNAME]
@@ -231,6 +244,11 @@ class StorageTable(mongo.Table):
 		
 		# Insert data to news table
 		await news_collection.insert_one(row)
+
+		logging.debug("\n ** Fresh news")
+		fresh = await collection.find_one({"buyer_address":buyer_address,
+												"cid":cid})
+		logging.debug(fresh)
 
 		return {"result":"ok"}
 
@@ -372,6 +390,11 @@ class StorageTable(mongo.Table):
 		cid = int(params.get("cid", 0))
 		buyer_address = params.get("buyer_address")
 		coinid = params.get("coinid")
+
+		try:
+			coinid = coinid.replace("TEST", "")
+		except:
+			pass
 	
 		# Check if required fileds 
 		if not all([cid, buyer_address]):
@@ -398,6 +421,7 @@ class StorageTable(mongo.Table):
 			- coinid
 			- confirmed (boolean flag)
 		"""
+		logging.debug("\n\n -- Update offer. ")
 		if params.get("message"):
 			params = json.loads(params.get("message", "{}"))
 		
@@ -408,11 +432,17 @@ class StorageTable(mongo.Table):
 		txid = params.get("txid")
 		coinid = params.get("coinid").upper()
 
+		try:
+			coinid = coinid.replace("TEST", "")
+		except:
+			pass
 
 		# Try to find offer with account id and cid
 		database = client[coinid]
 		offer_db = database[settings.OFFER]
 		offer = await offer_db.find_one({"txid":txid})
+		logging.debug("\n\n -- Try to get offer. ")
+		logging.debug(offer)
 		if not offer:
 			return {"error":404, 
 					"reason":"Offer with txid %s not found" % txid }
@@ -447,6 +477,10 @@ class StorageTable(mongo.Table):
 		price = params.get("price")
 		offer_type = params.get("offer_type")
 		coinid = params.get("coinid").upper()
+		try:
+			coinid = coinid.replace("TEST", "")
+		except:
+			pass
 		# Check if required fileds 
 		if not all([cid, buyer_address, price]):
 			return {"error":400, "reason":"Missed required fields"}
@@ -513,16 +547,25 @@ class StorageTable(mongo.Table):
 
 
 
-	async def collect_contents(self):
-		pass
+	async def retrieve_cids(self, account):
+		logging.debug("\n\n Retrieve cids debugging. ")
+		contents = await self.get_contents_dict()
+		for coinid in contents:
+			database = client[coinid]
+			content_collection = database[settings.CONTENT]
+			async for content in content_collection.find({"owner":account["public_key"]},{"_id":0, "cid":1}):
+				if content.get("cid"):
+					yield content.get("cid")
 
 
+		
 	#@verify
 	async def get_contents(self, **params):
 		"""Retrieves all users content
 		Accepts:
 		-public key
 		"""
+		logging.debug("[+] -- Get contents")
 		if params.get("message"):
 			params = json.loads(params.get("message", "{}"))
 
@@ -535,10 +578,15 @@ class StorageTable(mongo.Table):
 		if not account:
 			return {"error":404, "reason":"Get contents. Not found account"}
 
-		contents = [i async for i in self.collect_contents(account)]
+		contents = {i:[] for i in settings.AVAILABLE_COIN_ID}
+		for coinid in settings.AVAILABLE_COIN_ID:
+			logging.debug(coinid)
+			database = client[coinid]
+			content_collection = database[settings.CONTENT]
+			async for document in content_collection.find({"owner":account["public_key"]}):
+				contents[coinid].append((document["cid"], document["txid"]))
 
 		return contents
-
 
 	#@verify
 	async def set_contents(self, **params):
@@ -606,6 +654,11 @@ class StorageTable(mongo.Table):
 
 		coinid = params.get("coinid").upper()
 
+		try:
+			coinid = coinid.replace("TEST", "")
+		except:
+			pass
+
 		database = client[coinid]
 		content_collection = database[settings.CONTENT]
 
@@ -639,6 +692,11 @@ class StorageTable(mongo.Table):
 		seller_access_string = params.get("seller_access_string")
 		seller_pubkey = params.get("seller_pubkey")
 		coinid = params.get("coinid")
+
+		try:
+			coinid = coinid.replace("TEST", "")
+		except:
+			pass
 
 		database = client[coinid]
 		collection = database[settings.CONTENT]
@@ -708,6 +766,11 @@ class StorageTable(mongo.Table):
 		cid = int(params.get("cid", 0))
 		txid = params.get("txid")
 		coinid = params.get("coinid")
+
+		try:
+			coinid = coinid.replace("TEST", "")
+		except:
+			pass
 		
 		# Get content
 		database = client[coinid]
@@ -739,6 +802,11 @@ class StorageTable(mongo.Table):
 		# Check if required fields exists
 		txid = params.get("txid")
 		coinid = params.get("coinid").upper()
+
+		try:
+			coinid = coinid.replace("TEST", "")
+		except:
+			pass
 
 		# Try to find offer with account id and cid
 		database = client[coinid]
@@ -783,6 +851,11 @@ class StorageTable(mongo.Table):
 		price = params.get("price")
 		coinid = params.get("coinid")
 
+		try:
+			coinid = coinid.replace("TEST", "")
+		except:
+			pass
+
 		if not all([cid, access_type, buyer, seller, price]):
 			return {"error":400, "reason":"Missed required fields"}
 
@@ -823,6 +896,11 @@ class StorageTable(mongo.Table):
 		description = params.get("description")
 		txid = params.get("txid")
 		coinid = params.get("coinid")
+
+		try:
+			coinid = coinid.replace("TEST", "")
+		except:
+			pass
 
 		# Check if required fileds 
 		if not all([cid, description, txid, coinid]):

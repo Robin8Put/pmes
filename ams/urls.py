@@ -15,7 +15,7 @@ endpoints = [
           ]
 
 if settings.DEBUG:
-  endpoints.append((r"/api/accounts/(\d+)/balance", views.BalanceHandler))
+  endpoints.append((r"/api/accounts/(\d+)/balance/", views.BalanceHandler))
 
 
 

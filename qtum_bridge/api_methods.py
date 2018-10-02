@@ -261,6 +261,7 @@ class Bridge(object):
 
     #@verify
     async def makecid(*args, **kwargs):
+        logging.debug("\n\n Make cid debugging. ")
         kwargs = json.loads(kwargs.get("message"))
         cus = kwargs.get("cus")
         owneraddr = "0x" + kwargs.get("owneraddr")
@@ -268,16 +269,25 @@ class Bridge(object):
         read_price = int(kwargs.get("read_price", 0))
         write_price = int(kwargs.get("write_price", 0))
 
+        logging.debug(kwargs)
         addr = contract_owner
 
         r8_sc = get_contract_handler()
 
         storage_handler = get_storage_handler()
 
-        cus_hash = storage_handler.upload_content(cus)
-        descr_hash = storage_handler.upload_content(description)
+        logging.debug("\n   *    Storage handler. ")
+        logging.debug(storage_handler)
 
+        logging.debug("\n\n   *    Cus hash and descr_hash.")
+        cus_hash = storage_handler.upload_content(cus)
+        logging.debug(cus_hash)
+        descr_hash = storage_handler.upload_content(description)
+        logging.debug(descr_hash)
+
+        logging.debug("\n  *   Cid")
         cid = r8_sc.getCid(cus_hash)
+        logging.debug(cid)
         if cid != 0:
             return {'error': 'file was uploaded'}
 

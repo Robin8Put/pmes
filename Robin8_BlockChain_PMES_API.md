@@ -59,6 +59,8 @@ The API-methods:
 
 - [Withdraw tokens or coins](#withdraw-tokens-or-coins)
 
+- [View fee of the withdraw tokens or coins operation](#view-fee-of-the-withdraw-tokens-or-coins-operation)
+
 - [Bulk operations](#bulk_operations)
 
 - [Get transactions history by address](#get-transactions-history-by-address)
@@ -958,7 +960,6 @@ Descriptions of the API methods provided below:
 
     None
 
-
 * **Body params**
     
     Now works with the PUTTEST and QTUMTEST tokens only.
@@ -969,7 +970,7 @@ Descriptions of the API methods provided below:
             "message": {
                 "timestamp": [string],
                 "coinid": [string],         # type of the cryptocurrency `PUTTEST` or `QTUMTEST`
-                "amount": [string],         # amount of tokens that user send to the "address"
+                "amount": [integer],        # amount of tokens that user send to the "address" * 10^8
                 "address": [string],        # address to which user send the tokens
                 "recvWindow": [integer]     # signature of the message timeout expired after this timing. For instance, in 5000 milliseconds
             },
@@ -989,12 +990,51 @@ Descriptions of the API methods provided below:
             "message": {
                 "timestamp": [string],
                 "coinid": [string],         # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
-                "amount": [string],         # amount of tokens that user send to the "address"
+                "amount": [integer],        # amount of tokens that user send to the "address" * 10^8
                 "address": [string],        # address to which user send the tokens
                 "recvWindow": [integer]     # signature of the message timeout expired after this timing. For instance, in 5000 milliseconds
             },
             "signature": [string],
             "txid": [string]                # transaction identifier
+        }
+```
+
+
+## View fee of the withdraw tokens or coins operation
+
+* **URL:** `/api/accounts/fees/`
+
+* **Method:** `POST`
+
+* **URL params**
+
+    None
+
+* **Body params**
+    
+    Now works with the PUTTEST and QTUMTEST tokens only.
+
+```bash
+        {
+            "public_key": [string],
+            "message": {
+                "timestamp": [string],
+                "coinid": [string],         # type of the cryptocurrency `PUTTEST` or `QTUMTEST`
+                "amount": [integer],        # amount of tokens that user will send * 10^8
+            },
+            "signature": [string]
+        }
+```
+
+* **Sample response**
+
+    `[json]`
+
+```bash
+        {
+            "coinid": [string],         # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
+            "amount": [integer],        # an active amount of coins/tokens on user's wallet * 10^8
+            "fee": [int],               # fee * 10^8
         }
 ```
 
@@ -1015,7 +1055,9 @@ Descriptions of the API methods provided below:
 
     Full JSON format of the bulk operation is present [here](bulk_operations_json_format_description.js).
 
-    `txid` field shouldn't be filled by user, it will be filled by the PMES in the response.
+    `txid` field shouldn't be filled by user, it will be filled by the PMES in the response if operation will write data to the blockchain.
+
+    After PMES will execute a request from the bulk operation its result will be written to the `response` in the case when there is no errors. Otherwise, in the `error` field.
 
     Part of bulk operation is present bellow:
 

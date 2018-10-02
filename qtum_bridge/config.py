@@ -1,7 +1,7 @@
 import json
 import logging
 
-with open('qtum_settings_mainnet.json') as f:
+with open('qtum_settings.json') as f:
     config = json.load(f)
 
 blockchain = config['blockchain']

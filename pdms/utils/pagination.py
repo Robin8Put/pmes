@@ -19,10 +19,13 @@ class Paginator(object):
 
 		if not cids:
 			client = SignedHTTPClient(settings.bridges[coinid])
-			cid = client.request(method_name="get_next_cid")["next_cid"]
+			try:
+				cid = client.request(method_name="get_next_cid")["next_cid"]
+			except:
+				cid = 1
 		else:
 			cid = len(cids)
-		self.last_blocks[coinid] = int(cid) - 1
+		self.last_blocks[coinid] = int(cid) 
 
 
 	def get_range(self):

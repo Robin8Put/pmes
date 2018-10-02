@@ -123,6 +123,11 @@ class Balance(Abstract):
 		address = kwargs.get("address")
 
 		try:
+			coinid = coinid.replace("TEST", "")
+		except:
+			pass
+
+		try:
 			uid = int(uid)
 		except:
 			return await self.error_400("User id must be integer. ")
@@ -195,6 +200,11 @@ class Balance(Abstract):
 		address = kwargs.get("address")
 
 		try:
+			coinid = coinid.replace("TEST", "")
+		except:
+			pass
+
+		try:
 			uid = int(uid)
 		except:
 			return await self.error_400("User id must be integer. ")
@@ -257,12 +267,18 @@ class Balance(Abstract):
 			- amount_active [integer] (activae users amount)
 			- amount_frozen [integer] (frozen users amount)
 		"""
+		logging.debug("\n\n Balance. ")
 
 		# Get data from request
 		uid = kwargs.get("uid",0)
 		coinid = kwargs.get("coinid")
 		amount = kwargs.get("amount")
 		address = kwargs.get("address")
+
+		try:
+			coinid = coinid.replace("TEST","")
+		except:
+			pass
 
 		try:
 			uid = int(uid)
@@ -292,8 +308,9 @@ class Balance(Abstract):
 		# Check if balance exists
 		balance = await collection.find_one({"uid":int(uid)})
 		if not balance:
-			return self.error_404(
+			return await self.error_404(
 				"Add active. Balance with uid:%s and type:%s not found." % (uid, coinid))
+		logging.debug(kwargs)
 		# Increment balance
 		difference = int(balance["amount_active"]) + int(amount)
 		await collection.find_one_and_update({"uid":int(uid)},
@@ -304,7 +321,8 @@ class Balance(Abstract):
 		result["amount_frozen"] = int(result["amount_frozen"])
 		result["amount_active"] = int(result["amount_active"])
 		del result["_id"]
-
+		logging.debug("\n\n Result. ")
+		logging.debug(result)
 		return result
 
 	@verify
@@ -330,6 +348,11 @@ class Balance(Abstract):
 		amount = kwargs.get("amount")
 		txid = kwargs.get("txid")
 		address = kwargs.get("address")
+
+		try:
+			coinid = coinid.replace("TEST", "")
+		except:
+			pass
 
 		try:
 			uid = int(uid)
@@ -404,6 +427,11 @@ class Balance(Abstract):
 		address = kwargs.get("address")
 
 		try:
+			coinid = coinid.replace("TEST", "")
+		except:
+			pass
+
+		try:
 			uid = int(uid)
 		except:
 			return await self.error_400("User id must be integer. ")
@@ -474,6 +502,11 @@ class Balance(Abstract):
 		coinid = kwargs.get("coinid")
 		amount = kwargs.get("amount")
 		address = kwargs.get("address")
+
+		try:
+			coinid = coinid.replace("TEST", "")
+		except:
+			pass
 
 		try:
 			uid = int(uid)
@@ -548,6 +581,11 @@ class Balance(Abstract):
 		address = kwargs.get("address")
 
 		try:
+			coinid = coinid.replace("TEST", "")
+		except:
+			pass
+
+		try:
 			uid = int(uid)
 		except:
 			return await self.error_400("User id must be integer. ")
@@ -614,6 +652,11 @@ class Balance(Abstract):
 		address = kwargs.get("address")
 
 		try:
+			coinid = coinid.replace("TEST", "")
+		except:
+			pass
+
+		try:
 			uid = int(uid)
 		except:
 			return await self.error_400("User id must be integer. ")
@@ -677,6 +720,11 @@ class Balance(Abstract):
 		uid = kwargs.get("uid")
 		address = kwargs.get("address")
 		# Check if required fields exists
+
+		try:
+			coinid = coinid.replace("TEST", "")
+		except:
+			pass
 
 		try:
 			uid = int(uid)
@@ -769,6 +817,11 @@ class Balance(Abstract):
 		coinid = kwargs.get("coinid")
 
 		try:
+			coinid = coinid.replace("TEST", "")
+		except:
+			pass
+
+		try:
 			uid = int(uid)
 		except:
 			return await self.error_400("User id must be integer. ")
@@ -814,7 +867,11 @@ class Balance(Abstract):
 		cid = kwargs.get("cid")
 		address = kwargs.get("buyer_address")
 
-		
+		try:
+			coinid = coinid.replace("TEST", "")
+		except:
+			pass
+
 		# Check if required fields exists
 		if not all([coinid, cid, buyer_address, txid]):
 		    return {"error":400, "reason": "Confirm balance. Missed required fields"}
@@ -829,7 +886,7 @@ class Balance(Abstract):
 		# Get offers price for updating balance
 		amount = int(offer["price"])
 
-		coinid = "PUTTEST"
+		coinid = "PUT"
 		# Get sellers account
 		history_database = self.client[settings.HISTORY]
 		history_collection = history_database[coinid]
@@ -887,6 +944,11 @@ class Balance(Abstract):
 		coinid = kwargs.get("coinid")
 		public_key = kwargs.get("public_key")
 		cid = kwargs.get("cid")
+
+		try:
+			coinid = coinid.replace("TEST", "")
+		except:
+			pass
 
 		if not all([uid, txid, coinid]):
 			return await self.error_400("Register deal. Missed required fields.")
