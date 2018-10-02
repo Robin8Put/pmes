@@ -59,6 +59,8 @@ The API-methods:
 
 - [Withdraw tokens or coins](#withdraw-tokens-or-coins)
 
+- [View fee of the withdraw tokens or coins operation](#view-fee-of-the-withdraw-tokens-or-coins-operation)
+
 - [Bulk operations](#bulk_operations)
 
 - [Get transactions history by address](#get-transactions-history-by-address)
@@ -958,7 +960,6 @@ Descriptions of the API methods provided below:
 
     None
 
-
 * **Body params**
     
     Now works with the PUTTEST and QTUMTEST tokens only.
@@ -995,6 +996,46 @@ Descriptions of the API methods provided below:
             },
             "signature": [string],
             "txid": [string]                # transaction identifier
+        }
+```
+
+
+## View fee of the withdraw tokens or coins operation
+
+* **URL:** `/api/accounts/fees/`
+
+* **Method:** `POST`
+
+* **URL params**
+
+    None
+
+* **Body params**
+    
+    Now works with the PUTTEST and QTUMTEST tokens only.
+
+```bash
+        {
+            "public_key": [string],
+            "message": {
+                "timestamp": [string],
+                "coinid": [string],         # type of the cryptocurrency `PUTTEST` or `QTUMTEST`
+                "amount": [string],         # amount of tokens that user will send
+            },
+            "signature": [string]
+        }
+```
+
+* **Sample response**
+
+    `[json]`
+
+```bash
+        {
+            "timestamp": [string],
+            "coinid": [string],         # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
+            "amount": [string],         # amount of tokens that user will send
+            "fee": [string],            # fee
         }
 ```
 

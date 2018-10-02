@@ -53,6 +53,7 @@ class AllContentHandler(web.ManagementSystemHandler):
 
 		Verified: False
 		"""
+		logging.debug("\n\n All Content debugging --- ")
 
 		page = self.get_query_argument("page", 1)
 
@@ -60,7 +61,12 @@ class AllContentHandler(web.ManagementSystemHandler):
 
 		coinids = list(settings.bridges.keys())
 
+		logging.debug("\n\n Coinids ")
+		logging.debug(coinids)
+
 		for coinid in coinids:
+			logging.debug("\n [=] -- coinid")
+			logging.debug(coinid)
 
 			if coinids.index(coinid) == len(coinids) - 1:
 				paginator = Paginator(coinid=coinid, page=page, 
@@ -84,7 +90,10 @@ class AllContentHandler(web.ManagementSystemHandler):
 		response = {
 			"profiles":json.dumps(contents),
 		}
-		response.update(paginator.get_pages())
+		try:
+			response.update(paginator.get_pages())
+		except:
+			pass
 
 		self.write(json.dumps(response))
 			
@@ -136,6 +145,7 @@ class ContentHandler(web.ManagementSystemHandler):
 		"""
 		if settings.SIGNATURE_VERIFICATION:
 			super().verify()
+
 
 		message = json.loads(self.get_argument("message", "{}"))
 
@@ -657,8 +667,9 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 
 		# Get difference with balance and price
 		for w in balances["wallets"]:
-			if "PUT" in w.values():
-				balance = w 
+			if "PUT" in w.values() or "PUTTEST" in w.values():
+				balance = w
+
 		logging.debug("\n          Balance")
 		logging.debug(balance)
 		difference = int(balance["amount_active"]) - int(write_price)
@@ -705,13 +716,13 @@ class WriteAccessOfferHandler(web.ManagementSystemHandler):
 			self.write(seller)
 			raise tornado.web.Finish
 
-		if seller.get("email"):
-			emaildata = {
-				"to": seller["email"],
-				"subject": "Robin8 support",
-     			"optional": "You`ve got an offer for content %s." % cid
-			}
-			await self.account.sendmail(**emaildata)
+		#if seller.get("email"):
+		#	emaildata = {
+		#		"to": seller["email"],
+		#		"subject": "Robin8 support",
+     	#		"optional": "You`ve got an offer for content %s." % cid
+		#	}
+		#	await self.account.sendmail(**emaildata)
 
 
 		# Freeze price at balance
@@ -907,8 +918,9 @@ class ReadAccessOfferHandler(web.ManagementSystemHandler):
 
 		# Get difference with balance and price
 		for w in balances["wallets"]:
-			if "PUT" in w.values():
-				balance = w 
+			if "PUT" in w.values() or "PUTTEST" in w.values():
+				balance = w
+
 		difference = int(balance["amount_active"]) - int(read_price)
 		if difference < 0:
 			# If Insufficient funds
@@ -1184,7 +1196,7 @@ class DealHandler(web.ManagementSystemHandler):
 		logging.debug(price)
 
 		for w in balances["wallets"]:
-			if "PUT" in w.values():
+			if "PUT" in w.values() or "PUTTEST" in w.values():
 				balance = w
 
 		difference = int(balance["amount_frozen"]) - int(price)

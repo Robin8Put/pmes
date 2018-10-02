@@ -50,7 +50,7 @@ async def upload_content_fee(*args, **kwargs):
 	common_price = int(content_fee) + int(descr_fee)
 
 	for w in balances["wallets"]:
-		if coinid in w.values():
+		if coinid in w.values() or coinid + "TEST" in w.values():
 			balance = w
 	diff = int(balance["amount_active"]) - common_price
 	if diff < 0:
@@ -88,7 +88,7 @@ async def update_description_fee(*args, **kwargs):
 			return balances
 	
 	for w in balances["wallets"]:
-		if coinid in w.values():
+		if coinid in w.values() or coinid + "TEST" in w.values():
 			balance = w
 
 	fee = billing.estimate_set_descr_fee(len(description))
@@ -129,7 +129,7 @@ async def change_owner_fee(*args, **kwargs):
 			return balances
 
 	for w in balances["wallets"]:
-		if coinid in w.values():
+		if coinid in w.values() or coinid + "TEST" in w.values():
 			balance = w
 
 	fee = billing.estimate_change_owner_fee()
@@ -169,7 +169,7 @@ async def sell_content_fee(*args, **kwargs):
 			return balances
 
 	for w in balances["wallets"]:
-		if coinid in w.values():
+		if coinid in w.values() or coinid + "TEST" in w.values():
 			balance = w
 
 	fee = billing.estimate_sale_fee()
@@ -210,7 +210,7 @@ async def set_price_fee(*args, **kwargs):
 			return balances
 
 	for w in balances["wallets"]:
-		if coinid in w.values():
+		if coinid in w.values() or coinid + "TEST" in w.values():
 			balance = w
 
 	fee = billing.estimate_set_price_fee()
@@ -247,7 +247,7 @@ async def set_make_offer_fee(*args, **kwargs):
 			return balances
 
 	for w in balances["wallets"]:
-		if coinid in w.values():
+		if coinid in w.values() or coinid + "TEST" in w.values():
 			balance = w
 
 	fee = billing.estimate_make_offer_fee()

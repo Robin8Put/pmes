@@ -37,11 +37,11 @@ class Account(GenesisClass):
         if not isinstance(coinid, str):
             return {"error":400, "reason":"Coinid type error. Must be string."}
         fees = {
-            "BTCTEST": 0.001*pow(10,8),
+            "BTC": 0.001*pow(10,8),
             "ETH": 0.01*pow(10,8),
-            "QTUMTEST": 0.5*pow(10,8), 
-            "PUTTEST": 50*pow(10,8),
-            "LTCTEST": 0.05*pow(10,8)
+            "QTUM": 0.5*pow(10,8), 
+            "PUT": 50*pow(10,8),
+            "LTC": 0.05*pow(10,8)
         }
         try:
             fee = fees[coinid]
