@@ -1055,7 +1055,9 @@ Descriptions of the API methods provided below:
 
     Full JSON format of the bulk operation is present [here](bulk_operations_json_format_description.js).
 
-    `txid` field shouldn't be filled by user, it will be filled by the PMES in the response.
+    `txid` field shouldn't be filled by user, it will be filled by the PMES in the response if operation will write data to the blockchain.
+
+    After PMES will execute a request from the bulk operation its result will be written to the `response` in the case when there is no errors. Otherwise, in the `error` field.
 
     Part of bulk operation is present bellow:
 
