@@ -970,7 +970,7 @@ Descriptions of the API methods provided below:
             "message": {
                 "timestamp": [string],
                 "coinid": [string],         # type of the cryptocurrency `PUTTEST` or `QTUMTEST`
-                "amount": [string],         # amount of tokens that user send to the "address"
+                "amount": [integer],        # amount of tokens that user send to the "address" * 10^8
                 "address": [string],        # address to which user send the tokens
                 "recvWindow": [integer]     # signature of the message timeout expired after this timing. For instance, in 5000 milliseconds
             },
@@ -990,7 +990,7 @@ Descriptions of the API methods provided below:
             "message": {
                 "timestamp": [string],
                 "coinid": [string],         # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
-                "amount": [string],         # amount of tokens that user send to the "address"
+                "amount": [integer],        # amount of tokens that user send to the "address" * 10^8
                 "address": [string],        # address to which user send the tokens
                 "recvWindow": [integer]     # signature of the message timeout expired after this timing. For instance, in 5000 milliseconds
             },
@@ -1020,7 +1020,7 @@ Descriptions of the API methods provided below:
             "message": {
                 "timestamp": [string],
                 "coinid": [string],         # type of the cryptocurrency `PUTTEST` or `QTUMTEST`
-                "amount": [string],         # amount of tokens that user will send
+                "amount": [integer],        # amount of tokens that user will send * 10^8
             },
             "signature": [string]
         }
@@ -1033,8 +1033,8 @@ Descriptions of the API methods provided below:
 ```bash
         {
             "coinid": [string],         # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
-            "amount": [string],         # amount of tokens that user will send
-            "fee": [string],            # fee
+            "amount": [integer],        # an active amount of coins/tokens on user's wallet * 10^8
+            "fee": [int],               # fee * 10^8
         }
 ```
 
