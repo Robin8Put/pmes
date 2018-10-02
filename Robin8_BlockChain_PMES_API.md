@@ -1032,7 +1032,6 @@ Descriptions of the API methods provided below:
 
 ```bash
         {
-            "timestamp": [string],
             "coinid": [string],         # type of the blockchain (ETH - Ethereum blockchain, QTUM - QTUM blockchain)
             "amount": [string],         # amount of tokens that user will send
             "fee": [string],            # fee
