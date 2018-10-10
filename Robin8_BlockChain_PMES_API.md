@@ -102,7 +102,9 @@ Descriptions of the API methods provided below:
             "email": [string],
             "device_id": [string],
             "phone": [string],
-            "timestamp": [string]
+            "timestamp": [string],
+            "nickname": [string],
+            "type": [string]    # one of the ["user", "kol", "group"]
         },
         "signature": [string]
     }
@@ -140,6 +142,8 @@ Descriptions of the API methods provided below:
         "public_key": [string],
         "news_count": [integer],    # number of news about offers to buy profile (0 by default)
         "id": [integer],            # identifier of the user account
+        "type": [string],           # type which user specified during registration
+        "nickname": [string],       # nickname which user specified during registration
         "wallets": [string],        # list of dicts with user's wallets addresses
             "uid": [integer]                    # users id
             "address": [string],                # wallet address to which user could refill coins/tokens
@@ -192,6 +196,8 @@ Descriptions of the API methods provided below:
         "public_key": [string],
         "news_count": [integer],    # number of news about offers to buy profile (0 by default)
         "id": [integer],            # user's identifier
+        "nickname": [string],       # nickname which user specified during registration
+        "type": [string],           # type which user specified during registration
         "wallets": [string],        # list of dicts with user's wallets addresses
             "uid": [integer]                    # users id
             "address": [string],                # wallet address to which user could refill coins/tokens
@@ -337,6 +343,7 @@ Descriptions of the API methods provided below:
         "seller_access_string": [string],  # seller access string
         "seller_pubkey": [string],         # seller public key
         "access_type": [string]            # access type of profile
+        "nickname": [string]               # nickname which user specified during registration
 
     }
 ```
@@ -690,7 +697,7 @@ Descriptions of the API methods provided below:
 
 ## Get all profiles which posted user
 
-* **URL:** `/api/accounts/[public_key]/profiles?page=[page]/`
+* **URL:** `/api/accounts/[nickname]/profiles?page=[page]/`
 
 * **Method:** `GET`
 
