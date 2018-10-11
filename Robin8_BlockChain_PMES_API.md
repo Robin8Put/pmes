@@ -1006,6 +1006,59 @@ Descriptions of the API methods provided below:
         }
 ```
 
+## Bulk operations
+
+* **URL:** `/api/bulk/`
+
+* **Method:** `POST`
+
+* **URL params**
+
+    None
+
+
+* **Body params**
+    
+    Now work for the PUT tokens for sending tokens only.
+
+    Full JSON format of the bulk operation is present [here](bulk_operations_json_format_description.js).
+
+    `txid` field shouldn't be filled by user, it will be filled by the PMES in the response.
+
+    Part of bulk operation is present bellow:
+
+```bash
+{
+    "message": {                            # signed json
+        "send": [{
+            "message":{
+                    "input": "address1",    # sender addresses
+                    "output": "address2",   # receiver addresses
+                    "amount": "value",
+                    "coinid": "coinid",     # blockchain type
+                    "txid": null,           # txid will filled with response
+                    "error": null,
+                    "response": null
+                },
+                "signature": "signature",   # users signature
+                "public_key": "public_key", # users public key
+            }
+        ],
+        ...
+    },
+    "decimal": 8,
+    "signature": "signature",
+    "public_key": "public key",
+    "callbackURL": "some_url" // PMES backend reply send to this endpoint
+}
+```
+
+* **Sample response**
+
+    `[json]`
+
+    In the response, user receives filled JSON format of the bulk operation with server signature.
+
 
 ## View fee of the withdraw tokens or coins operation
 
