@@ -23,7 +23,7 @@ eth-utils==1.0.2
 funcsigs==1.0.2
 future==0.16.0
 hexbytes==0.1.0
-httplib2==0.9.2
+httplib2==0.19.0
 idna==2.6
 infi==0.0.1
 infi.clickhouse-orm==0.9.8
