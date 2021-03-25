@@ -51,7 +51,7 @@ pytest==3.6.3
 python-bitcoinrpc==1.0
 python-dateutil==2.7.3
 pywallet==0.0.7
-PyYAML==3.13
+PyYAML==5.4
 requests==2.19.1
 rlp==0.6.0
 semantic-version==2.6.0
