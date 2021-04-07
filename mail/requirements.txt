@@ -3,7 +3,7 @@ attrdict==2.0.0
 base58check==1.0.2
 bip32utils==0.3.post3
 bitcoin-python==0.3
-bottle==0.12.13
+bottle==0.12.19
 certifi==2018.4.16
 cffi==1.11.5
 chardet==3.0.4
