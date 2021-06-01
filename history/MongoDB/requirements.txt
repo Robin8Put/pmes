@@ -42,6 +42,6 @@ tornado-components==0.1.0
 tornado-jsonrpc==1.0.4
 tqdm==4.23.0
 twine==1.11.0
-urllib3==1.22
+urllib3==1.26.5
 web3==4.1.0
 websockets==4.0.1
