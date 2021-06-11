@@ -44,4 +44,4 @@ tqdm==4.23.0
 twine==1.11.0
 urllib3==1.22
 web3==4.1.0
-websockets==4.0.1
+websockets==9.1
