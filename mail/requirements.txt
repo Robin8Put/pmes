@@ -86,5 +86,5 @@ virtualenv==15.2.0
 virtualenv-clone==0.3.0
 wadllib==1.3.2
 web3==4.1.0
-websockets==4.0.1
+websockets==9.1
 zope.interface==4.3.2
