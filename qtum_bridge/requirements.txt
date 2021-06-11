@@ -40,4 +40,4 @@ tornado-cors==0.6.0
 tornadorpc==0.1.1
 urllib3==1.22
 web3==4.3.0
-websockets==4.0.1
+websockets==9.1
