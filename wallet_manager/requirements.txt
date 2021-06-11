@@ -64,5 +64,5 @@ two1==3.10.9
 urllib3==1.23
 web3==4.5.0
 websocket-client==0.48.0
-websockets==5.0.1
+websockets==9.1
 yarl==1.2.6
