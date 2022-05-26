@@ -75,7 +75,7 @@ tornado==5.1
 tornado-cors==0.6.0
 tornadorpc==0.1.1
 two1==3.10.9
-ujson==1.35
+ujson==5.2.0
 urllib3==1.22
 web3==4.3.0
 websocket-client==0.48.0
