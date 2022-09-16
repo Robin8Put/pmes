@@ -40,7 +40,7 @@ launchpadlib==1.10.5
 lazr.restfulclient==0.13.5
 lazr.uri==1.0.3
 lru-dict==1.1.6
-Mako==1.0.7
+Mako==1.2.2
 MarkupSafe==1.0
 mongoqueue==0.7.2
 oauth==1.0.1
