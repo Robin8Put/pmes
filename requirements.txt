@@ -8,7 +8,7 @@ base58==0.2.2
 base58check==1.0.2
 bip32utils==0.3.post3
 bitcoin-python==0.3
-certifi==2018.4.16
+certifi==2022.12.7
 cffi==1.11.5
 chardet==3.0.4
 click==6.7
