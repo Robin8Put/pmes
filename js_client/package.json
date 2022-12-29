@@ -13,8 +13,8 @@
     "qtumjs-lib": "0.0.7"
   },
   "devDependencies": {
-    "webpack": "^4.14.0",
-    "webpack-cli": "^3.0.8"
+    "webpack": "^5.75.0",
+    "webpack-cli": "^5.0.1"
   },
   "author": "",
   "license": "ISC"
